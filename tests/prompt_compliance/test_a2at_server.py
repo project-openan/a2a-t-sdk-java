@@ -68,19 +68,11 @@ class A2ATServerTest(unittest.TestCase):
         from a2a_t.server.a2at_server import A2ATServer
 
         compliance_result = PromptComplianceResult(
-            passed=False,
-            stage="slot_validation",
-            extracted_slots={"site": "Site A"},
-            error_code="slot_validation_error",
-            error_message="Site format is invalid.",
-            need_negotiation=True,
-            negotiation_input={
-                "type": "information",
-                "contentText": "Site format is invalid.",
-                "facts": {
-                    "missingFields": [],
-                    "invalidFields": [{"name": "site", "reason": "Site format is invalid."}],
-                },
+            success=False,
+            failure={
+                "code": "slot_validation_error",
+                "message": "Site format is invalid.",
+                "stage": "slot_validation",
             },
         )
         compliance = FakePromptComplianceOrchestrator(compliance_result)
@@ -118,20 +110,12 @@ class A2ATServerTest(unittest.TestCase):
             self.assertEqual(
                 server.check_task_prompt(processed_prompt_text="prompt"),
                 {
-                    "passed": False,
-                    "need_negotiation": True,
-                    "negotiation_input": {
-                        "type": "information",
-                        "contentText": "Site format is invalid.",
-                        "facts": {
-                            "missingFields": [],
-                            "invalidFields": [{"name": "site", "reason": "Site format is invalid."}],
-                        },
+                    "success": False,
+                    "failure": {
+                        "code": "slot_validation_error",
+                        "message": "Site format is invalid.",
+                        "stage": "slot_validation",
                     },
-                    "stage": "slot_validation",
-                    "extracted_slots": {"site": "Site A"},
-                    "error_code": "slot_validation_error",
-                    "error_message": "Site format is invalid.",
                 },
             )
             self.assertEqual(server.start_negotiation(start_input), {"started": True})
@@ -163,6 +147,29 @@ class A2ATServerTest(unittest.TestCase):
         self.assertEqual(negotiation.start_calls, [start_input])
         self.assertEqual(negotiation.receive_calls[0]["message"], "Need more information")
         self.assertEqual(negotiation.continue_calls, [continue_input])
+
+    def test_check_task_prompt_returns_success_only_when_compliance_passes(self) -> None:
+        from a2a_t.server.a2at_server import A2ATServer
+
+        compliance = FakePromptComplianceOrchestrator(PromptComplianceResult(success=True))
+        compliance_builder = FakePromptComplianceBuilder(compliance)
+        negotiation = FakeNegotiationOrchestrator()
+
+        with (
+            patch("a2a_t.server.a2at_server._default_env_path", return_value=TEST_ENV_PATH),
+            patch("a2a_t.server.a2at_server.PromptComplianceOrchestratorBuilder", return_value=compliance_builder),
+            patch("a2a_t.server.a2at_server.ServerNegotiationOrchestratorBuilder") as negotiation_builder_cls,
+            patch("a2a_t.server.a2at_server.LLMClient", return_value=object()),
+        ):
+            negotiation_builder_cls.return_value.build.return_value = negotiation
+            server = A2ATServer()
+
+            self.assertEqual(
+                server.check_task_prompt(processed_prompt_text="prompt"),
+                {
+                    "success": True,
+                },
+            )
 
     def test_server_package_exports_a2at_server(self) -> None:
         import a2a_t.server as server_package

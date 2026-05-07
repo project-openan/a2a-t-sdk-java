@@ -45,15 +45,10 @@ class A2ATServer:
             processed_prompt_text=processed_prompt_text,
             request_metadata=None,
         )
-        return {
-            "passed": result.passed,
-            "need_negotiation": result.need_negotiation,
-            "negotiation_input": result.negotiation_input,
-            "stage": result.stage,
-            "extracted_slots": result.extracted_slots,
-            "error_code": result.error_code,
-            "error_message": result.error_message,
-        }
+        payload: dict[str, object] = {"success": result.success}
+        if result.failure is not None:
+            payload["failure"] = result.failure
+        return payload
 
     def start_negotiation(self, input: StartNegotiationInput) -> dict[str, object]:
         """Start a server-side negotiation round."""

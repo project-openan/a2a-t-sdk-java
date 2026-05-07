@@ -239,6 +239,52 @@ class PromptResourceLoaderTest(ManagedTempDirTestCase):
         self.assertEqual(source.json_reads, ["slots/energy_saving/0.0.1/en-US/slot.json"])
         self.assertEqual(slot_schema.scenario_code, "energy_saving")
 
+    def test_slot_schema_loader_reads_standard_json_schema_for_generation_flow(self) -> None:
+        self._write_json(
+            "slots/energy_saving/0.0.1/en-US/slot.json",
+            {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "site": {
+                        "type": "string",
+                        "description": "Site name",
+                        "examples": ["Shenzhen site A"],
+                        "minLength": 1,
+                        "x-a2at-value-constraint": "Must be a concrete site name.",
+                    },
+                    "incident_level": {
+                        "type": "string",
+                        "description": "Incident level",
+                        "examples": ["critical"],
+                        "enum": ["critical", "major"],
+                        "x-a2at-value-constraint": "Must be one of the supported levels.",
+                    },
+                },
+                "required": ["site"],
+            },
+        )
+
+        from a2a_t.common.prompt_resources.slot_schema_loader import SlotSchemaLoader
+
+        loader = SlotSchemaLoader(root_dir=self.root)
+        slot_schema = loader.load(
+            reference=PromptReference(scenario_code="energy_saving", version="0.0.1", language="en-US")
+        )
+
+        self.assertEqual(slot_schema.scenario_code, "energy_saving")
+        self.assertEqual(slot_schema.version, "0.0.1")
+        self.assertEqual([slot.name for slot in slot_schema.slots], ["site", "incident_level"])
+        self.assertTrue(slot_schema.slots[0].required)
+        self.assertEqual(slot_schema.slots[0].description, "Site name")
+        self.assertEqual(slot_schema.slots[0].example, "Shenzhen site A")
+        self.assertEqual(slot_schema.slots[0].value_constraint, "Must be a concrete site name.")
+        self.assertEqual(slot_schema.slots[0].type, "string")
+        self.assertIsNone(slot_schema.slots[0].allowed_values)
+        self.assertFalse(slot_schema.slots[1].required)
+        self.assertEqual(slot_schema.slots[1].allowed_values, ["critical", "major"])
+
     def test_resource_registry_falls_back_to_en_us_for_generation_resources(self) -> None:
         self._write_text("templates/energy_saving/0.0.1/en-US/template.md", "Site: {site}\n")
         self._write_text("prompts/slot_extraction/0.0.1/en-US/system.md", "Extract slots.")

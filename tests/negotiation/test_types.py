@@ -27,18 +27,11 @@ class NegotiationTypesTest(unittest.TestCase):
         from a2a_t.server.prompt_compliance.result import PromptComplianceResult
 
         return PromptComplianceResult(
-            passed=False,
-            stage="slot_validation",
-            error_code="slot_validation_error",
-            error_message="Need more information",
-            need_negotiation=True,
-            negotiation_input={
-                "type": "information",
-                "contentText": "Need more information",
-                "facts": {
-                    "missingFields": ["site"],
-                    "invalidFields": [],
-                },
+            success=False,
+            failure={
+                "code": "slot_validation_error",
+                "message": "Need more information",
+                "stage": "slot_validation",
             },
         )
 
@@ -101,12 +94,7 @@ class NegotiationTypesTest(unittest.TestCase):
 
         checker = FakePromptChecker(
             PromptComplianceResult(
-                passed=True,
-                stage="done",
-                error_code=None,
-                error_message=None,
-                need_negotiation=False,
-                negotiation_input=None,
+                success=True,
             )
         )
         negotiation_type = InformationNegotiationType(
@@ -131,12 +119,12 @@ class NegotiationTypesTest(unittest.TestCase):
 
         checker = FakePromptChecker(
             PromptComplianceResult(
-                passed=False,
-                stage="guardrail",
-                error_code="guardrail_rejected",
-                error_message="Guardrail rejected the task prompt.",
-                need_negotiation=False,
-                negotiation_input=None,
+                success=False,
+                failure={
+                    "code": "guardrail_rejected",
+                    "message": "Guardrail rejected the task prompt.",
+                    "stage": "guardrail",
+                },
             )
         )
         negotiation_type = InformationNegotiationType(

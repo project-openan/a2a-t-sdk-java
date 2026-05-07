@@ -24,7 +24,6 @@ from a2a_t.prompt.validation.models import GuardrailResult, SlotValidationError,
 from a2a_t.server.prompt_compliance.constants import (
     GENERATION_STAGE,
     GUARDRAIL_REJECTED,
-    PASSED_STAGE,
     PROMPT_RESOURCE_ACCESS_ERROR,
     PROMPT_RESOURCE_LOAD_ERROR,
     GUARDRAIL_STAGE,
@@ -69,6 +68,18 @@ class FakeSlotSchemaLoader:
         self.last_reference: PromptReference | None = None
 
     def load(self, *, reference: PromptReference) -> SlotSchema:
+        self.last_reference = reference
+        if isinstance(self._result, Exception):
+            raise self._result
+        return self._result
+
+
+class FakeSlotJsonSchemaLoader:
+    def __init__(self, result: dict[str, object] | Exception) -> None:
+        self._result = result
+        self.last_reference: PromptReference | None = None
+
+    def load(self, *, reference: PromptReference) -> dict[str, object]:
         self.last_reference = reference
         if isinstance(self._result, Exception):
             raise self._result
@@ -140,6 +151,7 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
         guardrail: FakeGuardrail | RaisingGuardrail | None = None,
         template_loader: FakeTemplateLoader | None = None,
         slot_schema_loader: FakeSlotSchemaLoader | None = None,
+        slot_json_schema_loader: FakeSlotJsonSchemaLoader | None = None,
         prompt_resource_loader: FakePromptResourceLoader | None = None,
         extractor: FakeExtractor | None = None,
         validator: FakeValidator | None = None,
@@ -150,6 +162,15 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
             guardrail=guardrail or FakeGuardrail(GuardrailResult(passed=True, error_code=None, error_message=None)),
             template_loader=template_loader or FakeTemplateLoader("Site: {site}"),
             slot_schema_loader=slot_schema_loader or FakeSlotSchemaLoader(self._slot_schema()),
+            slot_json_schema_loader=slot_json_schema_loader or FakeSlotJsonSchemaLoader(
+                {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "type": "object",
+                    "properties": {"site": {"type": "string", "minLength": 1}},
+                    "required": ["site"],
+                    "additionalProperties": False,
+                }
+            ),
             prompt_resource_loader=prompt_resource_loader or FakePromptResourceLoader(
                 PromptMessages(system_prompt="Extract slots.", user_prompt="Return slots.")
             ),
@@ -160,10 +181,20 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
     def test_check_returns_success_result(self) -> None:
         template_loader = FakeTemplateLoader("Site: {site}")
         slot_schema_loader = FakeSlotSchemaLoader(self._slot_schema())
+        slot_json_schema_loader = FakeSlotJsonSchemaLoader(
+            {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {"site": {"type": "string", "minLength": 1}},
+                "required": ["site"],
+                "additionalProperties": False,
+            }
+        )
         extractor = FakeExtractor(SlotExtractionResult(slots={"site": "Site A"}, slot_errors=[]))
         service = self._build_service(
             template_loader=template_loader,
             slot_schema_loader=slot_schema_loader,
+            slot_json_schema_loader=slot_json_schema_loader,
             extractor=extractor,
         )
 
@@ -171,19 +202,16 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         self.assertEqual(template_loader.last_reference, PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"))
         self.assertEqual(slot_schema_loader.last_reference, PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"))
+        self.assertEqual(slot_json_schema_loader.last_reference, PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"))
         self.assertEqual(extractor.last_reference, PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"))
         self.assertEqual(
             result,
             PromptComplianceResult(
-                passed=True,
-                stage=PASSED_STAGE,
-                extracted_slots={"site": "Site A"},
-                need_negotiation=False,
-                negotiation_input=None,
+                success=True,
             ),
         )
 
-    def test_check_returns_slot_validation_error_with_aggregated_message(self) -> None:
+    def test_check_returns_slot_validation_error_with_failure_payload(self) -> None:
         slot_errors = [
             SlotValidationError(
                 slot_name="site",
@@ -202,31 +230,19 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         result = service.check(processed_prompt_text=self.processed_prompt, request_metadata=None)
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, SLOT_VALIDATION_STAGE)
-        self.assertEqual(result.error_code, SLOT_VALIDATION_ERROR)
-        self.assertEqual(result.error_message, "Site format is invalid.")
-        self.assertEqual(result.extracted_slots, {"site": "Site A"})
-        self.assertEqual(result.slot_errors, slot_errors)
-        self.assertTrue(result.need_negotiation)
         self.assertEqual(
-            result.negotiation_input,
-            {
-                "type": "information",
-                "contentText": "Site format is invalid.",
-                "facts": {
-                    "missingFields": [],
-                    "invalidFields": [
-                        {
-                            "name": "site",
-                            "reason": "Site format is invalid.",
-                        }
-                    ],
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": SLOT_VALIDATION_ERROR,
+                    "message": "Site format is invalid.",
+                    "stage": SLOT_VALIDATION_STAGE,
                 },
-            },
+            ),
         )
 
-    def test_check_returns_information_negotiation_input_only_for_missing_and_invalid_fields(self) -> None:
+    def test_check_returns_slot_validation_error_for_negotiable_slot_failures(self) -> None:
         service = self._build_service(
             validator=FakeValidator(
                 SlotValidationResult(
@@ -249,24 +265,16 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         result = service.check(processed_prompt_text=self.processed_prompt, request_metadata=None)
 
-        self.assertEqual(result.passed, False)
-        self.assertEqual(result.need_negotiation, True)
-        self.assertEqual(result.error_message, "Required slot 'site' is missing.; analysis_target is invalid.")
         self.assertEqual(
-            result.negotiation_input,
-            {
-                "type": "information",
-                "contentText": "Required slot 'site' is missing.; analysis_target is invalid.",
-                "facts": {
-                    "missingFields": ["site"],
-                    "invalidFields": [
-                        {
-                            "name": "analysis_target",
-                            "reason": "analysis_target is invalid.",
-                        }
-                    ],
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": SLOT_VALIDATION_ERROR,
+                    "message": "Required slot 'site' is missing.; analysis_target is invalid.",
+                    "stage": SLOT_VALIDATION_STAGE,
                 },
-            },
+            ),
         )
 
     def test_check_returns_template_load_error_when_template_resource_is_missing(self) -> None:
@@ -276,18 +284,34 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         result = service.check(processed_prompt_text=self.processed_prompt, request_metadata=None)
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, GENERATION_STAGE)
-        self.assertEqual(result.error_code, TEMPLATE_LOAD_ERROR)
+        self.assertEqual(
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": TEMPLATE_LOAD_ERROR,
+                    "message": "missing template",
+                    "stage": GENERATION_STAGE,
+                },
+            ),
+        )
 
     def test_check_returns_prompt_parse_error_when_front_matter_is_invalid(self) -> None:
         service = self._build_service()
 
         result = service.check(processed_prompt_text="invalid prompt", request_metadata=None)
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, "prompt_parse")
-        self.assertEqual(result.error_code, "processed_prompt_parse_error")
+        self.assertEqual(
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": "processed_prompt_parse_error",
+                    "message": "Task prompt must start with front matter.",
+                    "stage": "prompt_parse",
+                },
+            ),
+        )
 
     def test_check_returns_prompt_parse_error_when_language_is_missing(self) -> None:
         service = self._build_service()
@@ -304,9 +328,17 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
             request_metadata=None,
         )
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, "prompt_parse")
-        self.assertEqual(result.error_code, "processed_prompt_parse_error")
+        self.assertEqual(
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": "processed_prompt_parse_error",
+                    "message": "Task prompt is missing required field: language.",
+                    "stage": "prompt_parse",
+                },
+            ),
+        )
 
     def test_check_returns_guardrail_execution_error_when_guardrail_runtime_fails(self) -> None:
         service = self._build_service(
@@ -315,10 +347,17 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         result = service.check(processed_prompt_text=self.processed_prompt, request_metadata=None)
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, "guardrail")
-        self.assertEqual(result.error_code, "guardrail_execution_error")
-        self.assertEqual(result.error_message, "guardrail timed out")
+        self.assertEqual(
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": "guardrail_execution_error",
+                    "message": "guardrail timed out",
+                    "stage": "guardrail",
+                },
+            ),
+        )
 
     def test_check_returns_guardrail_execution_error_when_guardrail_raises_unexpected_error(self) -> None:
         service = self._build_service(
@@ -327,10 +366,17 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         result = service.check(processed_prompt_text=self.processed_prompt, request_metadata=None)
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, "guardrail")
-        self.assertEqual(result.error_code, "guardrail_execution_error")
-        self.assertEqual(result.error_message, "unexpected guardrail failure")
+        self.assertEqual(
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": "guardrail_execution_error",
+                    "message": "unexpected guardrail failure",
+                    "stage": "guardrail",
+                },
+            ),
+        )
 
     def test_check_returns_guardrail_rejected_when_guardrail_blocks_prompt(self) -> None:
         service = self._build_service(
@@ -345,10 +391,17 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         result = service.check(processed_prompt_text=self.processed_prompt, request_metadata=None)
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, GUARDRAIL_STAGE)
-        self.assertEqual(result.error_code, GUARDRAIL_REJECTED)
-        self.assertEqual(result.error_message, "Guardrail rejected the processed prompt.")
+        self.assertEqual(
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": GUARDRAIL_REJECTED,
+                    "message": "Guardrail rejected the processed prompt.",
+                    "stage": GUARDRAIL_STAGE,
+                },
+            ),
+        )
 
     def test_check_returns_generation_error_when_template_resource_is_invalid(self) -> None:
         service = self._build_service(
@@ -357,10 +410,17 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         result = service.check(processed_prompt_text=self.processed_prompt, request_metadata=None)
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, GENERATION_STAGE)
-        self.assertEqual(result.error_code, "prompt_resource_parse_error")
-        self.assertEqual(result.error_message, "template is invalid")
+        self.assertEqual(
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": "prompt_resource_parse_error",
+                    "message": "template is invalid",
+                    "stage": GENERATION_STAGE,
+                },
+            ),
+        )
 
     def test_check_returns_generation_error_when_slot_schema_resource_is_invalid(self) -> None:
         service = self._build_service(
@@ -369,10 +429,17 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         result = service.check(processed_prompt_text=self.processed_prompt, request_metadata=None)
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, GENERATION_STAGE)
-        self.assertEqual(result.error_code, "prompt_resource_parse_error")
-        self.assertEqual(result.error_message, "slot schema is invalid")
+        self.assertEqual(
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": "prompt_resource_parse_error",
+                    "message": "slot schema is invalid",
+                    "stage": GENERATION_STAGE,
+                },
+            ),
+        )
 
     def test_check_returns_generation_error_when_slot_prompt_resources_are_missing(self) -> None:
         service = self._build_service(
@@ -381,10 +448,17 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         result = service.check(processed_prompt_text=self.processed_prompt, request_metadata=None)
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, GENERATION_STAGE)
-        self.assertEqual(result.error_code, PROMPT_RESOURCE_LOAD_ERROR)
-        self.assertEqual(result.error_message, "missing slot extraction prompts")
+        self.assertEqual(
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": PROMPT_RESOURCE_LOAD_ERROR,
+                    "message": "missing slot extraction prompts",
+                    "stage": GENERATION_STAGE,
+                },
+            ),
+        )
 
     def test_check_returns_generation_error_when_slot_prompt_resource_access_fails(self) -> None:
         service = self._build_service(
@@ -393,10 +467,17 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         result = service.check(processed_prompt_text=self.processed_prompt, request_metadata=None)
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, GENERATION_STAGE)
-        self.assertEqual(result.error_code, PROMPT_RESOURCE_ACCESS_ERROR)
-        self.assertEqual(result.error_message, "prompt resource path escapes local root")
+        self.assertEqual(
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": PROMPT_RESOURCE_ACCESS_ERROR,
+                    "message": "prompt resource path escapes local root",
+                    "stage": GENERATION_STAGE,
+                },
+            ),
+        )
 
     def test_check_returns_generation_error_when_resource_path_access_fails(self) -> None:
         service = self._build_service(
@@ -405,10 +486,17 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         result = service.check(processed_prompt_text=self.processed_prompt, request_metadata=None)
 
-        self.assertFalse(result.passed)
-        self.assertEqual(result.stage, GENERATION_STAGE)
-        self.assertEqual(result.error_code, "prompt_resource_access_error")
-        self.assertEqual(result.error_message, "resource path escapes local root")
+        self.assertEqual(
+            result,
+            PromptComplianceResult(
+                success=False,
+                failure={
+                    "code": "prompt_resource_access_error",
+                    "message": "resource path escapes local root",
+                    "stage": GENERATION_STAGE,
+                },
+            ),
+        )
 
 
 if __name__ == "__main__":

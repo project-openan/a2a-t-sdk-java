@@ -17,6 +17,7 @@ class DefaultPromptResourcePackageTest(unittest.TestCase):
         from a2a_t.prompt.common.models import PromptReference
         from a2a_t.common.prompt_resources.prompt_resource_loader import PromptResourceLoader
         from a2a_t.common.prompt_resources.scenario_loader import ScenarioLoader
+        from a2a_t.common.prompt_resources.slot_json_schema_loader import SlotJsonSchemaLoader
         from a2a_t.common.prompt_resources.slot_schema_loader import SlotSchemaLoader
         from a2a_t.common.prompt_resources.template_loader import TemplateLoader
 
@@ -24,6 +25,7 @@ class DefaultPromptResourcePackageTest(unittest.TestCase):
         reference = PromptReference(scenario_code="subscribe_incident", version="0.0.1", language="en-US")
         template_text = TemplateLoader().load(reference=reference)
         slot_schema = SlotSchemaLoader().load(reference=reference)
+        slot_json_schema = SlotJsonSchemaLoader().load(reference=reference)
         scenario_prompts = PromptResourceLoader().load(
             analysis_action="scenario_recognition",
             version="0.0.1",
@@ -38,6 +40,15 @@ class DefaultPromptResourcePackageTest(unittest.TestCase):
         self.assertTrue(any(item.scenario_code == "subscribe_incident" for item in scenarios))
         self.assertIn("{subscription_condition_incident_name}", template_text)
         self.assertEqual(slot_schema.scenario_code, "subscribe_incident")
+        self.assertEqual(slot_schema.slots[0].name, "subscription_condition_incident_name")
+        self.assertEqual(slot_json_schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
+        self.assertEqual(slot_json_schema["type"], "object")
+        self.assertFalse(slot_json_schema["additionalProperties"])
+        self.assertNotIn("slots", slot_json_schema)
+        self.assertEqual(
+            slot_json_schema["properties"]["subscription_condition_incident_name"]["type"],
+            "string",
+        )
         self.assertTrue(scenario_prompts.system_prompt.strip())
         self.assertTrue(slot_prompts.user_prompt.strip())
 

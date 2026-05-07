@@ -46,8 +46,9 @@ class PromptComplianceOrchestratorBuilderTest(unittest.TestCase):
                 "guardrail": object(),
                 "template_loader": object(),
                 "slot_schema_loader": object(),
+                "slot_json_schema_loader": object(),
                 "prompt_resource_loader": object(),
-                "slot_validator": object(),
+                "json_schema_slot_validator": object(),
             },
         )()
         runtime_builder = FakeRuntimeComponentsBuilder(components)
@@ -82,8 +83,9 @@ class PromptComplianceOrchestratorBuilderTest(unittest.TestCase):
                 "guardrail": object(),
                 "template_loader": object(),
                 "slot_schema_loader": object(),
+                "slot_json_schema_loader": object(),
                 "prompt_resource_loader": object(),
-                "slot_validator": object(),
+                "json_schema_slot_validator": object(),
             },
         )()
         runtime_builder = FakeRuntimeComponentsBuilder(components)
@@ -107,7 +109,8 @@ class PromptComplianceOrchestratorBuilderTest(unittest.TestCase):
         self.assertEqual(runtime_builder.calls, [])
         self.assertIs(orchestrator.kwargs["guardrail"], components.guardrail)
         self.assertIs(orchestrator.kwargs["prompt_resource_loader"], components.prompt_resource_loader)
-        self.assertIs(orchestrator.kwargs["validator"], components.slot_validator)
+        self.assertIs(orchestrator.kwargs["slot_json_schema_loader"], components.slot_json_schema_loader)
+        self.assertIs(orchestrator.kwargs["validator"], components.json_schema_slot_validator)
 
 if __name__ == "__main__":
     unittest.main()

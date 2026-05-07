@@ -15,10 +15,12 @@ if str(SRC_ROOT) not in sys.path:
 
 
 from a2a_t.llm.base import LLMResponse
+from a2a_t.common.prompt_resources.slot_json_schema_loader import SlotJsonSchemaLoader
 from a2a_t.prompt.analysis import SlotExtractor
 from a2a_t.prompt.common.task_prompt_format import TaskPromptMetadata, format_task_prompt
 from a2a_t.common.prompt_resources import PromptResourceLoader, SlotSchemaLoader, TemplateLoader
-from a2a_t.prompt.validation import GuardrailResult, SlotValidator
+from a2a_t.prompt.validation import GuardrailResult
+from a2a_t.prompt.validation.json_schema_slot_validator import JsonSchemaSlotValidator
 from a2a_t.server.a2at_server import A2ATServer
 from a2a_t.server.prompt_compliance.prompt_compliance_orchestrator import PromptComplianceOrchestrator
 from tests.test_support import ManagedTempDirTestCase, TEST_ENV_PATH
@@ -92,13 +94,14 @@ class PromptComplianceIntegrationRuntimeTest(ManagedTempDirTestCase):
             guardrail=FakeGuardrail(),
             template_loader=TemplateLoader(root_dir=self.root),
             slot_schema_loader=SlotSchemaLoader(root_dir=self.root),
+            slot_json_schema_loader=SlotJsonSchemaLoader(root_dir=self.root),
             prompt_resource_loader=PromptResourceLoader(root_dir=self.root),
             extractor=SlotExtractor(
                 llm_client=FakeSequencedLLMClient(
                     ['{"slots": {"site": "Site A"}, "slot_errors": []}']
                 )
             ),
-            validator=SlotValidator(),
+            validator=JsonSchemaSlotValidator(),
         )
         with (
             patch("a2a_t.server.a2at_server._default_env_path", return_value=TEST_ENV_PATH),
@@ -123,14 +126,78 @@ class PromptComplianceIntegrationRuntimeTest(ManagedTempDirTestCase):
 
         self.assertEqual(
             result,
+            {"success": True},
+        )
+
+    def test_handler_check_task_prompt_returns_business_constraint_message_for_invalid_slot_value(self) -> None:
+        self._write_resource_file("templates/subscribe_incident/0.0.1/en-US/template.md", "Levels: {subscription_condition_incident_level}")
+        self._write_resource_file("prompts/slot_extraction/0.0.1/en-US/system.md", "Extract slots.")
+        self._write_resource_file("prompts/slot_extraction/0.0.1/en-US/user.md", "Return slots.")
+        self._write_resource_file(
+            "slots/subscribe_incident/0.0.1/en-US/slot.json",
+            json.dumps(
+                {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "subscription_condition_incident_level": {
+                            "type": "string",
+                            "pattern": "^\\s*\\[(?:\\s*\"(?:critical|major)\"\\s*(?:,\\s*\"(?:critical|major)\"\\s*)*)\\]\\s*$",
+                            "x-a2at-slot-type": "list",
+                            "x-a2at-value-constraint": "Must be a JSON array string containing one or more of: critical, major.",
+                            "examples": ["[\"critical\"]"],
+                        }
+                    },
+                    "required": [],
+                },
+                ensure_ascii=True,
+            ),
+        )
+
+        service = PromptComplianceOrchestrator(
+            guardrail=FakeGuardrail(),
+            template_loader=TemplateLoader(root_dir=self.root),
+            slot_schema_loader=SlotSchemaLoader(root_dir=self.root),
+            slot_json_schema_loader=SlotJsonSchemaLoader(root_dir=self.root),
+            prompt_resource_loader=PromptResourceLoader(root_dir=self.root),
+            extractor=SlotExtractor(
+                llm_client=FakeSequencedLLMClient(
+                    ['{"slots": {"subscription_condition_incident_level": "warning"}, "slot_errors": []}']
+                )
+            ),
+            validator=JsonSchemaSlotValidator(),
+        )
+        with (
+            patch("a2a_t.server.a2at_server._default_env_path", return_value=TEST_ENV_PATH),
+            patch("a2a_t.server.a2at_server.PromptComplianceOrchestratorBuilder", return_value=FakePromptComplianceBuilder(service)),
+            patch("a2a_t.server.a2at_server.ServerNegotiationOrchestratorBuilder") as negotiation_builder_cls,
+            patch("a2a_t.server.a2at_server.LLMClient", return_value=object()),
+        ):
+            negotiation_builder_cls.return_value.build.return_value = object()
+            server = A2ATServer()
+
+            result = server.check_task_prompt(
+                processed_prompt_text=format_task_prompt(
+                    body="processed body",
+                    metadata=TaskPromptMetadata(
+                        scenario_code="subscribe_incident",
+                        language="en-US",
+                        version="0.0.1",
+                        description="Subscribe incidents by condition.",
+                    ),
+                ),
+            )
+
+        self.assertEqual(
+            result,
             {
-                "passed": True,
-                "need_negotiation": False,
-                "negotiation_input": None,
-                "stage": "passed",
-                "extracted_slots": {"site": "Site A"},
-                "error_code": None,
-                "error_message": None,
+                "success": False,
+                "failure": {
+                    "code": "slot_validation_error",
+                    "message": "Must be a JSON array string containing one or more of: critical, major.",
+                    "stage": "slot_validation",
+                },
             },
         )
 

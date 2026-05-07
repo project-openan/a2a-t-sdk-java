@@ -6,18 +6,17 @@ from a2a_t.common.prompt_resources import (
     PromptResourceLoader,
     PromptResourceNotFoundError,
     PromptResourceParseError,
+    SlotJsonSchemaLoader,
     SlotSchemaLoader,
     TemplateLoader,
 )
 from a2a_t.prompt.common.task_prompt_format import TaskPromptFormatError, parse_task_prompt_metadata
 from a2a_t.prompt.common.errors import PromptSourceError
 from a2a_t.prompt.common.models import PromptReference
-from a2a_t.prompt.validation.constants import INVALID_VALUE, MISSING_INPUT
 from a2a_t.prompt.validation.errors import GuardrailExecutionError
 from a2a_t.prompt.validation.guardrails import SafetyGuardrail
-from a2a_t.prompt.validation.models import SlotValidationError
 from a2a_t.prompt.validation.models import SlotValidationResult
-from a2a_t.prompt.validation.slot_validator import SlotValidator
+from a2a_t.prompt.validation.json_schema_slot_validator import JsonSchemaSlotValidator
 from a2a_t.server.prompt_compliance.constants import (
     GUARDRAIL_EXECUTION_ERROR,
     GENERATION_STAGE,
@@ -48,13 +47,15 @@ class PromptComplianceOrchestrator:
         guardrail: SafetyGuardrail,
         template_loader: TemplateLoader,
         slot_schema_loader: SlotSchemaLoader,
+        slot_json_schema_loader: SlotJsonSchemaLoader,
         prompt_resource_loader: PromptResourceLoader,
         extractor: SlotExtractor,
-        validator: SlotValidator,
+        validator: JsonSchemaSlotValidator,
     ) -> None:
         self._guardrail = guardrail
         self._template_loader = template_loader
         self._slot_schema_loader = slot_schema_loader
+        self._slot_json_schema_loader = slot_json_schema_loader
         self._prompt_resource_loader = prompt_resource_loader
         self._extractor = extractor
         self._validator = validator
@@ -102,6 +103,15 @@ class PromptComplianceOrchestrator:
             return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
 
         try:
+            slot_json_schema = self._slot_json_schema_loader.load(reference=reference)
+        except PromptResourceNotFoundError as error:
+            return self._error_result(GENERATION_STAGE, SLOT_SCHEMA_LOAD_ERROR, str(error))
+        except PromptResourceParseError as error:
+            return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_PARSE_ERROR, str(error))
+        except PromptSourceError as error:
+            return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
+
+        try:
             slot_schema = self._slot_schema_loader.load(reference=reference)
         except PromptResourceNotFoundError as error:
             return self._error_result(GENERATION_STAGE, SLOT_SCHEMA_LOAD_ERROR, str(error))
@@ -140,30 +150,21 @@ class PromptComplianceOrchestrator:
         validation_result: SlotValidationResult = self._validator.validate(
             slots=extraction_result.slots,
             slot_errors=extraction_result.slot_errors,
-            slot_schema=slot_schema,
+            slot_json_schema=slot_json_schema,
         )
         if not validation_result.passed:
-            # Only negotiable slot failures become structured follow-up requests for the caller.
             error_message = self._aggregate_slot_errors(validation_result)
-            slot_errors = list(validation_result.slot_errors)
             return PromptComplianceResult(
-                passed=False,
-                stage=SLOT_VALIDATION_STAGE,
-                extracted_slots=extraction_result.slots,
-                error_code=SLOT_VALIDATION_ERROR,
-                error_message=error_message,
-                slot_errors=slot_errors,
-                need_negotiation=self._is_negotiable_slot_failure(slot_errors),
-                negotiation_input=self._build_negotiation_input(
-                    error_message=error_message,
-                    slot_errors=slot_errors,
-                ),
+                success=False,
+                failure={
+                    "code": SLOT_VALIDATION_ERROR,
+                    "message": error_message,
+                    "stage": SLOT_VALIDATION_STAGE,
+                },
             )
 
         return PromptComplianceResult(
-            passed=True,
-            stage=PASSED_STAGE,
-            extracted_slots=extraction_result.slots,
+            success=True,
         )
 
     @staticmethod
@@ -176,50 +177,14 @@ class PromptComplianceOrchestrator:
         messages = [slot_error.message for slot_error in validation_result.slot_errors if slot_error.message]
         return "; ".join(messages) if messages else "Slot validation failed."
 
-    def _is_negotiable_slot_failure(self, slot_errors: list[SlotValidationError]) -> bool:
-        """Return whether all slot failures can be resolved through information negotiation."""
-        if not slot_errors:
-            return False
-        return all(slot_error.code in {MISSING_INPUT, INVALID_VALUE} for slot_error in slot_errors)
-
-    def _build_negotiation_input(
-        self,
-        *,
-        error_message: str,
-        slot_errors: list[SlotValidationError],
-    ) -> dict[str, object] | None:
-        """Build the structured negotiation input expected by downstream negotiation flows."""
-        if not self._is_negotiable_slot_failure(slot_errors):
-            return None
-
-        missing_fields: list[str] = []
-        invalid_fields: list[dict[str, str]] = []
-        for slot_error in slot_errors:
-            if slot_error.code == INVALID_VALUE:
-                invalid_fields.append(
-                    {
-                        "name": slot_error.slot_name,
-                        "reason": slot_error.message,
-                    }
-                )
-                continue
-            missing_fields.append(slot_error.slot_name)
-
-        return {
-            "type": "information",
-            "contentText": error_message,
-            "facts": {
-                "missingFields": missing_fields,
-                "invalidFields": invalid_fields,
-            },
-        }
-
     @staticmethod
     def _error_result(stage: str, error_code: str, error_message: str) -> PromptComplianceResult:
         """Build a standardized compliance failure result."""
         return PromptComplianceResult(
-            passed=False,
-            stage=stage,
-            error_code=error_code,
-            error_message=error_message,
+            success=False,
+            failure={
+                "code": error_code,
+                "message": error_message,
+                "stage": stage,
+            },
         )

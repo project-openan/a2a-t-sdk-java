@@ -63,9 +63,7 @@ class FakePromptChecker:
         from a2a_t.server.prompt_compliance.result import PromptComplianceResult
 
         return PromptComplianceResult(
-            passed=True,
-            stage="passed",
-            extracted_slots={},
+            success=True,
         )
 
 

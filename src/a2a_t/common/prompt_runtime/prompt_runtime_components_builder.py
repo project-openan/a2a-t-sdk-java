@@ -5,11 +5,12 @@ from a2a_t.common.prompt_resources import (
     PromptResourceLoader,
     PromptResourceRegistry,
     ScenarioLoader,
+    SlotJsonSchemaLoader,
     SlotSchemaLoader,
     TemplateLoader,
 )
 from a2a_t.config.models import A2ATConfig
-from a2a_t.prompt.validation import SafetyGuardrailFactory, SlotValidator
+from a2a_t.prompt.validation import JsonSchemaSlotValidator, SafetyGuardrailFactory, SlotValidator
 
 from .prompt_runtime_components import PromptRuntimeComponents
 
@@ -32,6 +33,7 @@ class PromptRuntimeComponentsBuilder:
         scenario_loader = ScenarioLoader(source=resource_source)
         template_loader = TemplateLoader(source=resource_source)
         slot_schema_loader = SlotSchemaLoader(source=resource_source)
+        slot_json_schema_loader = SlotJsonSchemaLoader(source=resource_source)
         prompt_resource_loader = PromptResourceLoader(source=resource_source)
         resource_registry = PromptResourceRegistry(
             source=resource_source,
@@ -41,6 +43,7 @@ class PromptRuntimeComponentsBuilder:
             slot_schema_loader=slot_schema_loader,
         )
         slot_validator = SlotValidator()
+        json_schema_slot_validator = JsonSchemaSlotValidator()
         guardrail = SafetyGuardrailFactory.create(config.prompt_compliance.guardrail)
 
         return PromptRuntimeComponents(
@@ -49,7 +52,9 @@ class PromptRuntimeComponentsBuilder:
             scenario_loader=scenario_loader,
             template_loader=template_loader,
             slot_schema_loader=slot_schema_loader,
+            slot_json_schema_loader=slot_json_schema_loader,
             prompt_resource_loader=prompt_resource_loader,
             slot_validator=slot_validator,
+            json_schema_slot_validator=json_schema_slot_validator,
             guardrail=guardrail,
         )

@@ -8,6 +8,7 @@ from .prompt_resource_loader import PromptResourceLoader
 from .registry import PromptResourceRegistry
 from .providers import LocalPromptResourceProvider, PromptResourceProvider
 from .scenario_loader import ScenarioLoader
+from .slot_json_schema_loader import SlotJsonSchemaLoader
 from .slot_schema_loader import SlotSchemaLoader
 from .source import LocalPromptResourceSource, PromptResourceSource
 from .template_loader import TemplateLoader
@@ -32,6 +33,7 @@ __all__ = [
     "ScenarioLoader",
     "SlotDefinition",
     "SlotRange",
+    "SlotJsonSchemaLoader",
     "SlotSchema",
     "SlotSchemaLoader",
     "TemplateLoader",

@@ -41,24 +41,28 @@ class InformationNegotiationType(BaseNegotiationType):
             processed_prompt_text=message,
             request_metadata=None,
         )
-        if compliance_result.need_negotiation and compliance_result.negotiation_input is not None:
-            # Negotiable validation issues feed back into the same information negotiation channel.
+        if compliance_result.success:
             return ReceiveResult(
                 need_response=True,
                 facts={},
-                message=compliance_result.error_message or message,
+                message=self._COMPLETE_MESSAGE,
             )
-        if not compliance_result.passed:
+
+        failure = compliance_result.failure or {}
+        failure_stage = str(failure.get("stage") or "")
+        failure_message = str(failure.get("message") or "").strip()
+
+        if failure_stage == "slot_validation":
             return ReceiveResult(
                 need_response=True,
                 facts={},
-                message=compliance_result.error_message or "Task prompt validation failed.",
+                message=failure_message or message,
             )
 
         return ReceiveResult(
             need_response=True,
             facts={},
-            message=self._COMPLETE_MESSAGE,
+            message=failure_message or "Task prompt validation failed.",
         )
 
     def render_continue_prompt(

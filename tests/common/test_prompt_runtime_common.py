@@ -19,6 +19,8 @@ class CommonPromptRuntimeComponentsBuilderTest(unittest.TestCase):
     def test_common_builder_creates_shared_runtime_components_from_config(self) -> None:
         from a2a_t.common.prompt_resources import LocalPromptResourceSource
         from a2a_t.common.prompt_runtime import PromptRuntimeComponentsBuilder
+        from a2a_t.common.prompt_resources.slot_json_schema_loader import SlotJsonSchemaLoader
+        from a2a_t.prompt.validation.json_schema_slot_validator import JsonSchemaSlotValidator
         from a2a_t.prompt.validation import SlotValidator
 
         config = A2ATConfig(
@@ -41,6 +43,9 @@ class CommonPromptRuntimeComponentsBuilderTest(unittest.TestCase):
         self.assertIs(components.scenario_loader.source, components.resource_source)
         self.assertIs(components.template_loader.source, components.resource_source)
         self.assertIs(components.slot_schema_loader.source, components.resource_source)
+        self.assertIsInstance(components.slot_json_schema_loader, SlotJsonSchemaLoader)
+        self.assertIs(components.slot_json_schema_loader.source, components.resource_source)
         self.assertIs(components.prompt_resource_loader.source, components.resource_source)
         self.assertIsInstance(components.slot_validator, SlotValidator)
+        self.assertIsInstance(components.json_schema_slot_validator, JsonSchemaSlotValidator)
         self.assertTrue(hasattr(components.guardrail, "check"))
