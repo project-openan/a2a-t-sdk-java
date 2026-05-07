@@ -30,6 +30,13 @@ class FakeScenarioRecognizer:
         self.llm_client = llm_client
 
 
+class FakeScenarioResolver:
+    def __init__(self, *, config: PromptRuntimeConfig, resource_registry: object, scenario_recognizer: object) -> None:
+        self.config = config
+        self.resource_registry = resource_registry
+        self.scenario_recognizer = scenario_recognizer
+
+
 class FakeSlotExtractor:
     def __init__(self, *, llm_client: object) -> None:
         self.llm_client = llm_client
@@ -61,6 +68,7 @@ class PromptGenerationOrchestratorBuilderTest(unittest.TestCase):
         builder = PromptGenerationOrchestratorBuilder(
             runtime_components_builder=runtime_builder,
             scenario_recognizer_cls=FakeScenarioRecognizer,
+            scenario_resolver_cls=FakeScenarioResolver,
             slot_extractor_cls=FakeSlotExtractor,
             orchestrator_cls=FakeOrchestrator,
         )
@@ -77,9 +85,12 @@ class PromptGenerationOrchestratorBuilderTest(unittest.TestCase):
         self.assertEqual(len(runtime_builder.calls), 1)
         self.assertIs(runtime_builder.calls[0], config)
         self.assertEqual(orchestrator.kwargs["config"].local_root_dir, "./default-root")
-        self.assertIsInstance(orchestrator.kwargs["scenario_recognizer"], FakeScenarioRecognizer)
+        self.assertIsInstance(orchestrator.kwargs["scenario_resolver"], FakeScenarioResolver)
+        self.assertIs(orchestrator.kwargs["scenario_resolver"].config, config.prompt)
+        self.assertIs(orchestrator.kwargs["scenario_resolver"].resource_registry, components.resource_registry)
+        self.assertIsInstance(orchestrator.kwargs["scenario_resolver"].scenario_recognizer, FakeScenarioRecognizer)
+        self.assertIs(orchestrator.kwargs["scenario_resolver"].scenario_recognizer.llm_client, llm_client)
         self.assertIsInstance(orchestrator.kwargs["slot_extractor"], FakeSlotExtractor)
-        self.assertIs(orchestrator.kwargs["scenario_recognizer"].llm_client, llm_client)
         self.assertIs(orchestrator.kwargs["slot_extractor"].llm_client, llm_client)
         self.assertNotIn("slot_validator", orchestrator.kwargs)
 

@@ -14,11 +14,13 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 
-from a2a_t.llm.base import LLMResponse
-from a2a_t.common.prompt_resources.slot_json_schema_loader import SlotJsonSchemaLoader
-from a2a_t.prompt.analysis import SlotExtractor
-from a2a_t.prompt.common.task_prompt_format import TaskPromptMetadata, format_task_prompt
 from a2a_t.common.prompt_resources import PromptResourceLoader, SlotSchemaLoader, TemplateLoader
+from a2a_t.common.prompt_resources.models import ScenarioDefinition
+from a2a_t.common.prompt_resources.slot_json_schema_loader import SlotJsonSchemaLoader
+from a2a_t.llm.base import LLMResponse
+from a2a_t.prompt.analysis import SlotExtractor
+from a2a_t.prompt.analysis.models import ScenarioResolutionResult
+from a2a_t.prompt.common.models import PromptReference
 from a2a_t.prompt.validation import GuardrailResult
 from a2a_t.prompt.validation.json_schema_slot_validator import JsonSchemaSlotValidator
 from a2a_t.server.a2at_server import A2ATServer
@@ -42,6 +44,14 @@ class FakeSequencedLLMClient:
 class FakeGuardrail:
     def check(self, prompt_text: str, context: dict[str, object] | None = None) -> GuardrailResult:
         return GuardrailResult(passed=True, error_code=None, error_message=None)
+
+
+class FakeScenarioResolver:
+    def __init__(self, result: ScenarioResolutionResult) -> None:
+        self._result = result
+
+    def resolve(self, normalized_input: str) -> ScenarioResolutionResult:
+        return self._result
 
 
 class FakePromptComplianceBuilder:
@@ -92,6 +102,18 @@ class PromptComplianceIntegrationRuntimeTest(ManagedTempDirTestCase):
 
         service = PromptComplianceOrchestrator(
             guardrail=FakeGuardrail(),
+            scenario_resolver=FakeScenarioResolver(
+                ScenarioResolutionResult(
+                    success=True,
+                    reference=PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"),
+                    scenario=ScenarioDefinition(
+                        scenario_code="energy_saving",
+                        scenario_name="Energy Saving",
+                        description="Used for energy saving analysis.",
+                        example="Analyze site power usage and suggest optimization.",
+                    ),
+                )
+            ),
             template_loader=TemplateLoader(root_dir=self.root),
             slot_schema_loader=SlotSchemaLoader(root_dir=self.root),
             slot_json_schema_loader=SlotJsonSchemaLoader(root_dir=self.root),
@@ -112,22 +134,9 @@ class PromptComplianceIntegrationRuntimeTest(ManagedTempDirTestCase):
             negotiation_builder_cls.return_value.build.return_value = object()
             server = A2ATServer()
 
-            result = server.check_task_prompt(
-                processed_prompt_text=format_task_prompt(
-                    body="processed body",
-                    metadata=TaskPromptMetadata(
-                        scenario_code="energy_saving",
-                        language="en-US",
-                        version="0.0.1",
-                        description="Used for energy saving analysis.",
-                    ),
-                ),
-            )
+            result = server.check_task_prompt(processed_prompt_text="processed body")
 
-        self.assertEqual(
-            result,
-            {"success": True},
-        )
+        self.assertEqual(result, {"success": True})
 
     def test_handler_check_task_prompt_returns_business_constraint_message_for_invalid_slot_value(self) -> None:
         self._write_resource_file("templates/subscribe_incident/0.0.1/en-US/template.md", "Levels: {subscription_condition_incident_level}")
@@ -157,6 +166,18 @@ class PromptComplianceIntegrationRuntimeTest(ManagedTempDirTestCase):
 
         service = PromptComplianceOrchestrator(
             guardrail=FakeGuardrail(),
+            scenario_resolver=FakeScenarioResolver(
+                ScenarioResolutionResult(
+                    success=True,
+                    reference=PromptReference(scenario_code="subscribe_incident", language="en-US", version="0.0.1"),
+                    scenario=ScenarioDefinition(
+                        scenario_code="subscribe_incident",
+                        scenario_name="Subscribe Incident",
+                        description="Subscribe incidents by condition.",
+                        example="Subscribe to critical incidents.",
+                    ),
+                )
+            ),
             template_loader=TemplateLoader(root_dir=self.root),
             slot_schema_loader=SlotSchemaLoader(root_dir=self.root),
             slot_json_schema_loader=SlotJsonSchemaLoader(root_dir=self.root),
@@ -177,17 +198,7 @@ class PromptComplianceIntegrationRuntimeTest(ManagedTempDirTestCase):
             negotiation_builder_cls.return_value.build.return_value = object()
             server = A2ATServer()
 
-            result = server.check_task_prompt(
-                processed_prompt_text=format_task_prompt(
-                    body="processed body",
-                    metadata=TaskPromptMetadata(
-                        scenario_code="subscribe_incident",
-                        language="en-US",
-                        version="0.0.1",
-                        description="Subscribe incidents by condition.",
-                    ),
-                ),
-            )
+            result = server.check_task_prompt(processed_prompt_text="processed body")
 
         self.assertEqual(
             result,
@@ -204,4 +215,3 @@ class PromptComplianceIntegrationRuntimeTest(ManagedTempDirTestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

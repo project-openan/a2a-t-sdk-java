@@ -12,12 +12,15 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 
-from a2a_t.prompt.analysis.models import SlotExtractionResult
-from a2a_t.prompt.common.task_prompt_format import TaskPromptMetadata, format_task_prompt
+from a2a_t.prompt.analysis.models import (
+    ScenarioResolutionFailure,
+    ScenarioResolutionResult,
+    SlotExtractionResult,
+)
 from a2a_t.prompt.common.errors import PromptSourceError
 from a2a_t.prompt.common.models import PromptReference
 from a2a_t.common.prompt_resources.errors import PromptResourceNotFoundError, PromptResourceParseError
-from a2a_t.common.prompt_resources.models import PromptMessages, SlotDefinition, SlotSchema
+from a2a_t.common.prompt_resources.models import PromptMessages, ScenarioDefinition, SlotDefinition, SlotSchema
 from a2a_t.prompt.validation.constants import INVALID_VALUE, MISSING_INPUT
 from a2a_t.prompt.validation.errors import GuardrailExecutionError
 from a2a_t.prompt.validation.models import GuardrailResult, SlotValidationError, SlotValidationResult
@@ -96,6 +99,16 @@ class FakePromptResourceLoader:
         return self._result
 
 
+class FakeScenarioResolver:
+    def __init__(self, result: ScenarioResolutionResult) -> None:
+        self._result = result
+        self.calls: list[str] = []
+
+    def resolve(self, normalized_input: str) -> ScenarioResolutionResult:
+        self.calls.append(normalized_input)
+        return self._result
+
+
 class FakeExtractor:
     def __init__(self, result: SlotExtractionResult) -> None:
         self._result = result
@@ -116,13 +129,19 @@ class FakeValidator:
 
 class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.processed_prompt = format_task_prompt(
-            body="processed body",
-            metadata=TaskPromptMetadata(
+        self.processed_prompt = "processed body"
+        self.scenario_resolution = ScenarioResolutionResult(
+            success=True,
+            reference=PromptReference(
                 scenario_code="energy_saving",
                 language="en-US",
                 version="0.0.1",
+            ),
+            scenario=ScenarioDefinition(
+                scenario_code="energy_saving",
+                scenario_name="Energy Saving",
                 description="Used for energy saving analysis.",
+                example="Analyze site power usage and suggest optimization.",
             ),
         )
 
@@ -153,6 +172,7 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
         slot_schema_loader: FakeSlotSchemaLoader | None = None,
         slot_json_schema_loader: FakeSlotJsonSchemaLoader | None = None,
         prompt_resource_loader: FakePromptResourceLoader | None = None,
+        scenario_resolver: FakeScenarioResolver | None = None,
         extractor: FakeExtractor | None = None,
         validator: FakeValidator | None = None,
     ):
@@ -160,6 +180,7 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
 
         return PromptComplianceOrchestrator(
             guardrail=guardrail or FakeGuardrail(GuardrailResult(passed=True, error_code=None, error_message=None)),
+            scenario_resolver=scenario_resolver or FakeScenarioResolver(self.scenario_resolution),
             template_loader=template_loader or FakeTemplateLoader("Site: {site}"),
             slot_schema_loader=slot_schema_loader or FakeSlotSchemaLoader(self._slot_schema()),
             slot_json_schema_loader=slot_json_schema_loader or FakeSlotJsonSchemaLoader(
@@ -296,10 +317,21 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
             ),
         )
 
-    def test_check_returns_prompt_parse_error_when_front_matter_is_invalid(self) -> None:
-        service = self._build_service()
+    def test_check_returns_prompt_parse_error_when_scenario_resolution_fails(self) -> None:
+        service = self._build_service(
+            scenario_resolver=FakeScenarioResolver(
+                ScenarioResolutionResult(
+                    success=False,
+                    failure=ScenarioResolutionFailure(
+                        code="processed_prompt_parse_error",
+                        message="No matching scenario.",
+                        stage="prompt_parse",
+                    ),
+                )
+            ),
+        )
 
-        result = service.check(processed_prompt_text="invalid prompt", request_metadata=None)
+        result = service.check(processed_prompt_text="natural language prompt", request_metadata=None)
 
         self.assertEqual(
             result,
@@ -307,35 +339,36 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
                 success=False,
                 failure={
                     "code": "processed_prompt_parse_error",
-                    "message": "Task prompt must start with front matter.",
+                    "message": "No matching scenario.",
                     "stage": "prompt_parse",
                 },
             ),
         )
 
-    def test_check_returns_prompt_parse_error_when_language_is_missing(self) -> None:
-        service = self._build_service()
-
-        result = service.check(
-            processed_prompt_text=(
-                "---\n"
-                "scenario_code: energy_saving\n"
-                "version: 0.0.1\n"
-                "description: Used for energy saving analysis.\n"
-                "---\n\n"
-                "processed body"
+    def test_check_returns_generation_error_when_scenario_resources_cannot_be_resolved(self) -> None:
+        service = self._build_service(
+            scenario_resolver=FakeScenarioResolver(
+                ScenarioResolutionResult(
+                    success=False,
+                    failure=ScenarioResolutionFailure(
+                        code="prompt_resource_load_error",
+                        message="Scenario recognition prompt resources are missing.",
+                        stage="generation",
+                    ),
+                )
             ),
-            request_metadata=None,
         )
+
+        result = service.check(processed_prompt_text="natural language prompt", request_metadata=None)
 
         self.assertEqual(
             result,
             PromptComplianceResult(
                 success=False,
                 failure={
-                    "code": "processed_prompt_parse_error",
-                    "message": "Task prompt is missing required field: language.",
-                    "stage": "prompt_parse",
+                    "code": "prompt_resource_load_error",
+                    "message": "Scenario recognition prompt resources are missing.",
+                    "stage": "generation",
                 },
             ),
         )

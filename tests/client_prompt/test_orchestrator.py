@@ -12,7 +12,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 
-from a2a_t.prompt.analysis.models import ScenarioRecognitionResult, SlotExtractionResult
+from a2a_t.prompt.analysis.models import ScenarioDefinition, ScenarioResolutionFailure, ScenarioResolutionResult, SlotExtractionResult
 from a2a_t.config.models import PromptRuntimeConfig
 from a2a_t.prompt.analysis.errors import PromptAnalysisError
 from a2a_t.prompt.common.errors import PromptSourceError
@@ -96,12 +96,14 @@ class FakeSlotSchemaLoader:
         )
 
 
-class FakeScenarioRecognizer:
-    def __init__(self, result: ScenarioRecognitionResult) -> None:
+class FakeScenarioResolver:
+    def __init__(self, result: ScenarioResolutionResult) -> None:
         self._result = result
+        self.calls: list[str] = []
         self.last_raw_response_content = '{"matched": true}'
 
-    def recognize(self, **kwargs: object) -> ScenarioRecognitionResult:
+    def resolve(self, normalized_input: str) -> ScenarioResolutionResult:
+        self.calls.append(normalized_input)
         return self._result
 
 
@@ -191,7 +193,7 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
     def _build_orchestrator(
         self,
         *,
-        scenario_result: ScenarioRecognitionResult,
+        scenario_result: ScenarioResolutionResult,
         extraction_result: SlotExtractionResult,
         resource_registry: FakeResourceRegistry | None = None,
         debug_enabled: bool = False,
@@ -216,7 +218,7 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
             prompt_resource_loader=FakePromptResourceLoader(),
             template_loader=self.template_loader,
             slot_schema_loader=self.slot_schema_loader,
-            scenario_recognizer=FakeScenarioRecognizer(scenario_result),
+            scenario_resolver=FakeScenarioResolver(scenario_result),
             slot_extractor=self.slot_extractor,
             resource_registry=resource_registry,
             renderer=renderer,
@@ -233,11 +235,16 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
                 prompt_resource_loader=FakePromptResourceLoader(),
                 template_loader=FakeTemplateLoader(),
                 slot_schema_loader=FakeSlotSchemaLoader(),
-                scenario_recognizer=FakeScenarioRecognizer(
-                    ScenarioRecognitionResult(
-                        matched=True,
-                        scenario_code="energy_saving",
-                        error_message=None,
+                scenario_resolver=FakeScenarioResolver(
+                    ScenarioResolutionResult(
+                        success=True,
+                        reference=PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"),
+                        scenario=ScenarioDefinition(
+                            scenario_code="energy_saving",
+                            scenario_name="Energy Saving",
+                            description="Used for energy saving analysis.",
+                            example="Analyze site power usage and suggest optimization.",
+                        ),
                     )
                 ),
                 slot_extractor=FakeSlotExtractor(
@@ -250,10 +257,15 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
 
     def test_generate_returns_success_result(self) -> None:
         orchestrator = self._build_orchestrator(
-            scenario_result=ScenarioRecognitionResult(
-                matched=True,
-                scenario_code="energy_saving",
-                error_message=None,
+            scenario_result=ScenarioResolutionResult(
+                success=True,
+                reference=PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"),
+                scenario=ScenarioDefinition(
+                    scenario_code="energy_saving",
+                    scenario_name="Energy Saving",
+                    description="Used for energy saving analysis.",
+                    example="Analyze site power usage and suggest optimization.",
+                ),
             ),
             extraction_result=SlotExtractionResult(
                 slots={"site": "Site A", "additional_notes": None},
@@ -281,10 +293,15 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
 
     def test_generate_returns_success_result_when_extracted_slots_are_missing(self) -> None:
         orchestrator = self._build_orchestrator(
-            scenario_result=ScenarioRecognitionResult(
-                matched=True,
-                scenario_code="energy_saving",
-                error_message=None,
+            scenario_result=ScenarioResolutionResult(
+                success=True,
+                reference=PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"),
+                scenario=ScenarioDefinition(
+                    scenario_code="energy_saving",
+                    scenario_name="Energy Saving",
+                    description="Used for energy saving analysis.",
+                    example="Analyze site power usage and suggest optimization.",
+                ),
             ),
             extraction_result=SlotExtractionResult(
                 slots={"site": None, "additional_notes": None},
@@ -298,12 +315,15 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
         self.assertEqual(result.prompt_text, "Site: \nNotes: ")
         self.assertIsNone(result.failure)
 
-    def test_generate_returns_scenario_failure_when_no_match(self) -> None:
+    def test_generate_returns_scenario_failure_when_resolution_fails(self) -> None:
         orchestrator = self._build_orchestrator(
-            scenario_result=ScenarioRecognitionResult(
-                matched=False,
-                scenario_code=None,
-                error_message="No matching scenario.",
+            scenario_result=ScenarioResolutionResult(
+                success=False,
+                failure=ScenarioResolutionFailure(
+                    code="SCENARIO_PARSE_FAILED",
+                    message="No matching scenario.",
+                    stage=SCENARIO_STAGE,
+                ),
             ),
             extraction_result=SlotExtractionResult(slots={}, slot_errors=[]),
         )
@@ -315,40 +335,19 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
         self.assertEqual(result.failure.code, SCENARIO_PARSE_FAILED)
         self.assertEqual(result.failure.stage, SCENARIO_STAGE)
 
-    def test_generate_rejects_unknown_scenario_code_before_loading_generation_resources(self) -> None:
-        orchestrator = self._build_orchestrator(
-            scenario_result=ScenarioRecognitionResult(
-                matched=True,
-                scenario_code="unknown_scenario",
-                error_message=None,
-            ),
-            extraction_result=SlotExtractionResult(slots={}, slot_errors=[]),
-        )
-
-        result = orchestrator.generate("Analyze Site A energy usage.")
-
-        self.assertFalse(result.success)
-        self.assertIsNone(result.prompt_text)
-        self.assertIsNone(self.template_loader.last_reference)
-        self.assertIsNone(self.slot_schema_loader.last_reference)
-        self.assertIsNone(self.slot_extractor.last_reference)
-        self.assertEqual(result.failure.code, INVALID_LLM_OUTPUT)
-        self.assertEqual(result.failure.stage, SCENARIO_STAGE)
-        self.assertEqual(result.failure.message, "Scenario recognition returned unsupported scenario_code: unknown_scenario")
-
     def test_generate_returns_scenario_failure_when_scenario_resources_are_invalid(self) -> None:
         orchestrator = self._build_orchestrator(
-            scenario_result=ScenarioRecognitionResult(
-                matched=True,
-                scenario_code="energy_saving",
-                error_message=None,
+            scenario_result=ScenarioResolutionResult(
+                success=False,
+                failure=ScenarioResolutionFailure(
+                    code=PROMPT_RESOURCE_PARSE_ERROR,
+                    message="scenario resources are invalid",
+                    stage=SCENARIO_STAGE,
+                ),
             ),
             extraction_result=SlotExtractionResult(
                 slots={"site": "Site A", "additional_notes": None},
                 slot_errors=[],
-            ),
-            resource_registry=FakeResourceRegistry(
-                scenario_result=PromptResourceParseError("scenario resources are invalid"),
             ),
         )
 
@@ -361,28 +360,21 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
 
     def test_generate_returns_generation_failure_when_generation_resource_access_fails(self) -> None:
         orchestrator = self._build_orchestrator(
-            scenario_result=ScenarioRecognitionResult(
-                matched=True,
-                scenario_code="energy_saving",
-                error_message=None,
+            scenario_result=ScenarioResolutionResult(
+                success=True,
+                reference=PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"),
+                scenario=ScenarioDefinition(
+                    scenario_code="energy_saving",
+                    scenario_name="Energy Saving",
+                    description="Used for energy saving analysis.",
+                    example="Analyze site power usage and suggest optimization.",
+                ),
             ),
             extraction_result=SlotExtractionResult(
                 slots={"site": "Site A", "additional_notes": None},
                 slot_errors=[],
             ),
             resource_registry=FakeResourceRegistry(
-                scenario_result=(
-                    "en-US",
-                    [
-                        ScenarioDefinition(
-                            scenario_code="energy_saving",
-                            scenario_name="Energy Saving",
-                            description="Used for energy saving analysis.",
-                            example="Analyze site power usage and suggest optimization.",
-                        )
-                    ],
-                    PromptMessages(system_prompt="Identify scenario.", user_prompt="Choose scenario."),
-                ),
                 generation_result=PromptSourceError("generation resource path escapes local root"),
             ),
         )
@@ -396,10 +388,15 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
 
     def test_generate_returns_generation_failure_when_slot_extraction_payload_is_invalid(self) -> None:
         orchestrator = self._build_orchestrator(
-            scenario_result=ScenarioRecognitionResult(
-                matched=True,
-                scenario_code="energy_saving",
-                error_message=None,
+            scenario_result=ScenarioResolutionResult(
+                success=True,
+                reference=PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"),
+                scenario=ScenarioDefinition(
+                    scenario_code="energy_saving",
+                    scenario_name="Energy Saving",
+                    description="Used for energy saving analysis.",
+                    example="Analyze site power usage and suggest optimization.",
+                ),
             ),
             extraction_result=SlotExtractionResult(slots={}, slot_errors=[]),
             slot_extractor=RaisingSlotExtractor(PromptAnalysisError("slot extraction returned invalid JSON")),
@@ -414,10 +411,15 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
 
     def test_generate_returns_generation_failure_when_slot_extraction_runtime_fails(self) -> None:
         orchestrator = self._build_orchestrator(
-            scenario_result=ScenarioRecognitionResult(
-                matched=True,
-                scenario_code="energy_saving",
-                error_message=None,
+            scenario_result=ScenarioResolutionResult(
+                success=True,
+                reference=PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"),
+                scenario=ScenarioDefinition(
+                    scenario_code="energy_saving",
+                    scenario_name="Energy Saving",
+                    description="Used for energy saving analysis.",
+                    example="Analyze site power usage and suggest optimization.",
+                ),
             ),
             extraction_result=SlotExtractionResult(slots={}, slot_errors=[]),
             slot_extractor=RaisingSlotExtractor(RuntimeError("llm transport down")),
@@ -434,10 +436,15 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
         from a2a_t.prompt.task_rendering import TaskPromptRenderError
 
         orchestrator = self._build_orchestrator(
-            scenario_result=ScenarioRecognitionResult(
-                matched=True,
-                scenario_code="energy_saving",
-                error_message=None,
+            scenario_result=ScenarioResolutionResult(
+                success=True,
+                reference=PromptReference(scenario_code="energy_saving", language="en-US", version="0.0.1"),
+                scenario=ScenarioDefinition(
+                    scenario_code="energy_saving",
+                    scenario_name="Energy Saving",
+                    description="Used for energy saving analysis.",
+                    example="Analyze site power usage and suggest optimization.",
+                ),
             ),
             extraction_result=SlotExtractionResult(
                 slots={"site": "Site A", "additional_notes": None},

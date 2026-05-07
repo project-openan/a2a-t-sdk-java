@@ -4,7 +4,7 @@ from typing import Any
 
 from a2a_t.config.models import A2ATConfig
 from a2a_t.common.prompt_runtime import PromptRuntimeComponents, PromptRuntimeComponentsBuilder
-from a2a_t.prompt.analysis import SlotExtractor
+from a2a_t.prompt.analysis import ScenarioRecognizer, ScenarioResolutionOrchestrator, SlotExtractor
 
 from .prompt_compliance_orchestrator import PromptComplianceOrchestrator
 
@@ -16,10 +16,14 @@ class PromptComplianceOrchestratorBuilder:
         self,
         *,
         runtime_components_builder: PromptRuntimeComponentsBuilder | None = None,
+        scenario_recognizer_cls: type = ScenarioRecognizer,
+        scenario_resolver_cls: type = ScenarioResolutionOrchestrator,
         slot_extractor_cls: type = SlotExtractor,
         orchestrator_cls: type = PromptComplianceOrchestrator,
     ) -> None:
         self._runtime_components_builder = runtime_components_builder or PromptRuntimeComponentsBuilder()
+        self._scenario_recognizer_cls = scenario_recognizer_cls
+        self._scenario_resolver_cls = scenario_resolver_cls
         self._slot_extractor_cls = slot_extractor_cls
         self._orchestrator_cls = orchestrator_cls
 
@@ -32,9 +36,16 @@ class PromptComplianceOrchestratorBuilder:
     ) -> PromptComplianceOrchestrator:
         """Build a fully wired prompt compliance orchestrator."""
         components = runtime_components or self._runtime_components_builder.build(config=config)
+        scenario_recognizer = self._scenario_recognizer_cls(llm_client=llm_client)
+        scenario_resolver = self._scenario_resolver_cls(
+            config=config.prompt,
+            resource_registry=components.resource_registry,
+            scenario_recognizer=scenario_recognizer,
+        )
         extractor = self._slot_extractor_cls(llm_client=llm_client)
         return self._orchestrator_cls(
             guardrail=components.guardrail,
+            scenario_resolver=scenario_resolver,
             template_loader=components.template_loader,
             slot_schema_loader=components.slot_schema_loader,
             slot_json_schema_loader=components.slot_json_schema_loader,

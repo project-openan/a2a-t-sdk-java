@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from a2a_t.prompt.analysis import SlotExtractor
+from a2a_t.prompt.analysis import ScenarioResolutionOrchestrator, SlotExtractor
 from a2a_t.prompt.analysis.errors import PromptAnalysisError
 from a2a_t.common.prompt_resources import (
     PromptResourceLoader,
@@ -10,9 +10,7 @@ from a2a_t.common.prompt_resources import (
     SlotSchemaLoader,
     TemplateLoader,
 )
-from a2a_t.prompt.common.task_prompt_format import TaskPromptFormatError, parse_task_prompt_metadata
 from a2a_t.prompt.common.errors import PromptSourceError
-from a2a_t.prompt.common.models import PromptReference
 from a2a_t.prompt.validation.errors import GuardrailExecutionError
 from a2a_t.prompt.validation.guardrails import SafetyGuardrail
 from a2a_t.prompt.validation.models import SlotValidationResult
@@ -45,6 +43,7 @@ class PromptComplianceOrchestrator:
         self,
         *,
         guardrail: SafetyGuardrail,
+        scenario_resolver: ScenarioResolutionOrchestrator,
         template_loader: TemplateLoader,
         slot_schema_loader: SlotSchemaLoader,
         slot_json_schema_loader: SlotJsonSchemaLoader,
@@ -53,6 +52,7 @@ class PromptComplianceOrchestrator:
         validator: JsonSchemaSlotValidator,
     ) -> None:
         self._guardrail = guardrail
+        self._scenario_resolver = scenario_resolver
         self._template_loader = template_loader
         self._slot_schema_loader = slot_schema_loader
         self._slot_json_schema_loader = slot_json_schema_loader
@@ -88,10 +88,15 @@ class PromptComplianceOrchestrator:
                 error_message=guardrail_result.error_message or "Guardrail rejected the processed prompt.",
             )
 
-        try:
-            reference = self._parse_reference(processed_prompt_text)
-        except TaskPromptFormatError as error:
-            return self._error_result(PROMPT_PARSE_STAGE, PROCESSED_PROMPT_PARSE_ERROR, str(error))
+        scenario_resolution = self._scenario_resolver.resolve(processed_prompt_text)
+        if not scenario_resolution.success or scenario_resolution.reference is None:
+            failure = scenario_resolution.failure
+            return self._error_result(
+                stage=(failure.stage if failure is not None else PROMPT_PARSE_STAGE),
+                error_code=(failure.code if failure is not None else PROCESSED_PROMPT_PARSE_ERROR),
+                error_message=(failure.message if failure is not None else "Scenario resolution failed."),
+            )
+        reference = scenario_resolution.reference
 
         try:
             template_text = self._template_loader.load(reference=reference)
@@ -166,11 +171,6 @@ class PromptComplianceOrchestrator:
         return PromptComplianceResult(
             success=True,
         )
-
-    @staticmethod
-    def _parse_reference(processed_prompt_text: str) -> PromptReference:
-        """Extract the prompt reference embedded in task prompt front matter."""
-        return parse_task_prompt_metadata(processed_prompt_text).to_prompt_reference()
 
     def _aggregate_slot_errors(self, validation_result: SlotValidationResult) -> str:
         """Collapse slot validation messages into the single message exposed to callers."""

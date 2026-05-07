@@ -9,6 +9,7 @@ from a2a_t.common.prompt_resources import (
     PromptResourceParseError,
     PromptResourceRegistry,
 )
+from a2a_t.prompt.analysis import ScenarioResolutionOrchestrator
 from a2a_t.prompt.analysis.errors import PromptAnalysisError
 from a2a_t.prompt.common.errors import PromptSourceError
 from a2a_t.prompt.task_rendering import TaskPromptRenderError, TaskPromptRenderer
@@ -46,7 +47,7 @@ class PromptGenerationOrchestrator:
         prompt_resource_loader: Any,
         template_loader: Any,
         slot_schema_loader: Any,
-        scenario_recognizer: Any,
+        scenario_resolver: ScenarioResolutionOrchestrator,
         slot_extractor: Any,
         resource_registry: PromptResourceRegistry | None = None,
         input_normalizer: InputNormalizer | None = None,
@@ -56,7 +57,7 @@ class PromptGenerationOrchestrator:
         if not isinstance(config, PromptRuntimeConfig):
             raise TypeError("config must be a PromptRuntimeConfig instance.")
         self._config = config
-        self._scenario_recognizer = scenario_recognizer
+        self._scenario_resolver = scenario_resolver
         self._slot_extractor = slot_extractor
         self._resource_registry = resource_registry or PromptResourceRegistry(
             scenario_loader=scenario_loader,
@@ -83,60 +84,27 @@ class PromptGenerationOrchestrator:
             version,
         )
 
-        try:
-            resolved_language, scenarios, scenario_prompts = self._load_scenario_resources(version=version, language=language)
-        except _PromptGenerationResourceFailure as error:
-            # Resource failures are surfaced as stable API errors instead of leaking loader internals.
-            return self._failure_result(
-                code=error.code,
-                message=error.message,
-                stage=error.stage,
-            )
-
-        try:
-            scenario_result = self._scenario_recognizer.recognize(
-                normalized_input=normalized_input.normalized_input,
-                scenarios=scenarios,
-                language=resolved_language,
-                system_prompt=scenario_prompts.system_prompt,
-                user_prompt=scenario_prompts.user_prompt,
-            )
-        except PromptAnalysisError as error:
-            return self._failure_result(
-                code=INVALID_LLM_OUTPUT,
-                message=str(error),
-                stage=SCENARIO_STAGE,
-            )
-        except Exception as error:
-            return self._failure_result(
-                code=LLM_EXECUTION_FAILED,
-                message=str(error),
-                stage=SCENARIO_STAGE,
-            )
+        scenario_resolution = self._scenario_resolver.resolve(normalized_input.normalized_input)
         self._log_debug_if_available(
             "prompt_generation_scenario_raw_output scenario_raw_output=%s",
-            self._scenario_recognizer,
+            self._scenario_resolver,
         )
-        if not scenario_result.matched or not scenario_result.scenario_code:
+        if not scenario_resolution.success or scenario_resolution.reference is None or scenario_resolution.scenario is None:
+            failure = scenario_resolution.failure
             return self._failure_result(
-                code=SCENARIO_PARSE_FAILED,
-                message=scenario_result.error_message or "Scenario recognition failed.",
-                stage=SCENARIO_STAGE,
+                code=failure.code if failure is not None else SCENARIO_PARSE_FAILED,
+                message=failure.message if failure is not None else "Scenario recognition failed.",
+                stage=failure.stage if failure is not None else SCENARIO_STAGE,
             )
-
-        scenario_code = scenario_result.scenario_code
-        if not self._is_supported_scenario_code(scenarios=scenarios, scenario_code=scenario_code):
-            return self._failure_result(
-                code=INVALID_LLM_OUTPUT,
-                message=f"Scenario recognition returned unsupported scenario_code: {scenario_code}",
-                stage=SCENARIO_STAGE,
-            )
+        reference = scenario_resolution.reference
+        scenario = scenario_resolution.scenario
+        scenario_code = reference.scenario_code
+        resolved_language = reference.language
         self._log_info(
             "prompt_generation_scenario_recognized scenario_code=%s language=%s",
             scenario_code,
             resolved_language,
         )
-        reference = PromptReference(scenario_code=scenario_code, version=version, language=resolved_language)
         try:
             resolved_language, template_text, slot_schema, slot_prompts = self._load_generation_resources(
                 reference=reference,
@@ -187,7 +155,7 @@ class PromptGenerationOrchestrator:
             scenario_code=scenario_code,
             language=resolved_language,
             version=version,
-            description=self._resolve_scenario_description(scenarios, scenario_code),
+            description=scenario.description,
         )
         self._log_info(
             "prompt_generation_slots_extracted slots=%s slot_errors=%s",
@@ -214,32 +182,6 @@ class PromptGenerationOrchestrator:
                 failure=None,
             )
         )
-
-    def _load_scenario_resources(self, *, version: str, language: str) -> tuple[str, Any, Any]:
-        """Load scenario recognition resources and map loader errors into API failure codes."""
-        try:
-            return self._resource_registry.load_scenario_resources(
-                version=version,
-                language=language,
-            )
-        except PromptResourceNotFoundError:
-            raise _PromptGenerationResourceFailure(
-                code=PROMPT_NOT_FOUND,
-                message="Scenario recognition prompt resources are missing.",
-                stage=SCENARIO_STAGE,
-            ) from None
-        except PromptResourceParseError as error:
-            raise _PromptGenerationResourceFailure(
-                code=PROMPT_RESOURCE_PARSE_ERROR,
-                message=str(error),
-                stage=SCENARIO_STAGE,
-            ) from error
-        except PromptSourceError as error:
-            raise _PromptGenerationResourceFailure(
-                code=PROMPT_RESOURCE_ACCESS_ERROR,
-                message=str(error),
-                stage=SCENARIO_STAGE,
-            ) from error
 
     def _load_generation_resources(
         self,
@@ -312,17 +254,6 @@ class PromptGenerationOrchestrator:
             )
         except TaskPromptRenderError as error:
             return None, str(error)
-
-    def _resolve_scenario_description(self, scenarios: list[Any], scenario_code: str) -> str:
-        """Return the human-readable description for the matched scenario."""
-        for scenario in scenarios:
-            if scenario.scenario_code == scenario_code:
-                return scenario.description
-        return ""
-
-    def _is_supported_scenario_code(self, *, scenarios: list[Any], scenario_code: str) -> bool:
-        """Return whether the recognized scenario exists in the loaded scenario catalog."""
-        return any(scenario.scenario_code == scenario_code for scenario in scenarios)
 
     def _failure_result(
         self,
