@@ -9,7 +9,7 @@ description = "Python A2A SDK for Telecom Scenarios"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 authors = [
     { name = "A2A SDK Team" },
 ]
@@ -18,32 +18,18 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.12",
 ]
 
 dependencies = [
-    "a2a-sdk>=1.0.1",
-    "fastapi>=0.115.0",
-    "sqlalchemy>=2.0.36",
-    "sse-starlette>=2.1.3",
-    "pyyaml>=6.0",
-    "httpx>=0.27.0",
-    "pydantic>=2.6.0",
     "jsonschema>=4.23.0",
-    "packaging>=24.0",
     "python-dotenv>=1.1.0",
-    "uvicorn>=0.32.0",
     "openai",
 ]
-
-[project.optional-dependencies]
-grpc = ["grpcio>=1.62.0"]
 
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=4.1.0",
     "ruff>=0.3.0",
     "mypy>=1.9.0",
 ]
@@ -64,14 +50,14 @@ addopts = "-p no:cacheprovider"
 
 [tool.ruff]
 line-length = 120
-target-version = "py314"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
 ignore = []
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
