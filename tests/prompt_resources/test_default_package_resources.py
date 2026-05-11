@@ -48,6 +48,24 @@ class DefaultPromptResourcePackageTest(unittest.TestCase):
         self.assertTrue(scenario_prompts.system_prompt.strip())
         self.assertTrue(slot_prompts.user_prompt.strip())
 
+    def test_default_package_resources_include_zh_cn_negotiation_prompts(self) -> None:
+        from a2a_t.common.prompt_resources.prompt_resource_loader import PromptResourceLoader
+
+        loader = PromptResourceLoader()
+
+        for analysis_action in (
+            "clarification_negotiation",
+            "feasibility_negotiation",
+            "fulfillment_negotiation",
+            "information_negotiation",
+        ):
+            messages = loader.load(
+                analysis_action=analysis_action,
+                language="zh-CN",
+            )
+            self.assertTrue(messages.system_prompt.strip(), analysis_action)
+            self.assertTrue(messages.user_prompt.strip(), analysis_action)
+
 
 if __name__ == "__main__":
     unittest.main()
