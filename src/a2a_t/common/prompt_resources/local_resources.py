@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from a2a_t.common.package_data import resolve_package_data_dir
+from a2a_t.common.resource_roots import resolve_prompt_resource_root
 from a2a_t.prompt.common.errors import PromptSourceError
 
 from .errors import PromptResourceNotFoundError, PromptResourceParseError
@@ -12,10 +12,10 @@ from .errors import PromptResourceNotFoundError, PromptResourceParseError
 
 def _packaged_prompt_resource_root() -> Path:
     """Resolve the packaged prompt resource root for both source and installed layouts."""
-    return resolve_package_data_dir(
+    return resolve_prompt_resource_root(
         module_file=__file__,
-        source_package_data_parent_depth=4,
-    ) / "prompt_resources"
+        source_parent_depth=4,
+    )
 
 
 class LocalPromptResourceFiles:
