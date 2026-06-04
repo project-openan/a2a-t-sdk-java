@@ -1,4 +1,4 @@
-# 1 Python SDK User Guide
+# 1 A2A-T Python SDK User Guide
 
 ## 1.1 Feature Introduction
 ### 1.1.1 What is A2A-T?
@@ -11,7 +11,7 @@ The A2A-T protocol is an extension based on the Google A2A protocol. The A2A-T S
 
 ### 1.1.3 Capability Introduction
 
-`a2a-t-python` is a Python SDK designed for telecom agent collaboration scenarios, used to generate, validate, and negotiate task prompts in A2A-T interactions. The SDK is suitable for integration by client Agents, server Agents, and upper-layer orchestration systems.
+A2A-T Python SDK is a Python SDK designed for telecom agent collaboration scenarios, used to generate, validate, and negotiate task prompts in A2A-T interactions. The SDK is suitable for integration by client Agents, server Agents, and upper-layer orchestration systems.
 
 Main capabilities include:
 
