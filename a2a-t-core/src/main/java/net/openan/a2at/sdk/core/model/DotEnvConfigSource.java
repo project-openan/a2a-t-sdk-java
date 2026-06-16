@@ -15,7 +15,7 @@ import net.openan.a2at.sdk.core.exception.SdkException;
  * Reads SDK configuration from one caller-supplied `.env` file.
  * The SDK does not scan default locations automatically.
  *
- * @since 2026-05
+ * @since 2026-06
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class DotEnvConfigSource {

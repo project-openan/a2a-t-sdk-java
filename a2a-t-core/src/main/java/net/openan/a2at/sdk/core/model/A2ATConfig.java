@@ -7,7 +7,7 @@ import java.util.Map;
  * Unified SDK configuration entry point loaded from one caller-supplied `.env` file.
  * Users are expected to copy the repository `env.example` into their own application and pass that file path in.
  *
- * @since 2026-05
+ * @since 2026-06
  */
 public record A2ATConfig(
         PromptRuntimeConfig prompt,

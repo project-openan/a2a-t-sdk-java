@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * Guardrail provider configuration resolved from unified SDK config.
  *
- * @since 2026-05
+ * @since 2026-06
  */
 public record GuardrailProviderConfig(
         String provider, double timeout, String policyId, String endpoint, String region, String credentialsRef) {

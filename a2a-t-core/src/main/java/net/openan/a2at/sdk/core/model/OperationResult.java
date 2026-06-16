@@ -7,7 +7,7 @@ import net.openan.a2at.sdk.core.exception.SdkException;
  * Minimal structured result wrapper used by higher-level orchestration flows.
  *
  * @param <T> result value type
- * @since 2026-05
+ * @since 2026-06
  */
 public record OperationResult<T>(T value, SdkException error) {
 

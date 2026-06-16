@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * Prompt runtime configuration resolved from unified SDK config.
  *
- * @since 2026-05
+ * @since 2026-06
  */
 public record PromptRuntimeConfig(String language, String sourceType, String localRootDir) {
 

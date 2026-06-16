@@ -5,6 +5,6 @@ package net.openan.a2at.sdk.core.model;
  *
  * @param role message role
  * @param content message content
- * @since 2026-05
+ * @since 2026-06
  */
 public record PromptMessage(String role, String content) {}
