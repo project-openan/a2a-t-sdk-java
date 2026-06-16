@@ -1,5 +1,7 @@
 package net.openan.a2at.sdk.core.model;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.Map;
 
 /**
@@ -21,12 +23,8 @@ public record PromptRuntimeConfig(String language, String sourceType, String loc
      */
     public static PromptRuntimeConfig fromMap(Map<String, String> values) {
         return new PromptRuntimeConfig(
-                valueOrDefault(values.get(A2ATConfigKeys.PromptRuntime.LANGUAGE), DEFAULT_LANGUAGE),
-                valueOrDefault(values.get(A2ATConfigKeys.PromptRuntime.SOURCE_TYPE), DEFAULT_SOURCE_TYPE),
-                valueOrDefault(values.get(A2ATConfigKeys.PromptRuntime.LOCAL_ROOT_DIR), "."));
-    }
-
-    private static String valueOrDefault(String rawValue, String defaultValue) {
-        return rawValue == null || rawValue.isBlank() ? defaultValue : rawValue;
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.PromptRuntime.LANGUAGE), DEFAULT_LANGUAGE),
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.PromptRuntime.SOURCE_TYPE), DEFAULT_SOURCE_TYPE),
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.PromptRuntime.LOCAL_ROOT_DIR), "."));
     }
 }

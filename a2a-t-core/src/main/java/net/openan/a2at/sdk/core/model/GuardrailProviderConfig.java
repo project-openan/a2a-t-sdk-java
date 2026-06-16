@@ -1,5 +1,8 @@
 package net.openan.a2at.sdk.core.model;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
+
 import java.util.Map;
 
 /**
@@ -22,19 +25,11 @@ public record GuardrailProviderConfig(
      */
     public static GuardrailProviderConfig fromMap(Map<String, String> values) {
         return new GuardrailProviderConfig(
-                valueOrDefault(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_PROVIDER), DEFAULT_PROVIDER),
-                parseDouble(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_TIMEOUT_SECONDS), DEFAULT_TIMEOUT_SECONDS),
-                valueOrDefault(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_POLICY_ID), ""),
-                valueOrDefault(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_ENDPOINT), ""),
-                valueOrDefault(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_REGION), ""),
-                valueOrDefault(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_CREDENTIALS_REF), ""));
-    }
-
-    private static String valueOrDefault(String rawValue, String defaultValue) {
-        return rawValue == null || rawValue.isBlank() ? defaultValue : rawValue;
-    }
-
-    private static double parseDouble(String rawValue, double defaultValue) {
-        return rawValue == null || rawValue.isBlank() ? defaultValue : Double.parseDouble(rawValue);
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_PROVIDER), DEFAULT_PROVIDER),
+                NumberUtils.toDouble(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_TIMEOUT_SECONDS), DEFAULT_TIMEOUT_SECONDS),
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_POLICY_ID), ""),
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_ENDPOINT), ""),
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_REGION), ""),
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_CREDENTIALS_REF), ""));
     }
 }

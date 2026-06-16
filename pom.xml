@@ -40,6 +40,7 @@
         <lombok.version>1.18.38</lombok.version>
         <jackson.version>2.20.1</jackson.version>
         <jackson.annotations.version>2.20</jackson.annotations.version>
+        <org.apache.version>3.14.0</org.apache.version>
     </properties>
 
     <dependencyManagement>
@@ -70,6 +71,11 @@
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-core</artifactId>
                 <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${org.apache.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

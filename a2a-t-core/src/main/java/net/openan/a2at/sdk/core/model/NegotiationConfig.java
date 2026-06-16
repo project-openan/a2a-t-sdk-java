@@ -1,5 +1,7 @@
 package net.openan.a2at.sdk.core.model;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.Map;
 
 /**
@@ -19,6 +21,6 @@ public record NegotiationConfig(String stateStoreType) {
      */
     public static NegotiationConfig fromMap(Map<String, String> values) {
         String rawValue = values.get(A2ATConfigKeys.Negotiation.STATE_STORE_TYPE);
-        return new NegotiationConfig(rawValue == null || rawValue.isBlank() ? DEFAULT_STATE_STORE_TYPE : rawValue);
+        return new NegotiationConfig(StringUtils.defaultIfBlank(rawValue, DEFAULT_STATE_STORE_TYPE));
     }
 }
