@@ -1,0 +1,11 @@
+.idea/
+.m2/
+.upstream-a2a-t-sdk/
+.upstream-a2a-t-samples/
+.worktrees/
+
+.mvn/
+.mvn/repository/
+
+target/
+**/target/
