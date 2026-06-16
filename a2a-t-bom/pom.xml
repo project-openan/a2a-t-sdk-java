@@ -1,0 +1,56 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>net.openan.a2a-t.sdk</groupId>
+        <artifactId>a2a-t-parent</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>a2a-t-bom</artifactId>
+    <packaging>pom</packaging>
+    <name>a2a-t BOM</name>
+    <description>Bill of materials for the a2a-t Java SDK modules.</description>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>net.openan.a2a-t.sdk</groupId>
+                <artifactId>a2a-t-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.openan.a2a-t.sdk</groupId>
+                <artifactId>a2a-t-resources</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.openan.a2a-t.sdk</groupId>
+                <artifactId>a2a-t-llm</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.openan.a2a-t.sdk</groupId>
+                <artifactId>a2a-t-prompt</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.openan.a2a-t.sdk</groupId>
+                <artifactId>a2a-t-negotiation</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.openan.a2a-t.sdk</groupId>
+                <artifactId>a2a-t-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.openan.a2a-t.sdk</groupId>
+                <artifactId>a2a-t-server</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

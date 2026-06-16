@@ -1,0 +1,35 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>net.openan.a2a-t.sdk</groupId>
+        <artifactId>a2a-t-parent</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>a2a-t-sample</artifactId>
+    <packaging>jar</packaging>
+
+    <name>a2a-t Sample</name>
+    <description>Publishable Java sample module for a2a-t client and server demo flows.</description>
+    <url>https://github.com/project-openan/a2a-t-sdk-java</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/project-openan/a2a-t-sdk-java</url>
+        <connection>scm:git:https://github.com/project-openan/a2a-t-sdk-java.git</connection>
+        <developerConnection>scm:git:git@github.com:project-openan/a2a-t-sdk-java.git</developerConnection>
+    </scm>
+
+    <dependencies>
+    </dependencies>
+</project>
