@@ -182,7 +182,7 @@ class A2ATClientPromptResourceTimingTest(ManagedTempDirTestCase):
         self.assertFalse(result.success)
         self.assertIsNotNone(result.failure)
         self.assertEqual(result.failure.code, "prompt_resource_load_error")
-        self.assertEqual(result.failure.stage, "generation")
+        self.assertEqual(result.failure.stage, "preparation")
 
 
 if __name__ == "__main__":

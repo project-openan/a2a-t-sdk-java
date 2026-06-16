@@ -10,6 +10,7 @@ from a2a_t.common.prompt_resources import (
 )
 from a2a_t.prompt.analysis import ScenarioResolutionOrchestrator
 from a2a_t.prompt.analysis.errors import PromptAnalysisError
+from a2a_t.prompt.analysis.scenario_resolution_orchestrator import PREPARATION_STAGE
 from a2a_t.prompt.common.errors import PromptSourceError
 from a2a_t.prompt.task_rendering import TaskPromptRenderError, TaskPromptRenderer
 
@@ -202,30 +203,30 @@ class PromptGenerationOrchestrator:
                 raise _PromptGenerationResourceFailure(
                     code=TEMPLATE_NOT_FOUND,
                     message=str(error),
-                    stage=GENERATION_STAGE,
+                    stage=PREPARATION_STAGE,
                 ) from error
             if resource_path.endswith("slot.json"):
                 raise _PromptGenerationResourceFailure(
                     code=SLOT_SCHEMA_NOT_FOUND,
                     message=str(error),
-                    stage=GENERATION_STAGE,
+                    stage=PREPARATION_STAGE,
                 ) from error
             raise _PromptGenerationResourceFailure(
                 code=PROMPT_NOT_FOUND,
                 message=str(error),
-                stage=GENERATION_STAGE,
+                stage=PREPARATION_STAGE,
             ) from error
         except PromptResourceParseError as error:
             raise _PromptGenerationResourceFailure(
                 code=PROMPT_RESOURCE_PARSE_ERROR,
                 message=str(error),
-                stage=GENERATION_STAGE,
+                stage=PREPARATION_STAGE,
             ) from error
         except PromptSourceError as error:
             raise _PromptGenerationResourceFailure(
                 code=PROMPT_RESOURCE_ACCESS_ERROR,
                 message=str(error),
-                stage=GENERATION_STAGE,
+                stage=PREPARATION_STAGE,
             ) from error
 
     def _render_prompt_text(

@@ -229,7 +229,7 @@ class A2ATServerPromptResourceTimingTest(ManagedTempDirTestCase):
                 "failure": {
                     "code": "prompt_resource_load_error",
                     "message": "Prompt resource file does not exist.",
-                    "stage": "generation",
+                    "stage": "preparation",
                 },
             },
         )

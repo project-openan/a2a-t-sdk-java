@@ -10,7 +10,7 @@ from a2a_t.prompt.common.models import PromptReference
 from .errors import PromptAnalysisError
 from .models import ScenarioResolutionFailure, ScenarioResolutionResult
 
-GENERATION_STAGE = "generation"
+PREPARATION_STAGE = "preparation"
 PROMPT_PARSE_STAGE = "prompt_parse"
 PROMPT_RESOURCE_ACCESS_ERROR = "prompt_resource_access_error"
 PROMPT_RESOURCE_LOAD_ERROR = "prompt_resource_load_error"
@@ -47,11 +47,11 @@ class ScenarioResolutionOrchestrator:
                 language=self._config.language,
             )
         except PromptResourceNotFoundError as error:
-            return self._failure(GENERATION_STAGE, PROMPT_RESOURCE_LOAD_ERROR, str(error))
+            return self._failure(PREPARATION_STAGE, PROMPT_RESOURCE_LOAD_ERROR, str(error))
         except PromptResourceParseError as error:
-            return self._failure(GENERATION_STAGE, PROMPT_RESOURCE_PARSE_ERROR, str(error))
+            return self._failure(PREPARATION_STAGE, PROMPT_RESOURCE_PARSE_ERROR, str(error))
         except PromptSourceError as error:
-            return self._failure(GENERATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
+            return self._failure(PREPARATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
 
         try:
             recognition_result = self._scenario_recognizer.recognize(

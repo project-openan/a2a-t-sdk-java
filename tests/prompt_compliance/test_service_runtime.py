@@ -24,7 +24,6 @@ from a2a_t.common.prompt_resources.models import PromptMessages, ScenarioDefinit
 from a2a_t.prompt.validation.constants import INVALID_VALUE, MISSING_INPUT
 from a2a_t.prompt.validation.models import SlotValidationError, SlotValidationResult
 from a2a_t.server.prompt_compliance.constants import (
-    GENERATION_STAGE,
     PROMPT_RESOURCE_ACCESS_ERROR,
     PROMPT_RESOURCE_LOAD_ERROR,
     SLOT_VALIDATION_ERROR,
@@ -368,7 +367,7 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
                 failure={
                     "code": TEMPLATE_LOAD_ERROR,
                     "message": "missing template",
-                    "stage": GENERATION_STAGE,
+                    "stage": "preparation",
                 },
             ),
         )
@@ -401,7 +400,7 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
             ),
         )
 
-    def test_check_returns_generation_error_when_scenario_resources_cannot_be_resolved(self) -> None:
+    def test_check_returns_preparation_error_when_scenario_resources_cannot_be_resolved(self) -> None:
         service = self._build_service(
             scenario_resolver=FakeScenarioResolver(
                 ScenarioResolutionResult(
@@ -409,7 +408,7 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
                     failure=ScenarioResolutionFailure(
                         code="prompt_resource_load_error",
                         message="Scenario recognition prompt resources are missing.",
-                        stage="generation",
+                        stage="preparation",
                     ),
                 )
             ),
@@ -424,12 +423,12 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
                 failure={
                     "code": "prompt_resource_load_error",
                     "message": "Scenario recognition prompt resources are missing.",
-                    "stage": "generation",
+                    "stage": "preparation",
                 },
             ),
         )
 
-    def test_check_returns_generation_error_when_template_resource_is_invalid(self) -> None:
+    def test_check_returns_preparation_error_when_template_resource_is_invalid(self) -> None:
         service = self._build_service(
             template_loader=FakeTemplateLoader(PromptResourceParseError("template is invalid")),
         )
@@ -443,12 +442,12 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
                 failure={
                     "code": "prompt_resource_parse_error",
                     "message": "template is invalid",
-                    "stage": GENERATION_STAGE,
+                    "stage": "preparation",
                 },
             ),
         )
 
-    def test_check_returns_generation_error_when_slot_schema_resource_is_invalid(self) -> None:
+    def test_check_returns_preparation_error_when_slot_schema_resource_is_invalid(self) -> None:
         service = self._build_service(
             slot_schema_loader=FakeSlotSchemaLoader(PromptResourceParseError("slot schema is invalid")),
         )
@@ -462,12 +461,12 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
                 failure={
                     "code": "prompt_resource_parse_error",
                     "message": "slot schema is invalid",
-                    "stage": GENERATION_STAGE,
+                    "stage": "preparation",
                 },
             ),
         )
 
-    def test_check_returns_generation_error_when_slot_prompt_resources_are_missing(self) -> None:
+    def test_check_returns_preparation_error_when_slot_prompt_resources_are_missing(self) -> None:
         service = self._build_service(
             prompt_resource_loader=FakePromptResourceLoader(PromptResourceNotFoundError("missing slot extraction prompts")),
         )
@@ -481,12 +480,12 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
                 failure={
                     "code": PROMPT_RESOURCE_LOAD_ERROR,
                     "message": "missing slot extraction prompts",
-                    "stage": GENERATION_STAGE,
+                    "stage": "preparation",
                 },
             ),
         )
 
-    def test_check_returns_generation_error_when_slot_prompt_resource_access_fails(self) -> None:
+    def test_check_returns_preparation_error_when_slot_prompt_resource_access_fails(self) -> None:
         service = self._build_service(
             prompt_resource_loader=FakePromptResourceLoader(PromptSourceError("prompt resource path escapes local root")),
         )
@@ -500,12 +499,12 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
                 failure={
                     "code": PROMPT_RESOURCE_ACCESS_ERROR,
                     "message": "prompt resource path escapes local root",
-                    "stage": GENERATION_STAGE,
+                    "stage": "preparation",
                 },
             ),
         )
 
-    def test_check_returns_generation_error_when_resource_path_access_fails(self) -> None:
+    def test_check_returns_preparation_error_when_resource_path_access_fails(self) -> None:
         service = self._build_service(
             template_loader=FakeTemplateLoader(PromptSourceError("resource path escapes local root")),
         )
@@ -519,7 +518,7 @@ class PromptComplianceOrchestratorRuntimeTest(unittest.TestCase):
                 failure={
                     "code": "prompt_resource_access_error",
                     "message": "resource path escapes local root",
-                    "stage": GENERATION_STAGE,
+                    "stage": "preparation",
                 },
             ),
         )

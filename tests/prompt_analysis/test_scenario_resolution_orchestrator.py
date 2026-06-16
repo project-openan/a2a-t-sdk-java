@@ -17,7 +17,6 @@ from a2a_t.common.prompt_resources.models import PromptMessages, ScenarioDefinit
 from a2a_t.config.models import PromptRuntimeConfig
 from a2a_t.prompt.analysis.models import ScenarioRecognitionResult
 from a2a_t.server.prompt_compliance.constants import (
-    GENERATION_STAGE,
     PROMPT_PARSE_STAGE,
     PROMPT_RESOURCE_LOAD_ERROR,
     PROCESSED_PROMPT_PARSE_ERROR,
@@ -172,7 +171,7 @@ class ScenarioResolutionOrchestratorTest(unittest.TestCase):
             "Scenario recognition returned unsupported scenario_code: unknown_scenario",
         )
 
-    def test_resolve_returns_generation_failure_when_scenario_resources_are_missing(self) -> None:
+    def test_resolve_returns_preparation_failure_when_scenario_resources_are_missing(self) -> None:
         orchestrator = self._build_orchestrator(
             scenario_result=[],
             prompt_result=PromptResourceNotFoundError("Scenario recognition prompt resources are missing."),
@@ -186,7 +185,7 @@ class ScenarioResolutionOrchestratorTest(unittest.TestCase):
         result = orchestrator.resolve("Please analyze site A energy usage.")
 
         self.assertFalse(result.success)
-        self.assertEqual(result.failure.stage, GENERATION_STAGE)
+        self.assertEqual(result.failure.stage, "preparation")
         self.assertEqual(result.failure.code, PROMPT_RESOURCE_LOAD_ERROR)
         self.assertEqual(result.failure.message, "Scenario recognition prompt resources are missing.")
 

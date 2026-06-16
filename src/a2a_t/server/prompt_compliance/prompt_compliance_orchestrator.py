@@ -18,10 +18,9 @@ from a2a_t.server.prompt_compliance.semantic_validator import (
     SemanticValidationResult,
 )
 from a2a_t.server.prompt_compliance.constants import (
-    GENERATION_STAGE,
+    PREPARATION_STAGE,
     PROMPT_RESOURCE_ACCESS_ERROR,
     PROMPT_RESOURCE_PARSE_ERROR,
-    PASSED_STAGE,
     PROCESSED_PROMPT_PARSE_ERROR,
     PROMPT_PARSE_STAGE,
     PROMPT_RESOURCE_LOAD_ERROR,
@@ -79,29 +78,29 @@ class PromptComplianceOrchestrator:
         try:
             template_text = self._template_loader.load(reference=reference)
         except PromptResourceNotFoundError as error:
-            return self._error_result(GENERATION_STAGE, TEMPLATE_LOAD_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, TEMPLATE_LOAD_ERROR, str(error))
         except PromptResourceParseError as error:
-            return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_PARSE_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, PROMPT_RESOURCE_PARSE_ERROR, str(error))
         except PromptSourceError as error:
-            return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
 
         try:
             slot_json_schema = self._slot_json_schema_loader.load(reference=reference)
         except PromptResourceNotFoundError as error:
-            return self._error_result(GENERATION_STAGE, SLOT_SCHEMA_LOAD_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, SLOT_SCHEMA_LOAD_ERROR, str(error))
         except PromptResourceParseError as error:
-            return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_PARSE_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, PROMPT_RESOURCE_PARSE_ERROR, str(error))
         except PromptSourceError as error:
-            return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
 
         try:
             slot_schema = self._slot_schema_loader.load(reference=reference)
         except PromptResourceNotFoundError as error:
-            return self._error_result(GENERATION_STAGE, SLOT_SCHEMA_LOAD_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, SLOT_SCHEMA_LOAD_ERROR, str(error))
         except PromptResourceParseError as error:
-            return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_PARSE_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, PROMPT_RESOURCE_PARSE_ERROR, str(error))
         except PromptSourceError as error:
-            return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
 
         try:
             slot_prompts = self._prompt_resource_loader.load(
@@ -109,11 +108,11 @@ class PromptComplianceOrchestrator:
                 language=reference.language,
             )
         except PromptResourceNotFoundError as error:
-            return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_LOAD_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, PROMPT_RESOURCE_LOAD_ERROR, str(error))
         except PromptResourceParseError as error:
-            return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_PARSE_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, PROMPT_RESOURCE_PARSE_ERROR, str(error))
         except PromptSourceError as error:
-            return self._error_result(GENERATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
+            return self._error_result(PREPARATION_STAGE, PROMPT_RESOURCE_ACCESS_ERROR, str(error))
 
         try:
             extraction_result = self._extractor.extract(

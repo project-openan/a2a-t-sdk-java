@@ -383,7 +383,7 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
 
         self.assertFalse(result.success)
         self.assertEqual(result.failure.code, PROMPT_RESOURCE_ACCESS_ERROR)
-        self.assertEqual(result.failure.stage, GENERATION_STAGE)
+        self.assertEqual(result.failure.stage, "preparation")
         self.assertEqual(result.failure.message, "generation resource path escapes local root")
 
     def test_generate_returns_generation_failure_when_slot_extraction_payload_is_invalid(self) -> None:

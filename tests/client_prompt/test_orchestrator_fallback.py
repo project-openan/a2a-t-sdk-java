@@ -129,7 +129,7 @@ class PromptGenerationOrchestratorLanguageStrictnessTest(ManagedTempDirTestCase)
 
         self.assertFalse(result.success)
         self.assertEqual(result.failure.code, "prompt_resource_load_error")
-        self.assertEqual(result.failure.stage, "generation")
+        self.assertEqual(result.failure.stage, "preparation")
 
     def test_generate_returns_prompt_resource_load_error_when_scenario_prompts_are_missing_for_requested_language(self) -> None:
         self._write_resource_file(
@@ -176,7 +176,7 @@ class PromptGenerationOrchestratorLanguageStrictnessTest(ManagedTempDirTestCase)
 
         self.assertFalse(result.success)
         self.assertEqual(result.failure.code, "prompt_resource_load_error")
-        self.assertEqual(result.failure.stage, "generation")
+        self.assertEqual(result.failure.stage, "preparation")
 
 
 if __name__ == "__main__":

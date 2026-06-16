@@ -3,7 +3,7 @@ from __future__ import annotations
 PROMPT_RESOURCE_PARSE_ERROR = "prompt_resource_parse_error"
 PROMPT_RESOURCE_ACCESS_ERROR = "prompt_resource_access_error"
 
-GENERATION_STAGE = "generation"
+PREPARATION_STAGE = "preparation"
 PROMPT_PARSE_STAGE = "prompt_parse"
 SLOT_EXTRACTION_STAGE = "slot_extraction"
 SLOT_VALIDATION_STAGE = "slot_validation"
