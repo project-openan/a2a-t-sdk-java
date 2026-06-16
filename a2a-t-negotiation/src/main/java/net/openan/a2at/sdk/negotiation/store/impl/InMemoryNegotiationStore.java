@@ -33,9 +33,4 @@ public final class InMemoryNegotiationStore implements NegotiationStore {
     public void delete(String negotiationId) {
         records.remove(negotiationId);
     }
-
-    @Override
-    public boolean cleanupExpired() {
-        return true;
-    }
 }

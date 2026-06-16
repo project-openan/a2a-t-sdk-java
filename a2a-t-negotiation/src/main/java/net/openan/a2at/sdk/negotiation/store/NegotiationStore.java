@@ -30,11 +30,4 @@ public interface NegotiationStore {
      * @param negotiationId negotiation identifier
      */
     void delete(String negotiationId);
-
-    /**
-     * Cleans expired records when the implementation supports expiration.
-     *
-     * @return {@code true} when any records were removed
-     */
-    boolean cleanupExpired();
 }
