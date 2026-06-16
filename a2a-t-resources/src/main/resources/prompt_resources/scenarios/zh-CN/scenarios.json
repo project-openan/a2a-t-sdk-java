@@ -1,0 +1,28 @@
+{
+  "scenarios": [
+    {
+      "scenario_code": "subscribe_incident",
+      "scenario_name": "Incident 事件订阅",
+      "description": "用于生成电信网管系统中的 Incident 事件订阅类 A2A-T 任务请求，围绕网络侧故障、告警或 Incident 通知的订阅目标、订阅条件和上报方式进行描述。",
+      "example": "帮我生成一个 Incident 订阅任务：订阅基站设备的光纤中断和尾纤故障，只看 critical 和 high，通过 DataPart 上报。"
+    },
+    {
+      "scenario_code": "energy_saving",
+      "scenario_name": "能效优化任务下发",
+      "description": "用于生成电信网管系统中 能效优化任务的 A2A-T 任务请求。",
+      "example": "实现松山湖区域30%的能耗降低，同时确保速率保障不低于50Mbps。"
+    },
+    {
+      "scenario_code": "private_line_complaint",
+      "scenario_name": "专线投诉",
+      "description": "用于生成电信网管系统中 专线投诉场景的网络侧故障根因诊断的 A2A-T 任务请求。",
+      "example": "请确认广东政企专线2026-05-10T18:25:30Z发生的故障fault-id-1-328-20260510-58489的根因，并提供修复建议。"
+    },
+    {
+      "scenario_code": "fault_diagnosis",
+      "scenario_name": "故障根因诊断",
+      "description": "根据事件识别输出的事件信息和初步定界分析、初步根因分析、初步影响分析等信息，输出根因定位信息及建议处理方案。",
+      "example": "请根据如下信息进行故障事件的根因定位，输出修复建议和业务影响分析：事件流水号是1856365516_2839324485_2130908106_4130674041，标题为5G基站退服事件，事件关联的告警厂家内部流水号为123211121244，事件关联告警在网管系统内唯一标识为0108-007-012-10-000003，事件关联告警标题是gNodeB退服告警，事件产生时间为2025-05-22 08:40:44，告警级别是四级，网元名称为泉州惠安-惠安张坂玉山灯杆G-HRHH。"
+    }
+  ]
+}

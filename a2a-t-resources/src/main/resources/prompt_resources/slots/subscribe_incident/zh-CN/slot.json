@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "通知主题": {
+      "type": "string",
+      "description": "待订阅的通知主题名称，用于定义订阅目标。",
+      "examples": [
+        "Incident"
+      ],
+      "x-a2at-value-constraint": "通知主题具体名称可以是：Incident、Fault、智能故障和故障等。"
+    },
+    "订阅条件": {
+      "type": "string",
+      "description": "待订阅的条件描述，用于定义故障名称、故障级别等订阅约束。",
+      "examples": [
+        "故障优先级为：严重、高。故障名称为：光纤中断、单板故障。",
+        "故障优先级为：高、中。故障名称为：单板故障、主控板异常、端口异常。"
+      ],
+      "x-a2at-value-constraint": "订阅条件可包含故障优先级和故障名称等信息。故障优先级支持列表形式，优先级语义支持中英文同义表达，中文或英文任一命中即可视为有效：紧急/critical、高/high、中/medium、低/low。故障名称支持列表形式，取值范围为网络侧故障名称列表，例如：尾纤故障、光纤中断、单板故障、光模块故障等。"
+    },
+    "上报通知数据格式": {
+      "type": "string",
+      "description": "待上报的通知数据格式描述，用于定义数据类型与承载格式。",
+      "examples": [
+        "通过DataPart上报Incident数据。"
+      ],
+      "x-a2at-value-constraint": "可描述上报的数据类型与承载 Part。数据类型可为 Incident、故障等；承载格式可为 A2A Part，如 DataPart、TextPart。"
+    }
+  },
+  "required": []
+}
