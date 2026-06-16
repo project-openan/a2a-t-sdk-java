@@ -3,6 +3,8 @@ package net.openan.a2at.sdk.negotiation.types.model;
 /**
  * Minimal task prompt compliance result shared with server-side negotiation flows.
  *
+ * @param passed prompt compliance result
+ * @param failure prompt compliance failure payload
  * @since 2026-06
  */
 public record TaskPromptComplianceResult(boolean passed, TaskPromptComplianceFailure failure) {
