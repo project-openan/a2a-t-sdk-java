@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * Prompt compliance configuration resolved from unified SDK config.
  *
- * @since 2026-06
+ * @since 2026-05
  */
 public record PromptComplianceConfig(boolean enabled, GuardrailProviderConfig guardrail) {
 
@@ -16,7 +16,7 @@ public record PromptComplianceConfig(boolean enabled, GuardrailProviderConfig gu
      * @return resolved prompt compliance config
      */
     public static PromptComplianceConfig fromMap(Map<String, String> values) {
-        return new PromptComplianceConfig(parseBoolean(values.get("A2AT_PROMPT_COMPLIANCE_ENABLED")), GuardrailProviderConfig.fromMap(values));
+        return new PromptComplianceConfig(parseBoolean(values.get(A2ATConfigKeys.PromptCompliance.ENABLED)), GuardrailProviderConfig.fromMap(values));
     }
 
     private static boolean parseBoolean(String rawValue) {

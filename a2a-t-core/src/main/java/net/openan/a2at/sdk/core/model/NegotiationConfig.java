@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * Negotiation runtime configuration resolved from unified SDK config.
  *
- * @since 2026-06
+ * @since 2026-05
  */
 public record NegotiationConfig(String stateStoreType) {
 
@@ -18,7 +18,7 @@ public record NegotiationConfig(String stateStoreType) {
      * @return resolved negotiation config
      */
     public static NegotiationConfig fromMap(Map<String, String> values) {
-        String rawValue = values.get("A2AT_NEGOTIATION_STATE_STORE_TYPE");
+        String rawValue = values.get(A2ATConfigKeys.Negotiation.STATE_STORE_TYPE);
         return new NegotiationConfig(rawValue == null || rawValue.isBlank() ? DEFAULT_STATE_STORE_TYPE : rawValue);
     }
 }

@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * Prompt runtime configuration resolved from unified SDK config.
  *
- * @since 2026-06
+ * @since 2026-05
  */
 public record PromptRuntimeConfig(String language, String sourceType, String localRootDir) {
 
@@ -21,9 +21,9 @@ public record PromptRuntimeConfig(String language, String sourceType, String loc
      */
     public static PromptRuntimeConfig fromMap(Map<String, String> values) {
         return new PromptRuntimeConfig(
-                valueOrDefault(values.get("A2AT_LANGUAGE"), DEFAULT_LANGUAGE),
-                valueOrDefault(values.get("A2AT_PROMPT_SOURCE_TYPE"), DEFAULT_SOURCE_TYPE),
-                valueOrDefault(values.get("A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR"), "."));
+                valueOrDefault(values.get(A2ATConfigKeys.PromptRuntime.LANGUAGE), DEFAULT_LANGUAGE),
+                valueOrDefault(values.get(A2ATConfigKeys.PromptRuntime.SOURCE_TYPE), DEFAULT_SOURCE_TYPE),
+                valueOrDefault(values.get(A2ATConfigKeys.PromptRuntime.LOCAL_ROOT_DIR), "."));
     }
 
     private static String valueOrDefault(String rawValue, String defaultValue) {

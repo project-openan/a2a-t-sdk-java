@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * Structured LLM runtime configuration resolved from unified SDK config.
  *
- * @since 2026-06
+ * @since 2026-05
  */
 public record LlmConfig(
         String provider,
@@ -41,16 +41,16 @@ public record LlmConfig(
      */
     public static LlmConfig fromMap(Map<String, String> values) {
         return new LlmConfig(
-                valueOrDefault(values.get("A2AT_LLM_PROVIDER"), DEFAULT_PROVIDER),
-                valueOrDefault(values.get("A2AT_LLM_MODEL"), ""),
-                valueOrDefault(values.get("A2AT_LLM_API_KEY"), ""),
-                valueOrDefault(values.get("A2AT_LLM_BASE_URL"), ""),
-                parseInt(values.get("A2AT_LLM_HISTORY_WINDOW"), DEFAULT_HISTORY_WINDOW),
-                parseInt(values.get("A2AT_LLM_MAX_TOKENS"), DEFAULT_MAX_TOKENS),
-                parseDouble(values.get("A2AT_LLM_TEMPERATURE"), DEFAULT_TEMPERATURE),
-                parseDouble(values.get("A2AT_LLM_TIMEOUT_SECONDS"), DEFAULT_TIMEOUT_SECONDS),
-                parseInt(values.get("A2AT_LLM_SESSION_MAX_TOTAL"), DEFAULT_SESSION_MAX_TOTAL),
-                parseInt(values.get("A2AT_LLM_SESSION_MAX_PER_PROVIDER"), DEFAULT_SESSION_MAX_PER_PROVIDER));
+                valueOrDefault(values.get(A2ATConfigKeys.Llm.PROVIDER), DEFAULT_PROVIDER),
+                valueOrDefault(values.get(A2ATConfigKeys.Llm.MODEL), ""),
+                valueOrDefault(values.get(A2ATConfigKeys.Llm.API_KEY), ""),
+                valueOrDefault(values.get(A2ATConfigKeys.Llm.BASE_URL), ""),
+                parseInt(values.get(A2ATConfigKeys.Llm.HISTORY_WINDOW), DEFAULT_HISTORY_WINDOW),
+                parseInt(values.get(A2ATConfigKeys.Llm.MAX_TOKENS), DEFAULT_MAX_TOKENS),
+                parseDouble(values.get(A2ATConfigKeys.Llm.TEMPERATURE), DEFAULT_TEMPERATURE),
+                parseDouble(values.get(A2ATConfigKeys.Llm.TIMEOUT_SECONDS), DEFAULT_TIMEOUT_SECONDS),
+                parseInt(values.get(A2ATConfigKeys.Llm.SESSION_MAX_TOTAL), DEFAULT_SESSION_MAX_TOTAL),
+                parseInt(values.get(A2ATConfigKeys.Llm.SESSION_MAX_PER_PROVIDER), DEFAULT_SESSION_MAX_PER_PROVIDER));
     }
 
     private static String valueOrDefault(String rawValue, String defaultValue) {

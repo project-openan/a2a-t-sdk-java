@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * Guardrail provider configuration resolved from unified SDK config.
  *
- * @since 2026-06
+ * @since 2026-05
  */
 public record GuardrailProviderConfig(
         String provider, double timeout, String policyId, String endpoint, String region, String credentialsRef) {
@@ -22,12 +22,12 @@ public record GuardrailProviderConfig(
      */
     public static GuardrailProviderConfig fromMap(Map<String, String> values) {
         return new GuardrailProviderConfig(
-                valueOrDefault(values.get("A2AT_PROMPT_COMPLIANCE_GUARDRAIL_PROVIDER"), DEFAULT_PROVIDER),
-                parseDouble(values.get("A2AT_PROMPT_COMPLIANCE_GUARDRAIL_TIMEOUT_SECONDS"), DEFAULT_TIMEOUT_SECONDS),
-                valueOrDefault(values.get("A2AT_PROMPT_COMPLIANCE_GUARDRAIL_POLICY_ID"), ""),
-                valueOrDefault(values.get("A2AT_PROMPT_COMPLIANCE_GUARDRAIL_ENDPOINT"), ""),
-                valueOrDefault(values.get("A2AT_PROMPT_COMPLIANCE_GUARDRAIL_REGION"), ""),
-                valueOrDefault(values.get("A2AT_PROMPT_COMPLIANCE_GUARDRAIL_CREDENTIALS_REF"), ""));
+                valueOrDefault(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_PROVIDER), DEFAULT_PROVIDER),
+                parseDouble(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_TIMEOUT_SECONDS), DEFAULT_TIMEOUT_SECONDS),
+                valueOrDefault(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_POLICY_ID), ""),
+                valueOrDefault(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_ENDPOINT), ""),
+                valueOrDefault(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_REGION), ""),
+                valueOrDefault(values.get(A2ATConfigKeys.PromptCompliance.GUARDRAIL_CREDENTIALS_REF), ""));
     }
 
     private static String valueOrDefault(String rawValue, String defaultValue) {
