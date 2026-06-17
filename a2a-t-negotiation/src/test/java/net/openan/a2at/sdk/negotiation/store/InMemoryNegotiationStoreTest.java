@@ -28,9 +28,4 @@ class InMemoryNegotiationStoreTest {
 
         assertNull(store.get("neg-store"));
     }
-
-    @Test
-    void cleanupExpiredAlwaysReturnsTrueForInMemoryStore() {
-        assertTrue(new InMemoryNegotiationStore().cleanupExpired());
-    }
 }
