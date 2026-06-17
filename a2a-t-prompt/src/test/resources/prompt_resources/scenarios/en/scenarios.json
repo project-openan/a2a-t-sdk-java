@@ -1,0 +1,28 @@
+{
+  "catalog_version": "2026.06",
+  "default_language": "en",
+  "scenarios": [
+    {
+      "scenario_code": "handoff_planning",
+      "scenario_name": "Cross-Team Handoff Planning",
+      "description": "Create a structured handoff plan for work that spans product, engineering, security, and operations ownership.",
+      "example": "Prepare a staged migration plan for moving the billing workflow from the legacy scheduler to the event-driven orchestrator."
+    },
+    {
+      "scenario_code": "risk_review",
+      "scenario_name": "Execution Risk Review",
+      "description": "Review delivery, compliance, rollback, dependency, and customer-impact risks before a task enters execution.",
+      "example": "Check whether a payment service release has rollback coverage, audit evidence, and owner sign-off before deployment."
+    },
+    {
+      "scenario_code": "acceptance_gate",
+      "scenario_name": "Acceptance Gate Review",
+      "description": "Decide whether collected task evidence satisfies the acceptance criteria for a milestone or deliverable.",
+      "example": "Confirm that migration rehearsal logs, validation screenshots, and monitoring thresholds are sufficient for approval."
+    }
+  ],
+  "metadata": {
+    "owner": "prompt-platform",
+    "last_reviewed": "2026-06-17"
+  }
+}

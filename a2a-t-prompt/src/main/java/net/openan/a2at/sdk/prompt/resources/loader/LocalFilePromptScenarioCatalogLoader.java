@@ -1,8 +1,6 @@
 package net.openan.a2at.sdk.prompt.resources.loader;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import cn.hutool.json.JSONException;
-import cn.hutool.json.JSONUtil;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,8 +28,8 @@ public final class LocalFilePromptScenarioCatalogLoader {
             throw new ResourceNotFoundException("Prompt resource file does not exist.", catalogPath.toString());
         }
         try {
-            return JSONUtil.toBean(Files.readString(catalogPath), ScenarioCatalog.class).scenarios();
-        } catch (IOException | JSONException exception) {
+            return PromptResourceJsonParser.parse(Files.readString(catalogPath), ScenarioCatalog.class).scenarios();
+        } catch (IOException exception) {
             throw new SdkException("Failed to read scenario catalog: " + catalogPath, exception);
         }
     }

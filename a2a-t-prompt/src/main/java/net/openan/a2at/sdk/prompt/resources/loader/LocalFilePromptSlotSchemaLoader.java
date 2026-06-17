@@ -1,7 +1,5 @@
 package net.openan.a2at.sdk.prompt.resources.loader;
 
-import cn.hutool.json.JSONException;
-import cn.hutool.json.JSONUtil;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,9 +32,9 @@ public final class LocalFilePromptSlotSchemaLoader implements PromptSlotSchemaLo
             throw new ResourceNotFoundException("Prompt resource file does not exist.", schemaPath.toString());
         }
         try {
-            return JSONUtil.toBean(Files.readString(schemaPath), PromptSlotJsonSchema.class)
+            return PromptResourceJsonParser.parse(Files.readString(schemaPath), PromptSlotJsonSchema.class)
                     .toPromptSlotSchema(scenarioCode);
-        } catch (IOException | JSONException exception) {
+        } catch (IOException exception) {
             throw new SdkException("Failed to read slot schema resource: " + schemaPath, exception);
         }
     }

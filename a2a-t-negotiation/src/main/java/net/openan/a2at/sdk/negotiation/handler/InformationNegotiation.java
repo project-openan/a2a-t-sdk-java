@@ -14,7 +14,7 @@ import java.util.Map;
  *
  * @since 2026-06
  */
-public final class InformationNegotiation implements NegotiationHandler {
+public final class InformationNegotiation implements Negotiation {
 
     private final TaskPromptComplianceChecker complianceChecker;
 

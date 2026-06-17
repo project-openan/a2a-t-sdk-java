@@ -11,7 +11,7 @@ import java.util.Map;
  *
  * @since 2026-06
  */
-public final class ClarificationNegotiation implements NegotiationHandler {
+public final class ClarificationNegotiation implements Negotiation {
 
     @Override
     public NegotiationReceiveResult processReceivedMessage(String message, NegotiationContext context) {

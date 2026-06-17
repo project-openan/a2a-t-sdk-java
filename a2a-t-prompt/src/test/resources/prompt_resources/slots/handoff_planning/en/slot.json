@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cross-team handoff planning slots",
+  "type": "object",
+  "required": ["task_id", "priority", "owner", "deadline"],
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "pattern": "^TASK-[0-9]+$",
+      "description": "Unique task id from the delivery tracking system"
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "enum": ["1", "2", "3", "4", "5"],
+      "x-a2at-value-constraint": "Business priority from 1 (highest urgency) to 5 (lowest urgency)"
+    },
+    "owner": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{2,63}$",
+      "description": "Primary accountable owner user name"
+    },
+    "deadline": {
+      "type": "string",
+      "pattern": "^20[0-9]{2}-[0-9]{2}-[0-9]{2}$",
+      "description": "Requested handoff completion date in ISO-8601 format"
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "Named dependencies that must be resolved before execution"
+    },
+    "rollback_window_hours": {
+      "type": "number",
+      "minimum": 0.5,
+      "maximum": 72,
+      "description": "Maximum number of hours available for rollback after launch"
+    },
+    "optional_note": null
+  },
+  "x-a2at-examples": [
+    {
+      "task_id": "TASK-1042",
+      "priority": "2",
+      "owner": "release.owner",
+      "deadline": "2026-07-01"
+    }
+  ]
+}

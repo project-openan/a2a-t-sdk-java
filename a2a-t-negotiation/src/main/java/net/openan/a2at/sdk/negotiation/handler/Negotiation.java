@@ -4,11 +4,11 @@ import net.openan.a2at.sdk.negotiation.types.model.NegotiationContext;
 import net.openan.a2at.sdk.negotiation.types.model.NegotiationReceiveResult;
 
 /**
- * Shared contract for negotiation type handlers.
+ * Shared contract for negotiation handlers.
  *
  * @since 2026-06
  */
-public interface NegotiationHandler {
+public interface Negotiation {
 
     /**
      * Processes one received negotiation message for the supplied context.
