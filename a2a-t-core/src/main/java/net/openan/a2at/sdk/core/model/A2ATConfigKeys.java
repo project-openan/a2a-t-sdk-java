@@ -83,23 +83,5 @@ public final class A2ATConfigKeys {
 
         /** Enables or disables prompt compliance checks. */
         public static final String ENABLED = "A2AT_PROMPT_COMPLIANCE_ENABLED";
-
-        /** Selects the guardrail provider for prompt compliance (e.g., noop, bedrock). */
-        public static final String GUARDRAIL_PROVIDER = "A2AT_PROMPT_COMPLIANCE_GUARDRAIL_PROVIDER";
-
-        /** Timeout for guardrail requests in seconds. */
-        public static final String GUARDRAIL_TIMEOUT_SECONDS = "A2AT_PROMPT_COMPLIANCE_GUARDRAIL_TIMEOUT_SECONDS";
-
-        /** Optional policy identifier used by the guardrail provider. */
-        public static final String GUARDRAIL_POLICY_ID = "A2AT_PROMPT_COMPLIANCE_GUARDRAIL_POLICY_ID";
-
-        /** Optional guardrail service endpoint. */
-        public static final String GUARDRAIL_ENDPOINT = "A2AT_PROMPT_COMPLIANCE_GUARDRAIL_ENDPOINT";
-
-        /** Optional guardrail service region. */
-        public static final String GUARDRAIL_REGION = "A2AT_PROMPT_COMPLIANCE_GUARDRAIL_REGION";
-
-        /** Optional reference to guardrail credentials. */
-        public static final String GUARDRAIL_CREDENTIALS_REF = "A2AT_PROMPT_COMPLIANCE_GUARDRAIL_CREDENTIALS_REF";
     }
 }
