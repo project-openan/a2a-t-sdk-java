@@ -26,23 +26,15 @@ public record PromptSlotJsonSchema(
      * @return flattened slot schema
      */
     public PromptSlotSchema toPromptSlotSchema(String scenarioCode) {
-        Map<String, PromptSlotJsonProperty> orderedProperties = properties == null
-                ? Map.of()
-                : new LinkedHashMap<>(properties);
+        Map<String, PromptSlotJsonProperty> orderedProperties =
+                properties == null ? Map.of() : new LinkedHashMap<>(properties);
         List<String> requiredSlots = required == null ? List.of() : List.copyOf(required);
         List<PromptSlotDefinition> slotDefinitions = new ArrayList<>();
         for (Map.Entry<String, PromptSlotJsonProperty> entry : orderedProperties.entrySet()) {
             PromptSlotJsonProperty property = entry.getValue();
             if (property == null) {
                 slotDefinitions.add(new PromptSlotDefinition(
-                        entry.getKey(),
-                        requiredSlots.contains(entry.getKey()),
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null));
+                        entry.getKey(), requiredSlots.contains(entry.getKey()), null, null, null, null, null, null));
                 continue;
             }
             slotDefinitions.add(new PromptSlotDefinition(
