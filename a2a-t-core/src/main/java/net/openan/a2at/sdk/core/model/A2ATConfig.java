@@ -12,8 +12,7 @@ import java.util.Map;
 public record A2ATConfig(
         PromptRuntimeConfig prompt,
         LlmConfig llm,
-        NegotiationConfig negotiation,
-        PromptComplianceConfig promptCompliance) {
+        NegotiationConfig negotiation) {
 
     /**
      * Loads one unified SDK config from one `.env` file path.
@@ -26,7 +25,6 @@ public record A2ATConfig(
         return new A2ATConfig(
                 PromptRuntimeConfig.fromMap(values),
                 LlmConfig.fromMap(values),
-                NegotiationConfig.fromMap(values),
-                PromptComplianceConfig.fromMap(values));
+                NegotiationConfig.fromMap(values));
     }
 }

@@ -74,14 +74,4 @@ public final class A2ATConfigKeys {
         /** Selects the negotiation state store implementation (e.g., in_memory). */
         public static final String STATE_STORE_TYPE = "A2AT_NEGOTIATION_STATE_STORE_TYPE";
     }
-
-    /**
-     * Prompt compliance configuration keys.
-     */
-    @NoArgsConstructor(access = AccessLevel.PRIVATE)
-    public static final class PromptCompliance {
-
-        /** Enables or disables prompt compliance checks. */
-        public static final String ENABLED = "A2AT_PROMPT_COMPLIANCE_ENABLED";
-    }
 }
