@@ -1,10 +1,10 @@
 package net.openan.a2at.sdk.core.model;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -20,43 +20,47 @@ import net.openan.a2at.sdk.core.exception.SdkException;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class DotEnvConfigSource {
 
+    private static final int MAX_ENTRIES = 200;
+
     /**
      * Loads non-empty key/value pairs from one `.env` file.
      *
      * @param path caller-supplied `.env` file path
      * @return parsed non-empty key/value pairs
+     * @throws SdkException if the file contains more than {@value #MAX_ENTRIES} entries
      */
     public static Map<String, String> load(Path path) {
         if (!Files.exists(path)) {
             throw new ConfigFileNotFoundException(path);
         }
 
-        try {
-            return loadLines(Files.readAllLines(path));
+        Map<String, String> values = new LinkedHashMap<>();
+        try (BufferedReader reader = Files.newBufferedReader(path)) {
+            String rawLine;
+            while ((rawLine = reader.readLine()) != null) {
+                String line = rawLine.trim();
+                if (line.isEmpty() || line.startsWith("#")) {
+                    continue;
+                }
+
+                int separatorIndex = line.indexOf('=');
+                if (separatorIndex <= 0) {
+                    continue;
+                }
+
+                String key = line.substring(0, separatorIndex).trim();
+                String value = line.substring(separatorIndex + 1).trim();
+                if (key.isEmpty() || value.isEmpty()) {
+                    continue;
+                }
+                if (values.size() >= MAX_ENTRIES) {
+                    throw new SdkException(
+                            "Config file exceeds maximum allowed entries: " + MAX_ENTRIES);
+                }
+                values.put(key, value);
+            }
         } catch (IOException exception) {
             throw new SdkException("Failed to read config file: " + path, exception);
-        }
-    }
-
-    private static Map<String, String> loadLines(List<String> lines) {
-        Map<String, String> values = new LinkedHashMap<>();
-        for (String rawLine : lines) {
-            String line = rawLine.trim();
-            if (line.isEmpty() || line.startsWith("#")) {
-                continue;
-            }
-
-            int separatorIndex = line.indexOf('=');
-            if (separatorIndex <= 0) {
-                continue;
-            }
-
-            String key = line.substring(0, separatorIndex).trim();
-            String value = line.substring(separatorIndex + 1).trim();
-            if (key.isEmpty() || value.isEmpty()) {
-                continue;
-            }
-            values.put(key, value);
         }
         return Map.copyOf(values);
     }
