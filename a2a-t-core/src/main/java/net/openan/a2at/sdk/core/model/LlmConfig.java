@@ -1,5 +1,8 @@
 package net.openan.a2at.sdk.core.model;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
+
 import java.util.Map;
 
 /**
@@ -41,27 +44,15 @@ public record LlmConfig(
      */
     public static LlmConfig fromMap(Map<String, String> values) {
         return new LlmConfig(
-                valueOrDefault(values.get(A2ATConfigKeys.Llm.PROVIDER), DEFAULT_PROVIDER),
-                valueOrDefault(values.get(A2ATConfigKeys.Llm.MODEL), ""),
-                valueOrDefault(values.get(A2ATConfigKeys.Llm.API_KEY), ""),
-                valueOrDefault(values.get(A2ATConfigKeys.Llm.BASE_URL), ""),
-                parseInt(values.get(A2ATConfigKeys.Llm.HISTORY_WINDOW), DEFAULT_HISTORY_WINDOW),
-                parseInt(values.get(A2ATConfigKeys.Llm.MAX_TOKENS), DEFAULT_MAX_TOKENS),
-                parseDouble(values.get(A2ATConfigKeys.Llm.TEMPERATURE), DEFAULT_TEMPERATURE),
-                parseDouble(values.get(A2ATConfigKeys.Llm.TIMEOUT_SECONDS), DEFAULT_TIMEOUT_SECONDS),
-                parseInt(values.get(A2ATConfigKeys.Llm.SESSION_MAX_TOTAL), DEFAULT_SESSION_MAX_TOTAL),
-                parseInt(values.get(A2ATConfigKeys.Llm.SESSION_MAX_PER_PROVIDER), DEFAULT_SESSION_MAX_PER_PROVIDER));
-    }
-
-    private static String valueOrDefault(String rawValue, String defaultValue) {
-        return rawValue == null || rawValue.isBlank() ? defaultValue : rawValue;
-    }
-
-    private static int parseInt(String rawValue, int defaultValue) {
-        return rawValue == null || rawValue.isBlank() ? defaultValue : Integer.parseInt(rawValue);
-    }
-
-    private static double parseDouble(String rawValue, double defaultValue) {
-        return rawValue == null || rawValue.isBlank() ? defaultValue : Double.parseDouble(rawValue);
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.Llm.PROVIDER), DEFAULT_PROVIDER),
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.Llm.MODEL), ""),
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.Llm.API_KEY), ""),
+                StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.Llm.BASE_URL), ""),
+                NumberUtils.toInt(values.get(A2ATConfigKeys.Llm.HISTORY_WINDOW), DEFAULT_HISTORY_WINDOW),
+                NumberUtils.toInt(values.get(A2ATConfigKeys.Llm.MAX_TOKENS), DEFAULT_MAX_TOKENS),
+                NumberUtils.toDouble(values.get(A2ATConfigKeys.Llm.TEMPERATURE), DEFAULT_TEMPERATURE),
+                NumberUtils.toDouble(values.get(A2ATConfigKeys.Llm.TIMEOUT_SECONDS), DEFAULT_TIMEOUT_SECONDS),
+                NumberUtils.toInt(values.get(A2ATConfigKeys.Llm.SESSION_MAX_TOTAL), DEFAULT_SESSION_MAX_TOTAL),
+                NumberUtils.toInt(values.get(A2ATConfigKeys.Llm.SESSION_MAX_PER_PROVIDER), DEFAULT_SESSION_MAX_PER_PROVIDER));
     }
 }
