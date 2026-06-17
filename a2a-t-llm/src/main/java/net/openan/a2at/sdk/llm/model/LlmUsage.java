@@ -6,6 +6,6 @@ package net.openan.a2at.sdk.llm.model;
  * @param promptTokens prompt token count
  * @param completionTokens completion token count
  * @param totalTokens total token count
- * @since 2026-05
+ * @since 2026-06
  */
 public record LlmUsage(int promptTokens, int completionTokens, int totalTokens) {}

@@ -12,7 +12,7 @@ import net.openan.a2at.sdk.llm.model.StructuredGenerationRequest;
  * @param maxTokens resolved max tokens
  * @param temperature resolved temperature
  * @param timeoutSeconds resolved timeout seconds
- * @since 2026-05
+ * @since 2026-06
  */
 public record StructuredLlmRuntimeConfig(
         String provider,

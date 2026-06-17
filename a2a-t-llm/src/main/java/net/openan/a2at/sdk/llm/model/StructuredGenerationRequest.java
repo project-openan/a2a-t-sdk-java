@@ -14,7 +14,7 @@ import net.openan.a2at.sdk.core.model.PromptMessage;
  * @param temperature optional temperature override
  * @param maxTokens optional max-tokens override
  * @param timeoutSeconds optional timeout override
- * @since 2026-05
+ * @since 2026-06
  */
 public record StructuredGenerationRequest(
         List<PromptMessage> messages,

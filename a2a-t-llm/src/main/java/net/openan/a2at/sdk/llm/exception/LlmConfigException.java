@@ -5,7 +5,7 @@ import net.openan.a2at.sdk.core.exception.SdkException;
 /**
  * Thrown when LLM client configuration is missing or invalid.
  *
- * @since 2026-05
+ * @since 2026-06
  */
 public final class LlmConfigException extends SdkException {
 

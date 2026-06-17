@@ -9,6 +9,6 @@ import java.util.Map;
  * @param model resolved model name
  * @param usage token usage summary
  * @param metadata extra response metadata
- * @since 2026-05
+ * @since 2026-06
  */
 public record LLMResponse(String content, String model, LlmUsage usage, Map<String, Object> metadata) {}
