@@ -41,6 +41,8 @@
         <jackson.version>2.20.1</jackson.version>
         <jackson.annotations.version>2.20</jackson.annotations.version>
         <org.apache.version>3.14.0</org.apache.version>
+        <hutoll.version>5.8.46</hutoll.version>
+        <openai.version>4.36.0</openai.version>
     </properties>
 
     <dependencyManagement>
