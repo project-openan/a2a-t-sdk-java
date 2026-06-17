@@ -7,7 +7,7 @@ import java.util.Map;
 /**
  * Negotiation runtime configuration resolved from unified SDK config.
  *
- * @since 2026-05
+ * @since 2026-06
  */
 public record NegotiationConfig(String stateStoreType) {
 

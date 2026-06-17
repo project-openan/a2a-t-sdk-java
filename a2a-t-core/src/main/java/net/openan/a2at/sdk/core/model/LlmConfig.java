@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * Structured LLM runtime configuration resolved from unified SDK config.
  *
- * @since 2026-05
+ * @since 2026-06
  */
 public record LlmConfig(
         String provider,
