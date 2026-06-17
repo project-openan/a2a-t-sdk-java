@@ -3,13 +3,14 @@ package net.openan.a2at.sdk.prompt.resources.loader;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import cn.hutool.core.convert.ConvertException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import net.openan.a2at.sdk.core.exception.ResourceNotFoundException;
 import net.openan.a2at.sdk.core.exception.SdkException;
+import net.openan.a2at.sdk.prompt.resources.model.PromptSlotSchema;
+import net.openan.a2at.sdk.prompt.resources.model.ScenarioDefinition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -19,7 +20,7 @@ class LocalFilePromptLoadersTest {
     Path promptRootDir;
 
     @Test
-    void loadScenarioCatalogFailsWhenHutoolConvertsJsonObjectToRecordCatalog() throws IOException {
+    void loadScenarioCatalogMapsJacksonAnnotatedRecords() throws IOException {
         write(
                 promptRootDir.resolve("scenarios").resolve("en").resolve("scenarios.json"),
                 """
@@ -41,7 +42,11 @@ class LocalFilePromptLoadersTest {
                 }
                 """);
 
-        assertThrows(ConvertException.class, () -> new LocalFilePromptScenarioCatalogLoader(promptRootDir).load("en"));
+        List<ScenarioDefinition> scenarios = new LocalFilePromptScenarioCatalogLoader(promptRootDir).load("en");
+
+        assertEquals(2, scenarios.size());
+        assertEquals("incident_triage", scenarios.get(0).scenarioCode());
+        assertEquals("Incident Triage", scenarios.get(0).scenarioName());
     }
 
     @Test
@@ -79,7 +84,7 @@ class LocalFilePromptLoadersTest {
     }
 
     @Test
-    void loadSlotSchemaFailsWhenHutoolConvertsJsonObjectToRecordSchema() throws IOException {
+    void loadSlotSchemaMapsJacksonAnnotatedRecords() throws IOException {
         write(
                 promptRootDir.resolve("slots").resolve("incident_triage").resolve("en").resolve("slot.json"),
                 """
@@ -103,9 +108,17 @@ class LocalFilePromptLoadersTest {
                 }
                 """);
 
-        assertThrows(
-                ConvertException.class,
-                () -> new LocalFilePromptSlotSchemaLoader(promptRootDir).loadSlotSchema("incident_triage", "en"));
+        PromptSlotSchema schema =
+                new LocalFilePromptSlotSchemaLoader(promptRootDir).loadSlotSchema("incident_triage", "en");
+
+        assertEquals("incident_triage", schema.scenarioCode());
+        assertEquals(3, schema.slotDefinitions().size());
+        assertEquals("service", schema.slotDefinitions().get(0).name());
+        assertEquals(true, schema.slotDefinitions().get(0).required());
+        assertEquals("^[a-z0-9-]+$", schema.slotDefinitions().get(0).pattern());
+        assertEquals(List.of("1", "2", "3", "4", "5"), schema.slotDefinitions().get(1).allowedValues());
+        assertEquals("Severity from 1 to 5", schema.slotDefinitions().get(1).description());
+        assertEquals("note", schema.slotDefinitions().get(2).name());
     }
 
     @Test

@@ -1,7 +1,6 @@
 package net.openan.a2at.sdk.prompt.resources.loader;
 
-import cn.hutool.json.JSONException;
-import cn.hutool.json.JSONUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import net.openan.a2at.sdk.core.exception.SdkException;
@@ -27,8 +26,8 @@ public final class ClasspathPromptScenarioCatalogLoader {
     public List<ScenarioDefinition> load(String language) {
         String payload = resourceLoader.loadText(new PromptResourceKey("scenarios", "catalog", language, "scenarios.json"));
         try {
-            return JSONUtil.toBean(payload, ScenarioCatalog.class).scenarios();
-        } catch (JSONException exception) {
+            return PromptResourceJsonParser.parse(payload, ScenarioCatalog.class).scenarios();
+        } catch (JsonProcessingException exception) {
             throw new SdkException("Failed to parse scenario catalog for language: " + language, exception);
         }
     }

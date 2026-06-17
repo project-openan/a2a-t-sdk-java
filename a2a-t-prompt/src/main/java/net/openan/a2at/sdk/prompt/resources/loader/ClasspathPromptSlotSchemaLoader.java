@@ -1,7 +1,6 @@
 package net.openan.a2at.sdk.prompt.resources.loader;
 
-import cn.hutool.json.JSONException;
-import cn.hutool.json.JSONUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import net.openan.a2at.sdk.core.exception.SdkException;
 import net.openan.a2at.sdk.prompt.resources.model.PromptSlotJsonSchema;
 import net.openan.a2at.sdk.prompt.resources.model.PromptSlotSchema;
@@ -26,8 +25,8 @@ public final class ClasspathPromptSlotSchemaLoader implements PromptSlotSchemaLo
     public PromptSlotSchema loadSlotSchema(String scenarioCode, String language) {
         String payload = resourceLoader.loadText(new PromptResourceKey("slots", scenarioCode, language, "slot.json"));
         try {
-            return JSONUtil.toBean(payload, PromptSlotJsonSchema.class).toPromptSlotSchema(scenarioCode);
-        } catch (JSONException exception) {
+            return PromptResourceJsonParser.parse(payload, PromptSlotJsonSchema.class).toPromptSlotSchema(scenarioCode);
+        } catch (JsonProcessingException exception) {
             throw new SdkException("Failed to parse slot schema: " + scenarioCode, exception);
         }
     }
