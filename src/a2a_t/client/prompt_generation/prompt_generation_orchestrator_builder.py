@@ -50,7 +50,6 @@ class PromptGenerationOrchestratorBuilder:
 
         return self._orchestrator_cls(
             config=config.prompt,
-            scenario_loader=components.scenario_loader,
             prompt_resource_loader=components.prompt_resource_loader,
             template_loader=components.template_loader,
             slot_schema_loader=components.slot_schema_loader,

@@ -100,6 +100,7 @@ class PromptGenerationOrchestratorBuilderTest(unittest.TestCase):
         self.assertIs(orchestrator.kwargs["scenario_resolver"].scenario_recognizer.llm_client, llm_client)
         self.assertIsInstance(orchestrator.kwargs["slot_extractor"], FakeSlotExtractor)
         self.assertIs(orchestrator.kwargs["slot_extractor"].llm_client, llm_client)
+        self.assertNotIn("scenario_loader", orchestrator.kwargs)
         self.assertNotIn("slot_validator", orchestrator.kwargs)
 
 if __name__ == "__main__":

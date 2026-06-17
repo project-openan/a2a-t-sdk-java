@@ -210,7 +210,6 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
                 language="en-US",
                 prompt_generation_debug=debug_enabled,
             ),
-            scenario_loader=FakeScenarioLoader(),
             prompt_resource_loader=self.prompt_resource_loader,
             template_loader=self.template_loader,
             slot_schema_loader=self.slot_schema_loader,
@@ -226,7 +225,6 @@ class PromptGenerationOrchestratorTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             PromptGenerationOrchestrator(
                 config=object(),
-                scenario_loader=FakeScenarioLoader(),
                 prompt_resource_loader=FakePromptResourceLoader(),
                 template_loader=FakeTemplateLoader(),
                 slot_schema_loader=FakeSlotSchemaLoader(),

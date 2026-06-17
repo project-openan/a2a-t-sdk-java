@@ -112,7 +112,6 @@ class PromptGenerationOrchestratorLanguageStrictnessTest(ManagedTempDirTestCase)
 
         orchestrator = PromptGenerationOrchestrator(
             config=PromptRuntimeConfig(language="zh-CN"),
-            scenario_loader=ScenarioLoader(root_dir=self.root),
             prompt_resource_loader=PromptResourceLoader(root_dir=self.root),
             template_loader=TemplateLoader(root_dir=self.root),
             slot_schema_loader=SlotSchemaLoader(root_dir=self.root),
@@ -159,7 +158,6 @@ class PromptGenerationOrchestratorLanguageStrictnessTest(ManagedTempDirTestCase)
 
         orchestrator = PromptGenerationOrchestrator(
             config=PromptRuntimeConfig(language="zh-CN"),
-            scenario_loader=ScenarioLoader(root_dir=self.root),
             prompt_resource_loader=PromptResourceLoader(root_dir=self.root),
             template_loader=TemplateLoader(root_dir=self.root),
             slot_schema_loader=SlotSchemaLoader(root_dir=self.root),

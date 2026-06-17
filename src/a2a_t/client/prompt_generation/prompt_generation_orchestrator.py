@@ -44,7 +44,6 @@ class PromptGenerationOrchestrator:
         self,
         *,
         config: PromptRuntimeConfig,
-        scenario_loader: Any,
         prompt_resource_loader: Any,
         template_loader: Any,
         slot_schema_loader: Any,
