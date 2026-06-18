@@ -1,0 +1,16 @@
+{
+  "scenario": "create incident subscription",
+  "agent_card_query": {
+    "name": "SPN Domain Agent",
+    "organization": "Huawei"
+  },
+  "subscription_filter": {
+    "alarm_type": "flash",
+    "severity": "critical",
+    "province": "fujian"
+  },
+  "diagnosis_context": {
+    "domain": "spn",
+    "source": "transport_workbench"
+  }
+}
