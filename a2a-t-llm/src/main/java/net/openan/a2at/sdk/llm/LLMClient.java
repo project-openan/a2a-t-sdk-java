@@ -5,13 +5,13 @@ import java.util.Map;
 import net.openan.a2at.sdk.core.model.DotEnvConfigSource;
 import net.openan.a2at.sdk.llm.adapter.LLMAdapter;
 import net.openan.a2at.sdk.llm.adapter.OpenAICompatibleAdapter;
+import net.openan.a2at.sdk.llm.config.LlmClientConfig;
 import net.openan.a2at.sdk.llm.model.LLMResponse;
 import net.openan.a2at.sdk.llm.model.StructuredGenerationRequest;
-import net.openan.a2at.sdk.llm.config.LlmClientConfig;
 
 /**
- * Default facade entry for structured LLM generation.
- * The caller provides the `.env` file path explicitly, typically after copying the repository `env.example`.
+ * Default facade entry for structured LLM generation. The caller provides the `.env` file path explicitly, typically
+ * after copying the repository `env.example`.
  *
  * @since 2026-05
  */
@@ -38,7 +38,7 @@ public class LLMClient {
      * @param envPath caller-supplied `.env` file path
      * @param adapter explicit adapter override
      */
-    protected LLMClient(Path envPath, LLMAdapter adapter) {
+    public LLMClient(Path envPath, LLMAdapter adapter) {
         this(envPath, loadConfig(envPath), adapter);
     }
 

@@ -14,5 +14,25 @@
     <description>Server-side prompt validation APIs for the a2a-t Java SDK.</description>
 
     <dependencies>
+        <dependency>
+            <groupId>net.openan.a2a-t.sdk</groupId>
+            <artifactId>a2a-t-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.openan.a2a-t.sdk</groupId>
+            <artifactId>a2a-t-llm</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.openan.a2a-t.sdk</groupId>
+            <artifactId>a2a-t-prompt</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
