@@ -70,18 +70,22 @@ class LlmPackageStructureTest {
     }
 
     private static List<String> topLevelJavaFiles(Path path) throws IOException {
-        return Files.list(path)
-                .filter(file -> file.getFileName().toString().endsWith(".java"))
-                .map(file -> file.getFileName().toString())
-                .sorted()
-                .collect(Collectors.toList());
+        try (var files = Files.list(path)) {
+            return files
+                    .filter(file -> file.getFileName().toString().endsWith(".java"))
+                    .map(file -> file.getFileName().toString())
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
     }
 
     private static List<String> topLevelDirectories(Path path) throws IOException {
-        return Files.list(path)
-                .filter(Files::isDirectory)
-                .map(file -> file.getFileName().toString())
-                .sorted()
-                .collect(Collectors.toList());
+        try (var files = Files.list(path)) {
+            return files
+                    .filter(Files::isDirectory)
+                    .map(file -> file.getFileName().toString())
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
     }
 }
