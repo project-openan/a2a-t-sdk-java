@@ -24,7 +24,6 @@ import org.a2aproject.sdk.server.tasks.InMemoryPushNotificationConfigStore;
 import org.a2aproject.sdk.server.tasks.InMemoryTaskStore;
 import org.a2aproject.sdk.server.tasks.PushNotificationConfigStore;
 import org.a2aproject.sdk.server.tasks.PushNotificationSender;
-import org.a2aproject.sdk.server.tasks.TaskStore;
 
 /**
  * Default runtime assembly for the server sample entrypoint.
@@ -78,9 +77,9 @@ public final class DefaultSampleServerRuntime implements SampleServerRuntime, A2
 
     @Override
     public Object buildApp(Map<String, Object> agentCard, PromptComplianceChecker promptChecker) {
-        TaskStore taskStore = new InMemoryTaskStore();
+        InMemoryTaskStore taskStore = new InMemoryTaskStore();
         MainEventBus mainEventBus = new MainEventBus();
-        InMemoryQueueManager queueManager = new InMemoryQueueManager((InMemoryTaskStore) taskStore, mainEventBus);
+        InMemoryQueueManager queueManager = new InMemoryQueueManager(taskStore, mainEventBus);
         PushNotificationConfigStore pushNotificationConfigStore = new InMemoryPushNotificationConfigStore();
         PushNotificationSender pushNotificationSender = new BasePushNotificationSender(pushNotificationConfigStore);
         MainEventBusProcessor mainEventBusProcessor =
@@ -119,58 +118,68 @@ public final class DefaultSampleServerRuntime implements SampleServerRuntime, A2
     }
 
     public static Path resolveDefaultEnvPath() {
-        Path sampleEnvDir = Path.of("a2a-t-sample","src", "main", "resources", "sample", "server");
+        Path sampleEnvDir = Path.of("a2a-t-sample", "src", "main", "resources", "sample", "server");
         return SampleEnvironmentPathResolver.resolve(sampleEnvDir, "server.env", "server.env");
     }
 
     static Map<String, Object> buildMockIncidentArtifactData() {
-        return Map.of("faultManagement.Incident", Map.ofEntries(
-                Map.entry("csn", 1673735459373056L),
-                Map.entry("name", "LASER_MOD_ERR"),
-                Map.entry("domain", "PTN"),
-                Map.entry("priority", "high"),
-                Map.entry("occurTime", "2026-04-28T07:21:00Z"),
-                Map.entry("createTime", "2026-04-28T07:29:19Z"),
-                Map.entry("updateTime", "2026-04-28T12:35:15Z"),
-                Map.entry("status", "unacknowledged-and-uncleared"),
-                Map.entry("category", "Line"),
-                Map.entry(
-                        "sourceObjects",
-                        List.of(Map.of(
-                                "id", "9fc7ee3b-e4fb-450e-87d3-e03f027a4f64",
-                                "type", "network-element",
-                                "location", "Level1",
-                                "name", "HUAWEI40-SPE",
-                                "subObjList", List.of(Map.of(
-                                        "id", "36f6f0e4-9fc3-4508-bc50-fa1831a7c179",
-                                        "type", "ltp",
-                                        "name", "1-TPA1EG24-15(M)"))))),
-                Map.entry(
-                        "rootCauses",
-                        List.of(Map.of(
-                                "name", "The connected peer network element on HUAWEI40-SPE 1-TPA1EG24-15(M)-MAC:1 is down.",
-                                "repairAdvice", "Check the network element power connection state and restore power supply.",
-                                "detailInformation",
-                                "The connected peer network element on HUAWEI40-SPE 1-TPA1EG24-15(M)-MAC:1 is down.",
-                                "rootCauseObj", Map.of(
+        return Map.of(
+                "faultManagement.Incident",
+                Map.ofEntries(
+                        Map.entry("csn", 1673735459373056L),
+                        Map.entry("name", "LASER_MOD_ERR"),
+                        Map.entry("domain", "PTN"),
+                        Map.entry("priority", "high"),
+                        Map.entry("occurTime", "2026-04-28T07:21:00Z"),
+                        Map.entry("createTime", "2026-04-28T07:29:19Z"),
+                        Map.entry("updateTime", "2026-04-28T12:35:15Z"),
+                        Map.entry("status", "unacknowledged-and-uncleared"),
+                        Map.entry("category", "Line"),
+                        Map.entry(
+                                "sourceObjects",
+                                List.of(Map.of(
                                         "id", "9fc7ee3b-e4fb-450e-87d3-e03f027a4f64",
                                         "type", "network-element",
-                                        "name", "HUAWEI40-SPE",
                                         "location", "Level1",
-                                        "subObjList", List.of(Map.of(
-                                                "id", "36f6f0e4-9fc3-4508-bc50-fa1831a7c179",
-                                                "type", "FixedNetworkLTP",
-                                                "name", "1-TPA1EG24-15(M)")))))),
-                Map.entry(
-                        "detail",
-                        "Intelligent diagnosis result:\n"
-                                + "The connected peer network element on HUAWEI40-SPE 1-TPA1EG24-15(M)-MAC:1 is down.\n"
-                                + "Fault detail:\n"
-                                + "HUAWEI40-SPE optical module fault, location info: 1-TPA1EG24-15(M)-LASER:1.\n"
-                                + "The user-side port 1-TPA1EG24-15(M)-MAC:1 on HUAWEI40-SPE is abnormal."),
-                Map.entry("repairAdvice", "Check the network element power connection state and restore power supply."),
-                Map.entry("messageType", "update"),
-                Map.entry("rootEventCsns", List.of(Map.of("csn", "524261", "type", "0")))));
+                                        "name", "HUAWEI40-SPE",
+                                        "subObjList",
+                                                List.of(Map.of(
+                                                        "id", "36f6f0e4-9fc3-4508-bc50-fa1831a7c179",
+                                                        "type", "ltp",
+                                                        "name", "1-TPA1EG24-15(M)"))))),
+                        Map.entry(
+                                "rootCauses",
+                                List.of(Map.of(
+                                        "name",
+                                        "The connected peer network element on HUAWEI40-SPE 1-TPA1EG24-15(M)-MAC:1 is down.",
+                                        "repairAdvice",
+                                        "Check the network element power connection state and restore power supply.",
+                                        "detailInformation",
+                                        "The connected peer network element on HUAWEI40-SPE 1-TPA1EG24-15(M)-MAC:1 is down.",
+                                        "rootCauseObj",
+                                        Map.of(
+                                                "id", "9fc7ee3b-e4fb-450e-87d3-e03f027a4f64",
+                                                "type", "network-element",
+                                                "name", "HUAWEI40-SPE",
+                                                "location", "Level1",
+                                                "subObjList",
+                                                        List.of(
+                                                                Map.of(
+                                                                        "id", "36f6f0e4-9fc3-4508-bc50-fa1831a7c179",
+                                                                        "type", "FixedNetworkLTP",
+                                                                        "name", "1-TPA1EG24-15(M)")))))),
+                        Map.entry(
+                                "detail",
+                                "Intelligent diagnosis result:\n"
+                                        + "The connected peer network element on HUAWEI40-SPE 1-TPA1EG24-15(M)-MAC:1 is down.\n"
+                                        + "Fault detail:\n"
+                                        + "HUAWEI40-SPE optical module fault, location info: 1-TPA1EG24-15(M)-LASER:1.\n"
+                                        + "The user-side port 1-TPA1EG24-15(M)-MAC:1 on HUAWEI40-SPE is abnormal."),
+                        Map.entry(
+                                "repairAdvice",
+                                "Check the network element power connection state and restore power supply."),
+                        Map.entry("messageType", "update"),
+                        Map.entry("rootEventCsns", List.of(Map.of("csn", "524261", "type", "0")))));
     }
 
     static Thread createSampleThread(Runnable command, Consumer<String> logSink) {
@@ -207,5 +216,3 @@ public final class DefaultSampleServerRuntime implements SampleServerRuntime, A2
         return RegistryAgentCardMapper.toA2AJavaAgentCard(ServerSampleAgentCardBuilder.buildAgentCard(host, port));
     }
 }
-
-

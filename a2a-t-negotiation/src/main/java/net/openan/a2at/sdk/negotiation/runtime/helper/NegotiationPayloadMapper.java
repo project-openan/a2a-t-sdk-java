@@ -39,18 +39,34 @@ public final class NegotiationPayloadMapper {
     }
 
     public static NegotiationContext contextFromMap(Map<String, Object> contextMap) {
-        String rawType = (String) contextMap.get("negotiationType");
+        String rawType = stringValue(contextMap, "negotiationType");
         String normalizedType = rawType.replace('-', '_').toUpperCase();
-        String rawStatus = (String) contextMap.get("status");
+        String rawStatus = stringValue(contextMap, "status");
         String normalizedStatus = rawStatus.replace('-', '_').toUpperCase();
-        int round = ((Number) contextMap.get("round")).intValue();
+        int round = numberValue(contextMap, "round").intValue();
         if (round <= 0) {
             throw new NegotiationStateException("Negotiation round must be a positive integer.");
         }
         return new NegotiationContext(
                 NegotiationType.valueOf(normalizedType),
-                (String) contextMap.get("negotiationId"),
+                stringValue(contextMap, "negotiationId"),
                 round,
                 NegotiationStatus.valueOf(normalizedStatus));
+    }
+
+    private static String stringValue(Map<String, Object> contextMap, String key) {
+        Object value = contextMap.get(key);
+        if (value instanceof String text) {
+            return text;
+        }
+        throw new NegotiationStateException("Negotiation context field must be a string: " + key);
+    }
+
+    private static Number numberValue(Map<String, Object> contextMap, String key) {
+        Object value = contextMap.get(key);
+        if (value instanceof Number number) {
+            return number;
+        }
+        throw new NegotiationStateException("Negotiation context field must be a number: " + key);
     }
 }

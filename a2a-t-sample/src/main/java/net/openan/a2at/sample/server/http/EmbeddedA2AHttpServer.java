@@ -8,18 +8,19 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicLong;
-import org.a2aproject.sdk.server.AgentCardCacheMetadata;
-import org.a2aproject.sdk.server.ServerCallContext;
-import org.a2aproject.sdk.server.requesthandlers.RequestHandler;
 import org.a2aproject.sdk.grpc.SendMessageRequest;
 import org.a2aproject.sdk.grpc.StreamResponse;
 import org.a2aproject.sdk.grpc.utils.ProtoUtils;
+import org.a2aproject.sdk.server.AgentCardCacheMetadata;
+import org.a2aproject.sdk.server.ServerCallContext;
+import org.a2aproject.sdk.server.requesthandlers.RequestHandler;
 import org.a2aproject.sdk.spec.A2AError;
 import org.a2aproject.sdk.spec.AgentCard;
 import org.a2aproject.sdk.spec.Message;
@@ -30,8 +31,7 @@ import org.a2aproject.sdk.spec.TaskStatusUpdateEvent;
 import org.a2aproject.sdk.transport.rest.handler.RestHandler;
 
 /**
- * Minimal embedded HTTP host that exposes the real a2a-java REST transport endpoints required by
- * the sample.
+ * Minimal embedded HTTP host that exposes the real a2a-java REST transport endpoints required by the sample.
  *
  * @since 2026-05
  */
@@ -42,16 +42,14 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
         this.server = server;
     }
 
-    public static EmbeddedA2AHttpServer start(String host, int port, AgentCard agentCard, RequestHandler requestHandler) {
+    public static EmbeddedA2AHttpServer start(
+            String host, int port, AgentCard agentCard, RequestHandler requestHandler) {
         try {
             HttpServer server = HttpServer.create(new InetSocketAddress(host, port), 0);
             server.setExecutor(Executors.newCachedThreadPool());
 
             RestHandler restHandler = new RestHandler(
-                    agentCard,
-                    new AgentCardCacheMetadata(agentCard, null),
-                    requestHandler,
-                    Runnable::run);
+                    agentCard, new AgentCardCacheMetadata(agentCard, null), requestHandler, Runnable::run);
             server.createContext("/", exchange -> handle(exchange, restHandler));
             server.start();
             return new EmbeddedA2AHttpServer(server);
@@ -82,7 +80,8 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
                 return;
             }
             if ("POST".equalsIgnoreCase(exchange.getRequestMethod()) && "/message:send".equals(path)) {
-                sendResponse(exchange, restHandler.sendMessage(buildCallContext(exchange), "", readRequestBody(exchange)));
+                sendResponse(
+                        exchange, restHandler.sendMessage(buildCallContext(exchange), "", readRequestBody(exchange)));
                 return;
             }
 
@@ -94,15 +93,14 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
 
     private static ServerCallContext buildCallContext(HttpExchange exchange) {
         Map<String, String> headers = new LinkedHashMap<>();
-        exchange.getRequestHeaders().forEach((key, value) -> headers.put(key.toLowerCase(), String.join(",", value)));
+        exchange.getRequestHeaders()
+                .forEach((key, value) -> headers.put(key.toLowerCase(Locale.ROOT), String.join(",", value)));
         aliasHeader(headers, "A2A-Extensions");
         aliasHeader(headers, "X-A2A-Extensions");
         aliasHeader(headers, "A2A-Protocol-Version");
         aliasHeader(headers, "A2A-Version");
         String extensionHeader = firstHeader(headers, "A2A-Extensions", "X-A2A-Extensions");
-        Set<String> requestedExtensions = extensionHeader.isBlank()
-                ? Set.of()
-                : Set.of(extensionHeader.split(","));
+        Set<String> requestedExtensions = extensionHeader.isBlank() ? Set.of() : Set.of(extensionHeader.split(","));
         return new ServerCallContext(
                 null,
                 Map.of("headers", headers),
@@ -111,7 +109,7 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
     }
 
     private static void aliasHeader(Map<String, String> headers, String expectedName) {
-        String value = headers.get(expectedName.toLowerCase());
+        String value = headers.get(expectedName.toLowerCase(Locale.ROOT));
         if (value != null) {
             headers.put(expectedName, value);
         }
@@ -138,7 +136,11 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
         try {
             java.lang.reflect.Field field = RestHandler.class.getDeclaredField("requestHandler");
             field.setAccessible(true);
-            return (RequestHandler) field.get(restHandler);
+            Object value = field.get(restHandler);
+            if (value instanceof RequestHandler requestHandler) {
+                return requestHandler;
+            }
+            throw new IllegalStateException("a2a-java REST handler field is not a RequestHandler.");
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException("Failed to access a2a-java request handler", exception);
         }
@@ -146,7 +148,8 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
 
     private static void sendResponse(HttpExchange exchange, RestHandler.HTTPRestResponse response) throws IOException {
         applyHeaders(exchange, response);
-        byte[] body = response.getBody() == null ? new byte[0] : response.getBody().getBytes(StandardCharsets.UTF_8);
+        byte[] body =
+                response.getBody() == null ? new byte[0] : response.getBody().getBytes(StandardCharsets.UTF_8);
         exchange.sendResponseHeaders(response.getStatusCode(), body.length);
         try (OutputStream outputStream = exchange.getResponseBody()) {
             outputStream.write(body);
@@ -208,7 +211,8 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
             RestHandler restHandler,
             RequestHandler requestHandler,
             ServerCallContext callContext,
-            String requestBody) throws IOException {
+            String requestBody)
+            throws IOException {
         try {
             SendMessageRequest.Builder builder = SendMessageRequest.newBuilder();
             JsonFormat.parser().merge(requestBody, builder);
@@ -237,7 +241,8 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
                     try {
                         String payload = JsonFormat.printer().print(toStreamResponse(item));
                         String encoded = formatSseFrame(sequence.incrementAndGet(), payload);
-                        System.out.println("[server] sse-write: " + encoded.replace("\r", "\\r").replace("\n", "\\n"));
+                        System.out.println("[server] sse-write: "
+                                + encoded.replace("\r", "\\r").replace("\n", "\\n"));
                         outputStream.write(encoded.getBytes(StandardCharsets.UTF_8));
                         outputStream.flush();
                         System.out.println("[server] sse-write-flushed");
@@ -251,7 +256,8 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
 
                 @Override
                 public void onError(Throwable throwable) {
-                    System.out.println("[server] stream-subscriber-onError: " + throwable.getClass().getName() + ": " + throwable.getMessage());
+                    System.out.println("[server] stream-subscriber-onError: "
+                            + throwable.getClass().getName() + ": " + throwable.getMessage());
                     completed.countDown();
                 }
 
@@ -318,5 +324,3 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
         }
     }
 }
-
-

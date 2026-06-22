@@ -166,9 +166,7 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
                 Map<String, Object> payload = parseObject(response.body());
                 Object agentCards = payload.get("agentCards");
                 if (agentCards instanceof List<?> cards && !cards.isEmpty() && cards.get(0) instanceof Map<?, ?> firstCard) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> card = (Map<String, Object>) firstCard;
-                    return card;
+                    return castAgentCard(firstCard);
                 }
                 throw new ValueErrorException("Registry query by name returned no AgentCard entries");
             } catch (IOException | InterruptedException exception) {
@@ -200,6 +198,11 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
                 throw new ValueErrorException("AgentCard query from server root failed: " + exception.getMessage());
             }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> castAgentCard(Map<?, ?> agentCard) {
+        return (Map<String, Object>) agentCard;
     }
 
     static String encodePathSegment(String value) {

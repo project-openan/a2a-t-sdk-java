@@ -18,8 +18,10 @@ class ServerNegotiationOrchestratorBuilderTest {
     @Test
     void buildCreatesServerRoleOrchestratorThatUsesPromptComplianceForInformationNegotiation() {
         RecordingPromptComplianceOrchestrator complianceOrchestrator =
-                new RecordingPromptComplianceOrchestrator(new PromptComplianceResult(false, new PromptComplianceFailure(
-                        "slot_validation_error", "Need more information", "slot_validation")));
+                new RecordingPromptComplianceOrchestrator(new PromptComplianceResult(
+                        false,
+                        new PromptComplianceFailure(
+                                "slot_validation_error", "Need more information", "slot_validation")));
 
         RoleBoundNegotiationOrchestrator orchestrator = new ServerNegotiationOrchestratorBuilder()
                 .promptComplianceOrchestrator(complianceOrchestrator)
@@ -28,14 +30,13 @@ class ServerNegotiationOrchestratorBuilderTest {
 
         Map<String, Object> started =
                 orchestrator.startNegotiation(NegotiationType.INFORMATION, "Need full task prompt.", Map.of());
-        @SuppressWarnings("unchecked")
-        Map<String, Object> context = (Map<String, Object>) started.get(NegotiationHandler.NEGOTIATION_CONTEXT_KEY);
+        Map<String, Object> context = cast(started.get(NegotiationHandler.NEGOTIATION_CONTEXT_KEY));
 
         Map<String, Object> received = orchestrator.receiveNegotiation("latest full task prompt", context);
 
         assertEquals("latest full task prompt", complianceOrchestrator.lastProcessedPromptText);
         assertEquals("Need more information", received.get("message"));
-        assertTrue((Boolean) received.get("needResponse"));
+        assertTrue(booleanValue(received.get("needResponse")));
     }
 
     @Test
@@ -47,8 +48,7 @@ class ServerNegotiationOrchestratorBuilderTest {
 
         Map<String, Object> result = orchestrator.startNegotiation(
                 NegotiationType.CLARIFICATION, "Please clarify the target.", Map.of("site", "A"));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> context = (Map<String, Object>) result.get(NegotiationHandler.NEGOTIATION_CONTEXT_KEY);
+        Map<String, Object> context = cast(result.get(NegotiationHandler.NEGOTIATION_CONTEXT_KEY));
 
         assertEquals("clarification", context.get("negotiationType"));
         assertEquals("in-progress", context.get("status"));
@@ -67,5 +67,28 @@ class ServerNegotiationOrchestratorBuilderTest {
             this.lastProcessedPromptText = processedPromptText;
             return result;
         }
+    }
+
+    private static Map<String, Object> cast(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            return map.entrySet().stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            entry -> stringValue(entry.getKey()), Map.Entry::getValue));
+        }
+        throw new AssertionError("Expected map value but was: " + value);
+    }
+
+    private static String stringValue(Object value) {
+        if (value instanceof String text) {
+            return text;
+        }
+        throw new AssertionError("Expected string value but was: " + value);
+    }
+
+    private static boolean booleanValue(Object value) {
+        if (value instanceof Boolean booleanValue) {
+            return booleanValue;
+        }
+        throw new AssertionError("Expected boolean value but was: " + value);
     }
 }

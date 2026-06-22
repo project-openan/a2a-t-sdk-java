@@ -63,8 +63,8 @@ public final class ScenarioRecognizer {
                 .content());
 
         boolean matched = Boolean.TRUE.equals(payload.get("matched"));
-        String scenarioCode = (String) payload.get("scenario_code");
-        String errorMessage = (String) payload.get("error_message");
+        String scenarioCode = nullableString(payload.get("scenario_code"), "scenario_code");
+        String errorMessage = nullableString(payload.get("error_message"), "error_message");
 
         if (matched && (scenarioCode == null || scenarioCode.isBlank())) {
             throw new ScenarioRecognitionException("Matched scenario recognition result must include scenario_code.");
@@ -103,4 +103,13 @@ public final class ScenarioRecognizer {
                 .toList();
     }
 
+    private static String nullableString(Object value, String fieldName) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String text) {
+            return text;
+        }
+        throw new ScenarioRecognitionException("Scenario recognition field must be a string: " + fieldName);
+    }
 }

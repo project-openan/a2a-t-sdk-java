@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,8 +26,7 @@ import net.openan.a2at.sample.shared.error.ValueErrorException;
 public final class ServerRegistryClient {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private ServerRegistryClient() {
-    }
+    private ServerRegistryClient() {}
 
     public static String resolveRegistryBaseUrl(Path envPath) {
         Map<String, String> envValues = parseEnvFile(envPath);
@@ -43,9 +43,8 @@ public final class ServerRegistryClient {
         String normalizedBaseUrl = registryBaseUrl.endsWith("/")
                 ? registryBaseUrl.substring(0, registryBaseUrl.length() - 1)
                 : registryBaseUrl;
-        ServerRegistryResponse response = transport.post(
-                normalizedBaseUrl + "/rest/v1/registry-center/agent-cards",
-                registrationPayload);
+        ServerRegistryResponse response =
+                transport.post(normalizedBaseUrl + "/rest/v1/registry-center/agent-cards", registrationPayload);
         if (response.statusCode() == 201) {
             return Map.of("status", "success", "message", "Agent card registered successfully");
         }
@@ -53,15 +52,21 @@ public final class ServerRegistryClient {
             logSink.accept("[registry-client] register failed: status_code=" + response.statusCode());
         }
         return Map.of(
-                "status", "failed",
-                "message", "Unexpected status code: " + response.statusCode(),
-                "error", response.jsonBody().isEmpty() ? response.text() : response.jsonBody());
+                "status",
+                "failed",
+                "message",
+                "Unexpected status code: " + response.statusCode(),
+                "error",
+                response.jsonBody().isEmpty() ? response.text() : response.jsonBody());
     }
 
     public static ServerRegistryTransport httpTransport() {
         return (url, payload) -> {
             try {
-                HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
+                URLConnection urlConnection = URI.create(url).toURL().openConnection();
+                if (!(urlConnection instanceof HttpURLConnection connection)) {
+                    return new ServerRegistryResponse(599, "Registry URL is not an HTTP endpoint", Map.of());
+                }
                 connection.setRequestMethod("POST");
                 connection.setRequestProperty("Content-Type", "application/json");
                 connection.setDoOutput(true);
@@ -70,7 +75,8 @@ public final class ServerRegistryClient {
                     outputStream.write(body);
                 }
                 int statusCode = connection.getResponseCode();
-                String text = readResponseBody(statusCode >= 400 ? connection.getErrorStream() : connection.getInputStream());
+                String text =
+                        readResponseBody(statusCode >= 400 ? connection.getErrorStream() : connection.getInputStream());
                 Map<String, Object> jsonBody = parseJsonBody(text);
                 return new ServerRegistryResponse(statusCode, text, jsonBody);
             } catch (IOException exception) {
@@ -91,8 +97,7 @@ public final class ServerRegistryClient {
             return Map.of();
         }
         try {
-            return OBJECT_MAPPER.readValue(text, new TypeReference<Map<String, Object>>() {
-            });
+            return OBJECT_MAPPER.readValue(text, new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException exception) {
             return Map.of();
         }
@@ -124,5 +129,3 @@ public final class ServerRegistryClient {
         }
     }
 }
-
-
