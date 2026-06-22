@@ -43,7 +43,7 @@ public final class AgentEndpointResolver {
         try {
             URI uri = URI.create(url);
             return ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme())) && uri.getHost() != null;
-        } catch (Exception exception) {
+        } catch (IllegalArgumentException exception) {
             return false;
         }
     }

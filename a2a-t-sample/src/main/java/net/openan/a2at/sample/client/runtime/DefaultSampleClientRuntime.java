@@ -27,6 +27,7 @@ import org.a2aproject.sdk.client.ClientEvent;
 import org.a2aproject.sdk.client.transport.rest.RestTransport;
 import org.a2aproject.sdk.client.transport.rest.RestTransportConfig;
 import org.a2aproject.sdk.client.transport.spi.interceptors.ClientCallContext;
+import org.a2aproject.sdk.spec.A2AClientException;
 import org.a2aproject.sdk.spec.AgentCard;
 import org.a2aproject.sdk.spec.AgentInterface;
 import org.a2aproject.sdk.spec.MessageSendParams;
@@ -60,7 +61,7 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
     }
 
     public static Path resolveDefaultEnvPath() {
-        Path sampleEnvDir = Path.of("src", "main", "resources", "sample", "client");
+        Path sampleEnvDir = Path.of("a2a-t-sample","src", "main", "resources", "sample", "client");
         return SampleEnvironmentPathResolver.resolve(sampleEnvDir, "client.env", "client.env");
     }
 
@@ -104,7 +105,7 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
             return Client.builder(agentCard)
                     .withTransport(RestTransport.class, new RestTransportConfig())
                     .build();
-        } catch (Exception exception) {
+        } catch (A2AClientException exception) {
             throw new ValueErrorException("Failed to create a2a-java client: " + exception.getMessage());
         }
     }
@@ -132,7 +133,7 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
                     eventStreamBuffer::fail,
                     callContext);
             return eventStreamBuffer;
-        } catch (Exception exception) {
+        } catch (A2AClientException exception) {
             client.close();
             throw new ValueErrorException("A2A message:stream request failed: " + exception.getMessage());
         }
@@ -216,7 +217,7 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
             return Client.builder(realAgentCard)
                     .withTransport(RestTransport.class, new RestTransportConfig())
                     .build();
-        } catch (Exception exception) {
+        } catch (A2AClientException exception) {
             throw new ValueErrorException("Failed to create a2a-java client: " + exception.getMessage());
         }
     }

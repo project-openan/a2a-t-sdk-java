@@ -3,6 +3,7 @@ package net.openan.a2at.sample.shared.logging;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -40,7 +41,7 @@ public final class SampleLoggingFormatter {
         try {
             Object normalized = normalizePayload(payload, null);
             return timestamp() + " [" + actor + "] " + stage + ": " + OBJECT_MAPPER.writeValueAsString(normalized);
-        } catch (Exception exception) {
+        } catch (IOException exception) {
             return timestamp() + " [" + actor + "] " + stage + ": <payload-format-error: " + exception.getMessage()
                     + ">";
         }
@@ -50,7 +51,7 @@ public final class SampleLoggingFormatter {
         return LocalDateTime.now().format(TIMESTAMP_FORMATTER);
     }
 
-    private static Object normalizePayload(Object value, String keyName) throws Exception {
+    private static Object normalizePayload(Object value, String keyName) throws IOException {
         if (keyName != null && isSecretKey(keyName)) {
             return "***";
         }

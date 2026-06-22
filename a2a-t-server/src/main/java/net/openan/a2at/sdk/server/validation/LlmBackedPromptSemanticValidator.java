@@ -1,5 +1,6 @@
 package net.openan.a2at.sdk.server.validation;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
@@ -70,7 +71,7 @@ public final class LlmBackedPromptSemanticValidator implements ServerPromptSeman
                     + "  \"extracted_slots\": "
                     + OBJECT_MAPPER.writeValueAsString(extractedSlots)
                     + "\n}";
-        } catch (Exception error) {
+        } catch (JsonProcessingException error) {
             throw new PromptComplianceCheckException(
                     "slot_validation_error", "Failed to serialize slot schema", "slot_validation");
         }
@@ -126,7 +127,7 @@ public final class LlmBackedPromptSemanticValidator implements ServerPromptSeman
             Map<String, Object> response =
                     OBJECT_MAPPER.readValue(payload, new TypeReference<Map<String, Object>>() {});
             return response == null ? Map.of() : response;
-        } catch (Exception error) {
+        } catch (JsonProcessingException error) {
             throw new PromptComplianceCheckException(
                     "slot_validation_error", "semantic validation returned invalid JSON", "slot_validation");
         }

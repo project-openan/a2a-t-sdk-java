@@ -1,5 +1,6 @@
 package net.openan.a2at.sample.server.registry;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -92,7 +93,7 @@ public final class ServerRegistryClient {
         try {
             return OBJECT_MAPPER.readValue(text, new TypeReference<Map<String, Object>>() {
             });
-        } catch (Exception exception) {
+        } catch (JsonProcessingException exception) {
             return Map.of();
         }
     }
