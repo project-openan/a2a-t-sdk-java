@@ -1,35 +1,33 @@
 package net.openan.a2at.sdk.llm.api;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 import net.openan.a2at.sdk.llm.LLMClient;
-import net.openan.a2at.sdk.llm.model.LLMResponse;
-import net.openan.a2at.sdk.llm.model.StructuredGenerationRequest;
 import org.junit.jupiter.api.Test;
 
 class LlmClientContractTest {
 
     @Test
-    void llmClientExposesPublicPathConstructors() {
-        Constructor<?>[] constructors = LLMClient.class.getConstructors();
-
-        assertEquals(2, constructors.length);
-        for (Constructor<?> constructor : constructors) {
-            assertTrue(Modifier.isPublic(constructor.getModifiers()));
-            assertEquals(Path.class, constructor.getParameterTypes()[0]);
-        }
+    void llmClientIsProviderFacingInterface() {
+        assertTrue(LLMClient.class.isInterface());
+        assertFalse(Modifier.isFinal(LLMClient.class.getModifiers()));
     }
 
     @Test
-    void llmClientExposesStructuredMethodReturningUnifiedResponse() throws NoSuchMethodException {
-        Method method = LLMClient.class.getMethod("structured", StructuredGenerationRequest.class);
+    void llmClientExposesStructuredMethodWithSimplifiedSignature() throws Exception {
+        Class<?> responseType = assertDoesNotThrow(() -> Class.forName("net.openan.a2at.sdk.llm.LLMResponse"));
 
-        assertEquals(LLMResponse.class, method.getReturnType());
+        Method method = LLMClient.class.getMethod("structured", List.class, Map.class, Double.class, Integer.class);
+
+        assertEquals(responseType, method.getReturnType());
         assertTrue(Modifier.isPublic(method.getModifiers()));
+        assertFalse(Modifier.isStatic(method.getModifiers()));
     }
 }

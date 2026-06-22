@@ -3,16 +3,10 @@ package net.openan.a2at.sdk.client.prompt.extractor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import net.openan.a2at.sdk.llm.LLMClient;
-import net.openan.a2at.sdk.llm.adapter.LLMAdapter;
-import net.openan.a2at.sdk.llm.model.LLMResponse;
-import net.openan.a2at.sdk.llm.model.LlmUsage;
-import net.openan.a2at.sdk.llm.model.StructuredGenerationRequest;
+import net.openan.a2at.sdk.llm.LLMResponse;
 import net.openan.a2at.sdk.prompt.resources.model.PromptSlotDefinition;
 import net.openan.a2at.sdk.prompt.resources.model.PromptSlotSchema;
 import org.junit.jupiter.api.Test;
@@ -20,11 +14,10 @@ import org.junit.jupiter.api.Test;
 class DefaultStructuredClientSlotValueExtractorTest {
 
     @Test
-    void extractSlotsBuildsStructuredPromptAndReturnsNormalizedSlots() throws IOException {
-        RecordingAdapter adapter = new RecordingAdapter(
+    void extractSlotsBuildsStructuredPromptAndReturnsNormalizedSlots() {
+        RecordingClient llmClient = new RecordingClient(
                 "{\"slots\":{\"site\":\"Site A\",\"additional_notes\":null,\"limit\":\"5\",\"severity\":\"high\"},"
                         + "\"slot_errors\":[]}");
-        LLMClient llmClient = buildClient(adapter);
         DefaultStructuredClientSlotValueExtractor extractor = new DefaultStructuredClientSlotValueExtractor(
                 llmClient,
                 (scenarioCode, language) -> new PromptSlotSchema(
@@ -59,44 +52,42 @@ class DefaultStructuredClientSlotValueExtractorTest {
                         "limit", "5",
                         "severity", "high"),
                 slots);
-        assertEquals(2, adapter.lastRequest().messages().size());
-        assertEquals("system", adapter.lastRequest().messages().get(0).role());
-        assertTrue(adapter.lastRequest().messages().get(1).content().contains("energy_saving"));
-        assertTrue(
-                adapter.lastRequest().messages().get(1).content().contains("Analyze Site A with critical severity."));
-        assertTrue(adapter.lastRequest().jsonSchema().containsKey("required"));
+        assertEquals(2, llmClient.lastMessages().size());
+        assertEquals("system", llmClient.lastMessages().get(0).get("role"));
+        assertTrue(llmClient.lastMessages().get(1).get("content").contains("energy_saving"));
+        assertTrue(llmClient.lastMessages().get(1).get("content").contains("Analyze Site A with critical severity."));
+        assertTrue(llmClient.lastSchema().containsKey("required"));
     }
 
-    private static LLMClient buildClient(RecordingAdapter adapter) throws IOException {
-        Path envFile = Files.createTempFile("a2at-slot-extractor", ".env");
-        Files.writeString(
-                envFile,
-                """
-                A2AT_LLM_PROVIDER=openai_compatible
-                A2AT_LLM_MODEL=test-model
-                A2AT_LLM_API_KEY=test-key
-                """);
-        return new LLMClient(envFile, adapter);
-    }
-
-    private static final class RecordingAdapter implements LLMAdapter {
+    private static final class RecordingClient implements LLMClient {
 
         private final String payload;
 
-        private StructuredGenerationRequest lastRequest;
+        private List<Map<String, String>> lastMessages;
 
-        private RecordingAdapter(String payload) {
+        private Map<String, Object> lastSchema;
+
+        private RecordingClient(String payload) {
             this.payload = payload;
         }
 
         @Override
-        public LLMResponse structured(StructuredGenerationRequest request) {
-            this.lastRequest = request;
-            return new LLMResponse(payload, "test-model", new LlmUsage(1, 1, 2), Map.of());
+        public LLMResponse structured(
+                List<Map<String, String>> messages,
+                Map<String, Object> jsonSchema,
+                Double temperature,
+                Integer maxTokens) {
+            this.lastMessages = messages;
+            this.lastSchema = jsonSchema;
+            return new LLMResponse(payload, "test-model", Map.of("prompt_tokens", 1, "completion_tokens", 1), Map.of());
         }
 
-        private StructuredGenerationRequest lastRequest() {
-            return lastRequest;
+        private List<Map<String, String>> lastMessages() {
+            return lastMessages;
+        }
+
+        private Map<String, Object> lastSchema() {
+            return lastSchema;
         }
     }
 }

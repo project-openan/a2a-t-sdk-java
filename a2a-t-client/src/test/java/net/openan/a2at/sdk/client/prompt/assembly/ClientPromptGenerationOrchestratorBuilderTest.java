@@ -4,9 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import net.openan.a2at.sdk.client.model.PromptGenerationResult;
@@ -15,10 +12,7 @@ import net.openan.a2at.sdk.client.prompt.loader.ClientTemplateLoader;
 import net.openan.a2at.sdk.client.prompt.orchestration.DefaultClientPromptGenerationOrchestrator;
 import net.openan.a2at.sdk.client.prompt.recognition.ClientScenarioRecognizer;
 import net.openan.a2at.sdk.llm.LLMClient;
-import net.openan.a2at.sdk.llm.adapter.LLMAdapter;
-import net.openan.a2at.sdk.llm.model.LLMResponse;
-import net.openan.a2at.sdk.llm.model.LlmUsage;
-import net.openan.a2at.sdk.llm.model.StructuredGenerationRequest;
+import net.openan.a2at.sdk.llm.LLMResponse;
 import net.openan.a2at.sdk.prompt.analysis.model.ScenarioRecognitionResult;
 import net.openan.a2at.sdk.prompt.resources.model.ScenarioDefinition;
 import net.openan.a2at.sdk.prompt.taskrendering.api.TaskPromptRenderer;
@@ -27,11 +21,10 @@ import org.junit.jupiter.api.Test;
 class ClientPromptGenerationOrchestratorBuilderTest {
 
     @Test
-    void buildCreatesStructuredDefaultPromptGenerationAssembly() throws IOException {
-        RecordingAdapter adapter = new RecordingAdapter(
+    void buildCreatesStructuredDefaultPromptGenerationAssembly() {
+        RecordingClient llmClient = new RecordingClient(
                 "{\"matched\":true,\"scenario_code\":\"energy_saving\",\"error_message\":null}",
                 "{\"slots\":{\"site\":\"Site A\",\"additional_notes\":\"critical\",\"limit\":\"5\",\"severity\":\"high\"},\"slot_errors\":[]}");
-        LLMClient llmClient = buildClient(adapter);
 
         DefaultClientPromptGenerationOrchestrator orchestrator = ClientPromptGenerationOrchestratorBuilder.builder()
                 .llmClient(llmClient)
@@ -54,11 +47,11 @@ class ClientPromptGenerationOrchestratorBuilderTest {
         assertEquals(
                 normalizeLineEndings("Site: Site A\nNotes: critical"),
                 normalizeLineEndings(result.promptText().trim()));
-        assertEquals(2, adapter.requestCount);
+        assertEquals(2, llmClient.requestCount);
     }
 
     @Test
-    void buildUsesExplicitCollaboratorsWhenProvided() throws IOException {
+    void buildUsesExplicitCollaboratorsWhenProvided() {
         RecordingScenarioRecognizer scenarioRecognizer =
                 new RecordingScenarioRecognizer(new ScenarioRecognitionResult(true, "energy_saving", null));
         RecordingTemplateLoader templateLoader = new RecordingTemplateLoader("Site: {site}\nNotes: {additional_notes}");
@@ -66,7 +59,7 @@ class ClientPromptGenerationOrchestratorBuilderTest {
                 new RecordingSlotValueExtractor(Map.of("site", "Site B", "additional_notes", "follow-up"));
 
         DefaultClientPromptGenerationOrchestrator orchestrator = ClientPromptGenerationOrchestratorBuilder.builder()
-                .llmClient(buildClient(new RecordingAdapter()))
+                .llmClient(new RecordingClient())
                 .scenarios(List.of(new ScenarioDefinition(
                         "energy_saving", "Energy Saving", "Energy analysis", "Analyze site power")))
                 .language("zh-CN")
@@ -101,33 +94,25 @@ class ClientPromptGenerationOrchestratorBuilderTest {
         return text.replace("\r\n", "\n");
     }
 
-    private static LLMClient buildClient(RecordingAdapter adapter) throws IOException {
-        Path envFile = Files.createTempFile("a2at-client-prompt-builder", ".env");
-        Files.writeString(
-                envFile,
-                """
-                A2AT_LLM_PROVIDER=openai_compatible
-                A2AT_LLM_MODEL=test-model
-                A2AT_LLM_API_KEY=test-key
-                """);
-        return new LLMClient(envFile, adapter);
-    }
-
-    private static final class RecordingAdapter implements LLMAdapter {
+    private static final class RecordingClient implements LLMClient {
 
         private final java.util.List<String> payloads;
 
         private int requestCount;
 
-        private RecordingAdapter(String... payloads) {
+        private RecordingClient(String... payloads) {
             this.payloads = new java.util.ArrayList<>(java.util.List.of(payloads));
         }
 
         @Override
-        public LLMResponse structured(StructuredGenerationRequest request) {
+        public LLMResponse structured(
+                List<Map<String, String>> messages,
+                Map<String, Object> jsonSchema,
+                Double temperature,
+                Integer maxTokens) {
             requestCount++;
             String payload = payloads.isEmpty() ? "{}" : payloads.remove(0);
-            return new LLMResponse(payload, "test-model", new LlmUsage(1, 1, 2), Map.of());
+            return new LLMResponse(payload, "test-model", Map.of("prompt_tokens", 1, "completion_tokens", 1), Map.of());
         }
     }
 

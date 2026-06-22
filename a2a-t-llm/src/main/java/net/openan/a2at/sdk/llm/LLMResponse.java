@@ -1,9 +1,9 @@
-package net.openan.a2at.sdk.llm.model;
+package net.openan.a2at.sdk.llm;
 
 import java.util.Map;
 
 /**
- * Unified response model for LLM calls.
+ * Normalized response from an LLM provider.
  *
  * @param content response content
  * @param model resolved model name
@@ -11,4 +11,4 @@ import java.util.Map;
  * @param metadata extra response metadata
  * @since 2026-06
  */
-public record LLMResponse(String content, String model, LlmUsage usage, Map<String, Object> metadata) {}
+public record LLMResponse(String content, String model, Map<String, Integer> usage, Map<String, Object> metadata) {}

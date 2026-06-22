@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import net.openan.a2at.sdk.core.model.PromptMessage;
 import net.openan.a2at.sdk.llm.LLMClient;
-import net.openan.a2at.sdk.llm.model.StructuredGenerationRequest;
 import net.openan.a2at.sdk.prompt.resources.loader.PromptSlotSchemaLoader;
 import net.openan.a2at.sdk.prompt.resources.model.PromptSlotSchema;
 import net.openan.a2at.sdk.server.exception.PromptComplianceCheckException;
@@ -50,11 +49,13 @@ public final class LlmBackedPromptSemanticValidator implements ServerPromptSeman
     public void validate(String processedPromptText, ProcessedPromptMetadata metadata) {
         PromptSlotSchema slotSchema = slotSchemaLoader.loadSlotSchema(metadata.scenarioCode(), metadata.language());
         String payload = llmClient
-                .structured(new StructuredGenerationRequest(
-                        List.of(
+                .structured(
+                        toStructuredMessages(List.of(
                                 new PromptMessage("system", systemPrompt),
-                                new PromptMessage("user", buildUserPrompt(slotSchema, metadata.slots()))),
-                        schema()))
+                                new PromptMessage("user", buildUserPrompt(slotSchema, metadata.slots())))),
+                        schema(),
+                        null,
+                        null)
                 .content();
         validateResponse(payload);
     }
@@ -97,6 +98,12 @@ public final class LlmBackedPromptSemanticValidator implements ServerPromptSeman
                         "passed", Map.of("type", "boolean"),
                         "errors", Map.of("type", "array", "items", itemSchema)));
         return schema;
+    }
+
+    private static List<Map<String, String>> toStructuredMessages(List<PromptMessage> messages) {
+        return messages.stream()
+                .map(message -> Map.of("role", message.role(), "content", message.content()))
+                .toList();
     }
 
     private void validateResponse(String payload) {

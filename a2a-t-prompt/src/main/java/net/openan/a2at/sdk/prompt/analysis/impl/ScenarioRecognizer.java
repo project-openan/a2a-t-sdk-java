@@ -4,11 +4,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import net.openan.a2at.sdk.core.json.JacksonJsonValueParser;
 import net.openan.a2at.sdk.core.json.JsonValueParser;
 import net.openan.a2at.sdk.core.model.PromptMessage;
 import net.openan.a2at.sdk.llm.LLMClient;
-import net.openan.a2at.sdk.llm.internal.parsing.JsonObjectResponseParser;
-import net.openan.a2at.sdk.llm.model.StructuredGenerationRequest;
 import net.openan.a2at.sdk.prompt.analysis.exception.ScenarioRecognitionException;
 import net.openan.a2at.sdk.prompt.analysis.model.ScenarioRecognitionResult;
 import net.openan.a2at.sdk.prompt.resources.model.ScenarioDefinition;
@@ -30,7 +29,7 @@ public final class ScenarioRecognizer {
      * @param llmClient LLM client
      */
     public ScenarioRecognizer(LLMClient llmClient) {
-        this(llmClient, new JsonObjectResponseParser());
+        this(llmClient, new JacksonJsonValueParser());
     }
 
     /**
@@ -55,10 +54,13 @@ public final class ScenarioRecognizer {
      */
     public ScenarioRecognitionResult recognize(
             String normalizedInput, List<ScenarioDefinition> scenarios, String systemPrompt, String userPrompt) {
-        StructuredGenerationRequest request = new StructuredGenerationRequest(
-                buildMessages(normalizedInput, scenarios, systemPrompt, userPrompt), schema());
-        Map<String, Object> payload =
-                parser.parseObject(llmClient.structured(request).content());
+        Map<String, Object> payload = parser.parseObject(llmClient
+                .structured(
+                        toStructuredMessages(buildMessages(normalizedInput, scenarios, systemPrompt, userPrompt)),
+                        schema(),
+                        null,
+                        null)
+                .content());
 
         boolean matched = Boolean.TRUE.equals(payload.get("matched"));
         String scenarioCode = (String) payload.get("scenario_code");
@@ -94,4 +96,11 @@ public final class ScenarioRecognizer {
         schema.put("required", List.of("matched", "scenario_code", "error_message"));
         return schema;
     }
+
+    private static List<Map<String, String>> toStructuredMessages(List<PromptMessage> messages) {
+        return messages.stream()
+                .map(message -> Map.of("role", message.role(), "content", message.content()))
+                .toList();
+    }
+
 }

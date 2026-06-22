@@ -82,7 +82,7 @@ class ClasspathPromptLoadersTest {
                 assertThrows(ResourceNotFoundException.class, () -> new ClasspathPromptTemplateLoader(resourceLoader)
                         .loadTemplate("missing_scenario", "en"));
 
-        assertEquals("prompt_resources\\templates\\missing_scenario\\en\\template.md", exception.resourcePath());
+        assertEquals("prompt_resources/templates/missing_scenario/en/template.md", exception.resourcePath());
     }
 
     @Test

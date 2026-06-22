@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 import net.openan.a2at.sdk.core.exception.SdkException;
 import net.openan.a2at.sdk.core.model.PromptMessage;
 import net.openan.a2at.sdk.llm.LLMClient;
-import net.openan.a2at.sdk.llm.model.StructuredGenerationRequest;
 import net.openan.a2at.sdk.prompt.analysis.model.StructuredSlotExtractionResult;
 import net.openan.a2at.sdk.prompt.analysis.model.StructuredSlotValidationError;
 import net.openan.a2at.sdk.prompt.resources.loader.PromptSlotSchemaLoader;
@@ -45,9 +44,13 @@ public final class DefaultStructuredPromptSlotValueExtractor implements PromptSl
     @Override
     public StructuredSlotExtractionResult extractSlots(Object userInput, String scenarioCode, String language) {
         PromptSlotSchema slotSchema = slotSchemaLoader.loadSlotSchema(scenarioCode, language);
-        StructuredGenerationRequest request = new StructuredGenerationRequest(
-                buildMessages(userInput, scenarioCode, language, slotSchema), buildSchema(slotSchema));
-        String payload = llmClient.structured(request).content();
+        String payload = llmClient
+                .structured(
+                        toStructuredMessages(buildMessages(userInput, scenarioCode, language, slotSchema)),
+                        buildSchema(slotSchema),
+                        null,
+                        null)
+                .content();
         return parseExtractionResult(slotSchema, payload);
     }
 
@@ -77,6 +80,12 @@ public final class DefaultStructuredPromptSlotValueExtractor implements PromptSl
         schema.put("required", List.of("slots", "slot_errors"));
         schema.put("slotNames", slotNames);
         return schema;
+    }
+
+    private static List<Map<String, String>> toStructuredMessages(List<PromptMessage> messages) {
+        return messages.stream()
+                .map(message -> Map.of("role", message.role(), "content", message.content()))
+                .toList();
     }
 
     private StructuredSlotExtractionResult parseExtractionResult(PromptSlotSchema slotSchema, String payload) {

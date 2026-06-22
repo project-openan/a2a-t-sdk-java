@@ -3,30 +3,23 @@ package net.openan.a2at.sdk.client.prompt.assembly;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import net.openan.a2at.sdk.client.model.PromptGenerationResult;
 import net.openan.a2at.sdk.client.prompt.orchestration.DefaultClientPromptGenerationOrchestrator;
 import net.openan.a2at.sdk.core.model.PromptGenerationConfig;
 import net.openan.a2at.sdk.llm.LLMClient;
-import net.openan.a2at.sdk.llm.adapter.LLMAdapter;
-import net.openan.a2at.sdk.llm.model.LLMResponse;
-import net.openan.a2at.sdk.llm.model.LlmUsage;
-import net.openan.a2at.sdk.llm.model.StructuredGenerationRequest;
+import net.openan.a2at.sdk.llm.LLMResponse;
 import net.openan.a2at.sdk.prompt.resources.model.ScenarioDefinition;
 import org.junit.jupiter.api.Test;
 
 class ClientPromptAssemblyPackageStructureTest {
 
     @Test
-    void defaultAssemblyStillBuildsAndGeneratesPrompt() throws IOException {
-        RecordingAdapter adapter = new RecordingAdapter(
+    void defaultAssemblyStillBuildsAndGeneratesPrompt() {
+        LLMClient llmClient = new RecordingClient(
                 "{\"matched\":true,\"scenario_code\":\"energy_saving\",\"error_message\":null}",
                 "{\"slots\":{\"site\":\"Site A\",\"additional_notes\":\"critical\",\"limit\":\"5\",\"severity\":\"high\"},\"slot_errors\":[]}");
-        LLMClient llmClient = buildClient(adapter);
 
         DefaultClientPromptGenerationOrchestrator orchestrator =
                 DefaultClientPromptGenerationOrchestratorFactory.create(
@@ -56,29 +49,22 @@ class ClientPromptAssemblyPackageStructureTest {
         return text.replace("\r\n", "\n");
     }
 
-    private static LLMClient buildClient(RecordingAdapter adapter) throws IOException {
-        Path envFile = Files.createTempFile("a2at-client-prompt-assembly", ".env");
-        Files.writeString(
-                envFile,
-                """
-                A2AT_LLM_PROVIDER=openai_compatible
-                A2AT_LLM_MODEL=test-model
-                A2AT_LLM_API_KEY=test-key
-                """);
-        return new LLMClient(envFile, adapter);
-    }
-
-    private static final class RecordingAdapter implements LLMAdapter {
+    private static final class RecordingClient implements LLMClient {
 
         private final java.util.List<String> payloads;
 
-        private RecordingAdapter(String... payloads) {
+        private RecordingClient(String... payloads) {
             this.payloads = new java.util.ArrayList<>(java.util.List.of(payloads));
         }
 
         @Override
-        public LLMResponse structured(StructuredGenerationRequest request) {
-            return new LLMResponse(payloads.remove(0), "test-model", new LlmUsage(1, 1, 2), Map.of());
+        public LLMResponse structured(
+                List<Map<String, String>> messages,
+                Map<String, Object> jsonSchema,
+                Double temperature,
+                Integer maxTokens) {
+            return new LLMResponse(
+                    payloads.remove(0), "test-model", Map.of("prompt_tokens", 1, "completion_tokens", 1), Map.of());
         }
     }
 }

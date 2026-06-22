@@ -2,16 +2,10 @@ package net.openan.a2at.sdk.prompt.analysis.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import net.openan.a2at.sdk.llm.LLMClient;
-import net.openan.a2at.sdk.llm.adapter.LLMAdapter;
-import net.openan.a2at.sdk.llm.model.LLMResponse;
-import net.openan.a2at.sdk.llm.model.LlmUsage;
-import net.openan.a2at.sdk.llm.model.StructuredGenerationRequest;
+import net.openan.a2at.sdk.llm.LLMResponse;
 import net.openan.a2at.sdk.prompt.analysis.model.StructuredSlotExtractionResult;
 import net.openan.a2at.sdk.prompt.resources.model.PromptSlotDefinition;
 import net.openan.a2at.sdk.prompt.resources.model.PromptSlotSchema;
@@ -20,9 +14,9 @@ import org.junit.jupiter.api.Test;
 class DefaultStructuredPromptSlotValueExtractorTest {
 
     @Test
-    void extractSlotsParsesFormattedStructuredJsonPayload() throws IOException {
-        LLMClient llmClient = buildClient(
-                new RecordingAdapter(
+    void extractSlotsParsesFormattedStructuredJsonPayload() {
+        RecordingClient llmClient =
+                new RecordingClient(
                         """
                 {
                   "slots": {
@@ -33,7 +27,7 @@ class DefaultStructuredPromptSlotValueExtractorTest {
                   },
                   "slot_errors": []
                 }
-                """));
+                """);
         DefaultStructuredPromptSlotValueExtractor extractor = new DefaultStructuredPromptSlotValueExtractor(
                 llmClient,
                 (scenarioCode, language) -> new PromptSlotSchema(
@@ -69,9 +63,9 @@ class DefaultStructuredPromptSlotValueExtractorTest {
     }
 
     @Test
-    void extractSlotsPreservesSlotTextContainingClosingBrace() throws IOException {
-        LLMClient llmClient = buildClient(
-                new RecordingAdapter(
+    void extractSlotsPreservesSlotTextContainingClosingBrace() {
+        RecordingClient llmClient =
+                new RecordingClient(
                         """
                 {
                   "slots": {
@@ -80,7 +74,7 @@ class DefaultStructuredPromptSlotValueExtractorTest {
                   },
                   "slot_errors": []
                 }
-                """));
+                """);
         DefaultStructuredPromptSlotValueExtractor extractor = new DefaultStructuredPromptSlotValueExtractor(
                 llmClient,
                 (scenarioCode, language) -> new PromptSlotSchema(
@@ -99,29 +93,21 @@ class DefaultStructuredPromptSlotValueExtractorTest {
         assertEquals(List.of(), result.slotErrors());
     }
 
-    private static LLMClient buildClient(RecordingAdapter adapter) throws IOException {
-        Path envFile = Files.createTempFile("a2at-prompt-slot-extractor", ".env");
-        Files.writeString(
-                envFile,
-                """
-                A2AT_LLM_PROVIDER=openai_compatible
-                A2AT_LLM_MODEL=test-model
-                A2AT_LLM_API_KEY=test-key
-                """);
-        return new LLMClient(envFile, adapter);
-    }
-
-    private static final class RecordingAdapter implements LLMAdapter {
+    private static final class RecordingClient implements LLMClient {
 
         private final String payload;
 
-        private RecordingAdapter(String payload) {
+        private RecordingClient(String payload) {
             this.payload = payload;
         }
 
         @Override
-        public LLMResponse structured(StructuredGenerationRequest request) {
-            return new LLMResponse(payload, "test-model", new LlmUsage(1, 1, 2), Map.of());
+        public LLMResponse structured(
+                List<Map<String, String>> messages,
+                Map<String, Object> jsonSchema,
+                Double temperature,
+                Integer maxTokens) {
+            return new LLMResponse(payload, "test-model", Map.of("prompt_tokens", 1, "completion_tokens", 1), Map.of());
         }
     }
 }

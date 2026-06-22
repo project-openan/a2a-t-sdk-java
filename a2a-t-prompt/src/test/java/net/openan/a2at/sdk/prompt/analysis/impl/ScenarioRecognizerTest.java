@@ -4,18 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import net.openan.a2at.sdk.core.json.JsonValueParser;
 import net.openan.a2at.sdk.llm.LLMClient;
-import net.openan.a2at.sdk.llm.adapter.LLMAdapter;
-import net.openan.a2at.sdk.llm.model.LLMResponse;
-import net.openan.a2at.sdk.llm.model.LlmUsage;
-import net.openan.a2at.sdk.llm.model.StructuredGenerationRequest;
+import net.openan.a2at.sdk.llm.LLMResponse;
 import net.openan.a2at.sdk.prompt.analysis.exception.ScenarioRecognitionException;
 import net.openan.a2at.sdk.prompt.analysis.model.ScenarioRecognitionResult;
 import net.openan.a2at.sdk.prompt.resources.model.ScenarioDefinition;
@@ -24,10 +18,9 @@ import org.junit.jupiter.api.Test;
 class ScenarioRecognizerTest {
 
     @Test
-    void recognizeBuildsStructuredMessagesAndReturnsMatchedScenario() throws IOException {
-        RecordingAdapter adapter =
-                new RecordingAdapter("{\"matched\":true,\"scenario_code\":\"energy_saving\",\"error_message\":null}");
-        LLMClient llmClient = buildClient(adapter);
+    void recognizeBuildsStructuredMessagesAndReturnsMatchedScenario() {
+        RecordingClient llmClient =
+                new RecordingClient("{\"matched\":true,\"scenario_code\":\"energy_saving\",\"error_message\":null}");
 
         ScenarioRecognizer recognizer = new ScenarioRecognizer(llmClient);
         ScenarioRecognitionResult result = recognizer.recognize(
@@ -39,16 +32,16 @@ class ScenarioRecognizerTest {
 
         assertTrue(result.matched());
         assertEquals("energy_saving", result.scenarioCode());
-        assertEquals(2, adapter.lastRequest().messages().size());
-        assertEquals("system", adapter.lastRequest().messages().get(0).role());
-        assertTrue(adapter.lastRequest().messages().get(1).content().contains("energy_saving"));
-        assertTrue(adapter.lastRequest().jsonSchema().containsKey("required"));
+        assertEquals(2, llmClient.lastMessages().size());
+        assertEquals("system", llmClient.lastMessages().get(0).get("role"));
+        assertTrue(llmClient.lastMessages().get(1).get("content").contains("energy_saving"));
+        assertTrue(llmClient.lastSchema().containsKey("required"));
     }
 
     @Test
-    void recognizeRejectsMatchedPayloadWithoutScenarioCode() throws IOException {
+    void recognizeRejectsMatchedPayloadWithoutScenarioCode() {
         LLMClient llmClient =
-                buildClient(new RecordingAdapter("{\"matched\":true,\"scenario_code\":null,\"error_message\":null}"));
+                new RecordingClient("{\"matched\":true,\"scenario_code\":null,\"error_message\":null}");
 
         ScenarioRecognizer recognizer = new ScenarioRecognizer(llmClient);
 
@@ -63,8 +56,8 @@ class ScenarioRecognizerTest {
     }
 
     @Test
-    void recognizeCanUseSharedJsonParserAbstraction() throws IOException {
-        LLMClient llmClient = buildClient(new RecordingAdapter("ignored"));
+    void recognizeCanUseSharedJsonParserAbstraction() {
+        LLMClient llmClient = new RecordingClient("ignored");
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("matched", true);
         payload.put("scenario_code", "energy_saving");
@@ -84,36 +77,35 @@ class ScenarioRecognizerTest {
         assertEquals("ignored", parser.lastPayload);
     }
 
-    private static LLMClient buildClient(RecordingAdapter adapter) throws IOException {
-        Path envFile = Files.createTempFile("a2at-scenario-recognizer", ".env");
-        Files.writeString(
-                envFile,
-                """
-                A2AT_LLM_PROVIDER=openai_compatible
-                A2AT_LLM_MODEL=test-model
-                A2AT_LLM_API_KEY=test-key
-                """);
-        return new LLMClient(envFile, adapter);
-    }
-
-    private static final class RecordingAdapter implements LLMAdapter {
+    private static final class RecordingClient implements LLMClient {
 
         private final String payload;
 
-        private StructuredGenerationRequest lastRequest;
+        private List<Map<String, String>> lastMessages;
 
-        private RecordingAdapter(String payload) {
+        private Map<String, Object> lastSchema;
+
+        private RecordingClient(String payload) {
             this.payload = payload;
         }
 
         @Override
-        public LLMResponse structured(StructuredGenerationRequest request) {
-            this.lastRequest = request;
-            return new LLMResponse(payload, "test-model", new LlmUsage(1, 1, 2), Map.of());
+        public LLMResponse structured(
+                List<Map<String, String>> messages,
+                Map<String, Object> jsonSchema,
+                Double temperature,
+                Integer maxTokens) {
+            this.lastMessages = messages;
+            this.lastSchema = jsonSchema;
+            return new LLMResponse(payload, "test-model", Map.of("prompt_tokens", 1, "completion_tokens", 1), Map.of());
         }
 
-        StructuredGenerationRequest lastRequest() {
-            return lastRequest;
+        List<Map<String, String>> lastMessages() {
+            return lastMessages;
+        }
+
+        Map<String, Object> lastSchema() {
+            return lastSchema;
         }
     }
 
