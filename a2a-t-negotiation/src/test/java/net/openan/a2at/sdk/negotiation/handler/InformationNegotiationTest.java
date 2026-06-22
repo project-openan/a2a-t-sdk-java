@@ -30,10 +30,10 @@ class InformationNegotiationTest {
 
     @Test
     void processReceivedMessageReturnsCompletionMessageWhenServerPromptCompliancePasses() {
-        InformationNegotiation negotiationType =
+        InformationNegotiation complianceCheckingNegotiation =
                 new InformationNegotiation(processedPromptText -> TaskPromptComplianceResult.success());
 
-        NegotiationReceiveResult result = negotiationType.processReceivedMessage(
+        NegotiationReceiveResult result = complianceCheckingNegotiation.processReceivedMessage(
                 "latest full task prompt",
                 new NegotiationContext(NegotiationType.INFORMATION, "neg-info", 1, NegotiationStatus.IN_PROGRESS));
 
@@ -47,9 +47,9 @@ class InformationNegotiationTest {
         RecordingPromptComplianceOrchestrator complianceOrchestrator =
                 new RecordingPromptComplianceOrchestrator(TaskPromptComplianceResult.failure(
                         new TaskPromptComplianceFailure("guardrail_rejected", "Guardrail rejected the task prompt.")));
-        InformationNegotiation negotiationType = new InformationNegotiation(complianceOrchestrator);
+        InformationNegotiation guardedNegotiation = new InformationNegotiation(complianceOrchestrator);
 
-        NegotiationReceiveResult result = negotiationType.processReceivedMessage(
+        NegotiationReceiveResult result = guardedNegotiation.processReceivedMessage(
                 "latest full task prompt",
                 new NegotiationContext(NegotiationType.INFORMATION, "neg-info", 1, NegotiationStatus.IN_PROGRESS));
 

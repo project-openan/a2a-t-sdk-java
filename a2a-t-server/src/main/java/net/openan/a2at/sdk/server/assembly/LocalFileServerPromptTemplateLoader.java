@@ -64,8 +64,8 @@ public final class LocalFileServerPromptTemplateLoader {
             throw new ResourceNotFoundException("Prompt resource file does not exist.", templatesRoot.toString());
         }
 
-        try {
-            return Files.list(templatesRoot)
+        try (var paths = Files.list(templatesRoot)) {
+            return paths
                     .filter(Files::isDirectory)
                     .map(path -> path.getFileName().toString())
                     .map(scenarioCode -> load(scenarioCode, language))

@@ -38,15 +38,13 @@ import org.a2aproject.sdk.spec.AgentSkill;
  * @since 2026-05
  */
 public final class DefaultSampleServerRuntime implements SampleServerRuntime, A2AJavaServerRuntime {
-    private static final Executor SAMPLE_EXECUTOR = command -> {
-        Thread thread = new Thread(command, "a2a-t-sample-server");
-        thread.setDaemon(true);
-        thread.start();
-    };
+    private static final String SAMPLE_THREAD_NAME = "a2a-t-sample-server";
 
     private final Path envPath;
 
     private final Consumer<String> logSink;
+
+    private final Executor sampleExecutor;
 
     public DefaultSampleServerRuntime(Path envPath) {
         this(envPath, System.out::println);
@@ -55,6 +53,10 @@ public final class DefaultSampleServerRuntime implements SampleServerRuntime, A2
     public DefaultSampleServerRuntime(Path envPath, Consumer<String> logSink) {
         this.envPath = envPath;
         this.logSink = logSink;
+        this.sampleExecutor = command -> {
+            Thread thread = createSampleThread(command, this.logSink);
+            thread.start();
+        };
     }
 
     @Override
@@ -108,8 +110,8 @@ public final class DefaultSampleServerRuntime implements SampleServerRuntime, A2
                 queueManager,
                 pushNotificationConfigStore,
                 mainEventBusProcessor,
-                SAMPLE_EXECUTOR,
-                SAMPLE_EXECUTOR);
+                sampleExecutor,
+                sampleExecutor);
         return requestHandler;
     }
 
@@ -175,6 +177,22 @@ public final class DefaultSampleServerRuntime implements SampleServerRuntime, A2
                 Map.entry("repairAdvice", "Check the network element power connection state and restore power supply."),
                 Map.entry("messageType", "update"),
                 Map.entry("rootEventCsns", List.of(Map.of("csn", "524261", "type", "0")))));
+    }
+
+    static Thread createSampleThread(Runnable command, Consumer<String> logSink) {
+        Thread thread = new Thread(command, SAMPLE_THREAD_NAME);
+        thread.setDaemon(true);
+        thread.setUncaughtExceptionHandler((failedThread, throwable) -> {
+            if (logSink != null) {
+                logSink.accept("[server] sample-executor-uncaught-exception: "
+                        + failedThread.getName()
+                        + ": "
+                        + throwable.getClass().getName()
+                        + ": "
+                        + throwable.getMessage());
+            }
+        });
+        return thread;
     }
 
     private void startMainEventBusProcessor(MainEventBusProcessor mainEventBusProcessor) {
