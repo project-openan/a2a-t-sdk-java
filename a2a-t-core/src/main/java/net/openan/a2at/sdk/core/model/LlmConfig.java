@@ -22,7 +22,7 @@ public record LlmConfig(
         int sessionMaxTotal,
         int sessionMaxPerProvider) {
 
-    private static final String DEFAULT_PROVIDER = "openai_compatible";
+    private static final String DEFAULT_PROVIDER = "openai";
 
     private static final int DEFAULT_HISTORY_WINDOW = 12;
 

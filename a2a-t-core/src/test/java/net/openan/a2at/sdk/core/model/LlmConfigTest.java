@@ -24,7 +24,7 @@ class LlmConfigTest {
      *
      * <p>Scenario: An empty map is passed to fromMap().
      * Expected result: All fields use predefined defaults:
-     * - provider: "openai_compatible"
+     * - provider: "openai"
      * - model, apiKey, baseUrl: empty strings
      * - historyWindow: 12
      * - maxTokens: 2048
@@ -39,7 +39,7 @@ class LlmConfigTest {
 
         LlmConfig config = LlmConfig.fromMap(values);
 
-        assertEquals("openai_compatible", config.provider());
+        assertEquals("openai", config.provider());
         assertEquals("", config.model());
         assertEquals("", config.apiKey());
         assertEquals("", config.baseUrl());

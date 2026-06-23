@@ -30,7 +30,7 @@ public final class DefaultA2ATServerBuilder {
 
     private static final String LOCAL_RULE_PROVIDER = "local_rule";
 
-    private static final String OPENAI_COMPATIBLE_PROVIDER = "openai_compatible";
+    private static final String OPENAI_PROVIDER = "openai";
 
     private static final String SCENARIO_RECOGNITION_PROMPT = "scenario_recognition";
 
@@ -163,7 +163,7 @@ public final class DefaultA2ATServerBuilder {
                     "Unsupported prompt source type: " + config.prompt().sourceType());
         }
         if (!LOCAL_RULE_PROVIDER.equals(config.llm().provider())
-                && !OPENAI_COMPATIBLE_PROVIDER.equals(config.llm().provider())) {
+                && !OPENAI_PROVIDER.equals(config.llm().provider())) {
             throw new UnsupportedOperationException("Unsupported LLM provider: " + config.llm().provider());
         }
         if (!"in_memory".equals(config.negotiation().stateStoreType())) {

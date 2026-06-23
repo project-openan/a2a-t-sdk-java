@@ -44,7 +44,7 @@ class A2ATConfigTest {
                 A2AT_LANGUAGE=zh-CN
                 A2AT_PROMPT_SOURCE_TYPE=local_file
                 A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR=prompt_resources
-                A2AT_LLM_PROVIDER=openai_compatible
+                A2AT_LLM_PROVIDER=openai
                 A2AT_LLM_MODEL=gpt-4.1
                 A2AT_LLM_API_KEY=test-key
                 A2AT_LLM_BASE_URL=https://api.openai.com/v1
@@ -62,7 +62,7 @@ class A2ATConfigTest {
         assertEquals("zh-CN", config.prompt().language());
         assertEquals("local_file", config.prompt().sourceType());
         assertEquals("prompt_resources", config.prompt().localRootDir());
-        assertEquals("openai_compatible", config.llm().provider());
+        assertEquals("openai", config.llm().provider());
         assertEquals("gpt-4.1", config.llm().model());
         assertEquals("test-key", config.llm().apiKey());
         assertEquals("https://api.openai.com/v1", config.llm().baseUrl());

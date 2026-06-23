@@ -111,8 +111,8 @@ class A2ATClientTest {
     }
 
     @Test
-    void pathBasedConstructorAcceptsOpenAiCompatibleProvider() throws IOException {
-        Path envFile = writeMinimalClientEnv("openai_compatible");
+    void pathBasedConstructorAcceptsOpenAiProvider() throws IOException {
+        Path envFile = writeMinimalClientEnv("openai");
 
         A2ATClient client = new A2ATClient(envFile);
         PromptGenerationResult result =

@@ -70,13 +70,13 @@ class DotEnvConfigSourceTest {
                 # This is a comment
                 A2AT_LANGUAGE=en-US
 
-                A2AT_LLM_PROVIDER=openai_compatible
+                A2AT_LLM_PROVIDER=openai
                 # Another comment
                 """);
 
         Map<String, String> values = DotEnvConfigSource.load(envFile);
 
-        assertEquals(Map.of("A2AT_LANGUAGE", "en-US", "A2AT_LLM_PROVIDER", "openai_compatible"), values);
+        assertEquals(Map.of("A2AT_LANGUAGE", "en-US", "A2AT_LLM_PROVIDER", "openai"), values);
     }
 
     /**
