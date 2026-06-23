@@ -25,7 +25,7 @@
     </modules>
 
     <properties>
-        <revision>0.9.0</revision>
+        <revision>1.0.0</revision>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.source.plugin.version>3.3.1</maven.source.plugin.version>
@@ -140,6 +140,10 @@
         <developer>
             <name>Jie Zou</name>
             <email>zoujie5@huawei.com</email>
+        </developer>
+        <developer>
+            <name>Xuancheng Zhou</name>
+            <email>zhouxuancheng@chinamobile.com</email>
         </developer>
     </developers>
 
