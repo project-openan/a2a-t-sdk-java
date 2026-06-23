@@ -36,7 +36,7 @@ The Java SDK is typically used in the following scenarios:
 | --- | --- |
 | JDK | 17+ |
 | Build Tool | Maven 3.8+ |
-| LLM | Accessible OpenAI-compatible service and API Key |
+| LLM | Accessible OpenAI service and API Key |
 | Registry Center | registry-center must be started before running Java sample |
 | A2A Java | sample based on `a2a-java v1.0.0.Beta1` |
 

@@ -88,7 +88,7 @@ SPDX-License-Identifier: Apache-2.0
 
 使用前建议先确认以下限制：
 
-- 内置 LLM 调用链对外统一为 OpenAI-compatible 适配层。
+- 内置 LLM 调用链对外统一为 OpenAI 适配层。
 - 提示词资源目前仅支持本地文件。
 - 协商状态存储目前仅提供内存实现，不保证持久化。
 - 随包资源与语言覆盖有限，不包含 `registry-center`（注册中心）等远程资源加载能力。
