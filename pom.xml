@@ -116,6 +116,32 @@
         <name>OpenAN</name>
         <url>https://openan.net</url>
     </organization>
+    <developers>
+        <developer>
+            <name>Yu Gong</name>
+            <email>gongyu23@huawei.com</email>
+        </developer>
+        <developer>
+            <name>Jiansheng Jiang</name>
+            <email>jiangjiansheng1@huawei.com</email>
+        </developer>
+        <developer>
+            <name>Shunhao Wu</name>
+            <email>wushunhao1@huawei.com</email>
+        </developer>
+        <developer>
+            <name>Lei Yin</name>
+            <email>yinlei13@huawei.com</email>
+        </developer>
+        <developer>
+            <name>Jiming Wang</name>
+            <email>wangjiming12@huawei.com</email>
+        </developer>
+        <developer>
+            <name>Jie Zou</name>
+            <email>zoujie5@huawei.com</email>
+        </developer>
+    </developers>
 
     <scm>
         <url>https://github.com/project-openan/a2a-t-sdk-java</url>
