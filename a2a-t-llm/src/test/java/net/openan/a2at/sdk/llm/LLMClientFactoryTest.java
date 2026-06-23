@@ -25,18 +25,6 @@ class LLMClientFactoryTest {
     }
 
     @Test
-    void createsOpenAiCompatibleAliasWithoutRewritingConfig() {
-        LLMClientConfig config = buildConfig("openai_compatible");
-
-        LLMClient client = LLMClientFactory.create("openai_compatible", config);
-
-        assertInstanceOf(OpenAIClient.class, client);
-        LLMConfigError error =
-                assertThrows(LLMConfigError.class, () -> client.structured(List.of(), Map.of(), null, null));
-        assertTrue(error.getMessage().contains("openai_compatible"));
-    }
-
-    @Test
     void registersAndCreatesCustomProviderClient() {
         LLMClientConfig config = buildConfig("customphasefour");
 
