@@ -8,7 +8,7 @@ See the [User Guide 1.1 Feature Introduction](https://github.com/project-openan/
 
 1. JDK requirement is 17+.
 2. Currently supports `classpath` and `local_file` prompt resources. The default source is the built-in resources packaged in the `a2a-t-resources` jar.
-3. By default supports `local_rule` and `openai_compatible` LLM provider.
+3. By default supports `local_rule` and `openai` LLM provider.
 4. Negotiation state storage currently supports `in_memory`.
 5. The SDK is not responsible for starting business HTTP services, user authentication, key management, or registry center deployment.
 
@@ -109,7 +109,7 @@ Basic configuration example:
 A2AT_LANGUAGE=zh-CN
 A2AT_PROMPT_SOURCE_TYPE=classpath
 A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR=
-A2AT_LLM_PROVIDER=openai_compatible
+A2AT_LLM_PROVIDER=openai
 A2AT_LLM_MODEL=deepseek-chat
 A2AT_LLM_BASE_URL=https://api.deepseek.com
 A2AT_LLM_API_KEY={your_api_key}

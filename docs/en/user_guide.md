@@ -71,7 +71,7 @@ Client configuration example:
 A2AT_LANGUAGE=zh-CN
 A2AT_PROMPT_SOURCE_TYPE=classpath
 A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR=
-A2AT_LLM_PROVIDER=openai_compatible
+A2AT_LLM_PROVIDER=openai
 A2AT_LLM_MODEL=deepseek-chat
 A2AT_LLM_BASE_URL=https://api.deepseek.com
 A2AT_LLM_API_KEY={your_api_key}
@@ -88,7 +88,7 @@ Server configuration example:
 A2AT_LANGUAGE=zh-CN
 A2AT_PROMPT_SOURCE_TYPE=classpath
 A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR=
-A2AT_LLM_PROVIDER=openai_compatible
+A2AT_LLM_PROVIDER=openai
 A2AT_LLM_MODEL=deepseek-chat
 A2AT_LLM_BASE_URL=https://api.deepseek.com
 A2AT_LLM_API_KEY={your_api_key}
@@ -154,7 +154,7 @@ The client will:
 | `A2AT_LANGUAGE` | Prompt resource language, commonly `zh-CN` |
 | `A2AT_PROMPT_SOURCE_TYPE` | Prompt resource source, supports `classpath` and `local_file`; default is `classpath` |
 | `A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR` | Local prompt resource root directory |
-| `A2AT_LLM_PROVIDER` | LLM provider, sample uses `openai_compatible` |
+| `A2AT_LLM_PROVIDER` | LLM provider, sample uses `openai` |
 | `A2AT_LLM_MODEL` | Model name |
 | `A2AT_LLM_BASE_URL` | LLM service address |
 | `A2AT_LLM_API_KEY` | LLM API Key |
