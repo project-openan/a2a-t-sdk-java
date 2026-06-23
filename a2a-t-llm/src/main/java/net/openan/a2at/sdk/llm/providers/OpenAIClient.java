@@ -23,7 +23,7 @@ import net.openan.a2at.sdk.llm.LLMResponse;
 import net.openan.a2at.sdk.llm.LLMRuntimeError;
 
 /**
- * OpenAI-compatible LLM provider client.
+ * OpenAI LLM provider client.
  *
  * @since 2026-06
  */

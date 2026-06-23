@@ -88,7 +88,7 @@ Each module's `src/test/java` mirrors the main package structure, covering the n
 
 Before use, it is recommended to confirm the following limitations:
 
-- The built-in LLM invocation chain is unified externally as an OpenAI-compatible adaptation layer.
+- The built-in LLM invocation chain is unified externally as an OpenAI adaptation layer.
 - Prompt resources currently only support local files.
 - Negotiation state storage currently only provides an in-memory implementation and does not guarantee persistence.
 - The bundled resources and language coverage are limited, and do not include remote resource loading capabilities such as `registry-center`.
