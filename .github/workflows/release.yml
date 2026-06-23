@@ -18,23 +18,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate release secrets
+        shell: bash
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          GPG_KEY_CONTENTS: ${{ secrets.GPG_KEY_CONTENTS }}
+          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          test -n "${MAVEN_CENTRAL_USERNAME}" || { echo "MAVEN_CENTRAL_USERNAME is not set"; exit 1; }
+          test -n "${MAVEN_CENTRAL_PASSWORD}" || { echo "MAVEN_CENTRAL_PASSWORD is not set"; exit 1; }
+          test -n "${GPG_KEY_CONTENTS}" || { echo "GPG_KEY_CONTENTS is not set"; exit 1; }
+          test -n "${SIGNING_KEY_ID}" || { echo "SIGNING_KEY_ID is not set"; exit 1; }
+          test -n "${SIGNING_PASSWORD}" || { echo "SIGNING_PASSWORD is not set"; exit 1; }
+
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-          gpg-passphrase: GPG_PASSPHRASE
+          gpg-private-key: ${{ secrets.GPG_KEY_CONTENTS }}
+          gpg-passphrase: SIGNING_PASSWORD
         env:
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
 
       - name: Configure Maven servers
         shell: bash
         env:
-          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
-          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
         run: |
           mkdir -p ~/.m2
           cat > ~/.m2/settings.xml <<EOF
@@ -42,12 +56,8 @@ jobs:
             <servers>
               <server>
                 <id>central</id>
-                <username>${CENTRAL_USERNAME}</username>
-                <password>${CENTRAL_PASSWORD}</password>
-              </server>
-              <server>
-                <id>gpg.passphrase</id>
-                <passphrase>${GPG_PASSPHRASE}</passphrase>
+                <username>${MAVEN_CENTRAL_USERNAME}</username>
+                <password>${MAVEN_CENTRAL_PASSWORD}</password>
               </server>
             </servers>
           </settings>
@@ -58,8 +68,9 @@ jobs:
 
       - name: Publish
         env:
-          GPG_KEYNAME: ${{ secrets.GPG_KEYNAME }}
+          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.SIGNING_PASSWORD }}
         run: >
           mvn -B -Prelease deploy
           -Dgpg.executable=gpg
-          -Dgpg.keyname="${GPG_KEYNAME}"
+          -Dgpg.keyname="${SIGNING_KEY_ID}"
