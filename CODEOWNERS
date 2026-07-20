@@ -1,0 +1,9 @@
+# Code owners for this repository.
+# Each line is a file pattern followed by one or more owners.
+# The last matching pattern takes precedence.
+# Reference: https://docs.github.com/articles/about-code-owners
+
+# The maintainers team owns all content in this repository,
+# including this file and MAINTAINERS.md, and is automatically
+# requested for review on every pull request.
+* @project-openan/maintainers-a2a-t-sdk
