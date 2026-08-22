@@ -112,9 +112,8 @@ public final class A2ATClient {
      * Generates an authorization prompt with metadata from natural-language input using the template identified by the
      * template URI, bypassing scenario recognition.
      *
-     * <p><b>Experimental:</b> Authorization-T template resources (such as {@code authz-policy-mgr}) are bundled and
-     * discovered automatically, but Authorization-T slot schemas are not yet bundled, so template-driven slot
-     * extraction fails until Authorization-T slot resources are added or provided through the local resource root.
+     * <p>Authorization-T slot schemas are bundled with a2a-t-resources, so the entry point works out of the box with
+     * classpath resource source.
      *
      * @param text natural-language authorization input
      * @param templateUri template URI identifying the target template
@@ -134,9 +133,8 @@ public final class A2ATClient {
      * Generates an authorization prompt with metadata from structured input and a data schema using the template
      * identified by the template URI, bypassing scenario recognition.
      *
-     * <p><b>Experimental:</b> Authorization-T template resources (such as {@code authz-policy-mgr}) are bundled and
-     * discovered automatically, but Authorization-T slot schemas are not yet bundled, so template-driven slot
-     * extraction fails until Authorization-T slot resources are added or provided through the local resource root.
+     * <p>Authorization-T slot schemas are bundled with a2a-t-resources, so the entry point works out of the box with
+     * classpath resource source.
      *
      * @param data structured authorization input as a string-to-object map
      * @param schema data schema map describing the meaning of each input field; must not be null or empty

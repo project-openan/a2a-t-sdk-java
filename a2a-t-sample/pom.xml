@@ -163,6 +163,10 @@ net.openan.a2at.sample.service_recovery.server.ServerSampleMain
 ${sample.jar.path}${path.separator}${sample.runtime.classpath}
 net.openan.a2at.sample.service_recovery.client.ClientSampleMain
 </echo>
+                                <echo file="${project.build.directory}/authz.javaargs.txt">-cp
+${sample.jar.path}${path.separator}${sample.runtime.classpath}
+net.openan.a2at.sample.authz_policy.AuthzSampleMain
+</echo>
                             </target>
                         </configuration>
                     </execution>
