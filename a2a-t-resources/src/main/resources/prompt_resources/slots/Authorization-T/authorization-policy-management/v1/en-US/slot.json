@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "authorization_policy_operation_type": {
+      "type": "string",
+      "description": "Provide the operation type of the authorization policy. Allowed values: add authorization policy, modify authorization policy, delete authorization policy, query authorization policy.",
+      "examples": [
+        "add authorization policy"
+      ],
+      "x-a2at-value-constraint": "Allowed values: add authorization policy, modify authorization policy, delete authorization policy, query authorization policy"
+    },
+    "network_operation_authorization_policy_list": {
+      "type": "string",
+      "description": "Provide the network operation authorization policy list. Each policy contains: policy identifier, business scenario, handling type, operation name, validity period, creation time, last modification time. When adding an authorization policy, the required parameters include: business scenario, handling type, operation name, validity period.",
+      "examples": [
+        "service complaint diagnosis/service recovery/tunnel optimization/2026-06-01~2030-06-18; carrier scheduling/service recovery/carrier scheduling/permanently valid"
+      ],
+      "x-a2at-value-constraint": "List text form. Each item contains: policy identifier (unique identifier), business scenario (e.g. service complaint diagnosis), handling type (e.g. service recovery), operation name (e.g. tunnel optimization), validity period (date range or permanently valid), creation time, last modification time"
+    }
+  },
+  "required": ["authorization_policy_operation_type"]
+}

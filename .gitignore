@@ -5,6 +5,7 @@ target/
 *.env
 # Sample env templates carry no secrets (empty API key) and must ship with the sources.
 !a2a-t-sample/src/main/resources/**/negotiation.env
+!a2a-t-sample/src/main/resources/**/authz.env
 reference/
 findings.md
 progress.md

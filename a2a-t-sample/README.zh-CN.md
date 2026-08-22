@@ -15,6 +15,7 @@
 - 协商端到端样例（4报文）：`net.openan.a2at.sample.negotiation.NegotiationDemoApp`
 - 结构化数据协商样例（fromData 3x3）：`net.openan.a2at.sample.negotiation.fromdata.FromDataNegotiationSample`
 - 自然语言协商样例（fromText 3x3）：`net.openan.a2at.sample.negotiation.fromtext.FromTextNegotiationSample`
+- 授权策略样例（Authorization-T）：`net.openan.a2at.sample.authz_policy.AuthzSampleMain`
 
 ## 模块内资源
 
@@ -119,6 +120,30 @@ java @a2a-t-sample/target/fromtext.javaargs.txt /path/to/.env
 ```
 
 复用 `shared/NegotiationSampleSupport` 公共辅助（SessionId、模板 URI 常量、summary），fromData 和 fromText 差异仅在输入构造（record vs 自然语言文本）。
+
+## 授权策略（Authorization-T）演示 Demo
+
+授权策略 Demo 是单进程直调 SDK 示例：客户端生成 Authorization-T prompt → 服务端校验合规性并提取参数。覆盖 3 个预置场景：
+
+| 场景 | 入口 | 说明 |
+|---|---|---|
+| `add-from-text` | 自然语言 | 新增两条动网操作授权策略 |
+| `add-from-data` | 结构化数据 | 结构化输入新增授权策略 |
+| `invalid-request` | 自然语言 | 不在四种操作类型之内，预期拒绝 |
+
+入口类：`net.openan.a2at.sample.authz_policy.AuthzSampleMain`
+
+捆绑环境模板：`sample/authz-policy/authz.env`（需配置真实 LLM key：`A2AT_LLM_PROVIDER` / `A2AT_LLM_MODEL` / `A2AT_LLM_API_KEY`）
+
+场景清单：`sample/authz-policy/scenarios.json`（增删场景零代码）
+
+启动命令：
+
+```bash
+java @a2a-t-sample/target/authz.javaargs.txt [env-path]
+```
+
+退出码约定：`0` 表示全部通过；非零表示存在 `FAIL` 或 `ERROR`。
 
 ## 客户端启动
 

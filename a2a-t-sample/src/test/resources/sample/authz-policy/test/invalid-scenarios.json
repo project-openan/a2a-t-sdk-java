@@ -1,0 +1,1 @@
+{"scenarios": [{"label": "bad-scenario", "entry": "invalid_entry", "input": {}, "expected": "pass"}]}
