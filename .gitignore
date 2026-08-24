@@ -14,3 +14,6 @@ task_plan.md
 .idea/
 
 .worktrees/
+eval-results/
+eval-run*.log
+eval-smoke.json

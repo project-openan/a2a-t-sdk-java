@@ -121,6 +121,45 @@ java @a2a-t-sample/target/fromtext.javaargs.txt /path/to/.env
 
 复用 `shared/NegotiationSampleSupport` 公共辅助（SessionId、模板 URI 常量、summary），fromData 和 fromText 差异仅在输入构造（record vs 自然语言文本）。
 
+## 协商接口闭环评测（Negotiation Interface Eval）
+
+`NegotiationEvalApp` 是纯 Java 评测入口，对 `eval-suite.json` 里的每个用例按报文顺序驱动协商 prompt 接口，逐步采集证据并输出可回放的 JSON 报告：
+
+| 步骤 | 接口 | 说明 |
+|---|---|---|
+| 1. Task-T 生成 | `generateTaskPromptFromDataWithSchema` / `FromText` | 按 case 的 `channel` 字段选通道 |
+| 2. 服务端校验 | `validateTaskPromptAndDataFilling` | 缺槽检测 |
+| 3. Negotiation-T propose 生成 | `generateNegotiationProposePromptFromData` / `FromText` | 按 case �� `negotiation_channel` 字段选通道 |
+| 4. 出站 propose 校验 | `validateProposePromptAndDataFilling` | 显式 `NegotiationContext` |
+| 5. 客户端补槽 + accept 生成 | `generateNegotiationAcceptPromptFromData` / `FromText` | 补槽值来自 suite 的 `client_fill_values` |
+| 6. 入站 accept 校验 | `validateAcceptPromptAndDataFilling` | 校验抽取的槽值与补槽值一致 |
+| 7. 二次 Task-T 校验 | `validateTaskPromptAndDataFilling` | 断言闭环后无缺槽 |
+
+通道语义：`fromData` 为确定性规则渲染（报文生成不走 LLM）；`fromText` 为 LLM 槽位抽取。所有校验接口均走 SDK 完整管线（规则门 + 一次语义 LLM 调用）。**需要真实 LLM API key**（env 文件参考根目录 `env.example`，至少配置 `A2AT_LLM_PROVIDER` / `A2AT_LLM_MODEL` / `A2AT_LLM_API_KEY` / `A2AT_LLM_BASE_URL`）。
+
+运行命令：
+
+```bash
+# 1. 打包（首次，生成 target/eval.javaargs.txt）
+mvn -pl a2a-t-sample -am -DskipTests package
+
+# 2. 跑全量用例（每个 case 按各自 channel 配置执行）
+java @a2a-t-sample/target/eval.javaargs.txt /path/to/.env
+
+# 3. 只跑指定 case（可重复传 --case）
+java @a2a-t-sample/target/eval.javaargs.txt --case PLC-04 /path/to/.env
+
+# 4. 强制全量走 fromText 协商通道（不改用例文件）
+java @a2a-t-sample/target/eval.javaargs.txt --negotiation-channel fromText /path/to/.env
+
+# 5. 指定报告输出路径（默认 ./eval-report.json）
+java @a2a-t-sample/target/eval.javaargs.txt --out eval-report-my-model.json /path/to/.env
+```
+
+**换用其他模型测试**：只需在 env 文件里改 4 个 LLM 变量（`A2AT_LLM_PROVIDER` / `A2AT_LLM_MODEL` / `A2AT_LLM_API_KEY` / `A2AT_LLM_BASE_URL`），无需改任何代码或用例。报告的 `llm` 字段会记录当次使用的 provider / model / base_url，`negotiation_channel` 字段记录当次通道（`per-case` 或强制值），便于横向对比多个模型的报告。
+
+用例集：`sample/negotiation/eval/eval-suite.json`（每条用例含输入文本/结构化数据、期望是否触发协商、期望缺槽、期望补槽闭环，含正反两类断言）。报告中每个 case 输出逐步证据（生成 prompt 原文、校验判定、耗时），`summary` 汇总通过率。
+
 ## 授权策略（Authorization-T）演示 Demo
 
 授权策略 Demo 是单进程直调 SDK 示例：客户端生成 Authorization-T prompt → 服务端校验合规性并提取参数。覆盖 3 个预置场景：

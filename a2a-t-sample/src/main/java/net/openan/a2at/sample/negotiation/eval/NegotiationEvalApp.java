@@ -91,12 +91,15 @@ public final class NegotiationEvalApp {
         Path envPath = null;
         Path outPath = Path.of("eval-report.json");
         List<String> caseFilter = new ArrayList<>();
+        String negotiationChannelOverride = null;
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             if ("--out".equals(arg) && i + 1 < args.length) {
                 outPath = Path.of(args[++i]);
             } else if ("--case".equals(arg) && i + 1 < args.length) {
                 caseFilter.add(args[++i]);
+            } else if ("--negotiation-channel".equals(arg) && i + 1 < args.length) {
+                negotiationChannelOverride = args[++i];
             } else if (!arg.startsWith("--")) {
                 envPath = Path.of(arg);
             }
@@ -104,12 +107,18 @@ public final class NegotiationEvalApp {
         if (envPath == null) {
             System.err.println(
                     "Usage: java @a2a-t-sample/target/eval.javaargs.txt [--out eval-report.json] [--case PLC-04]"
-                            + " /path/to/.env");
+                            + " [--negotiation-channel fromData|fromText] /path/to/.env");
             System.exit(1);
         }
 
         SampleMockLlmInstaller.installLlmLogger(false, "eval");
         Map<String, Object> suite = loadSuite();
+        if (negotiationChannelOverride != null) {
+            // run the whole suite with one negotiation generation channel without duplicating cases
+            for (Map<String, Object> testCase : cases(suite)) {
+                testCase.put("negotiation_channel", negotiationChannelOverride);
+            }
+        }
 
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("suite", suite.get("suite"));
@@ -118,6 +127,9 @@ public final class NegotiationEvalApp {
         report.put("generated_at", LocalDateTime.now().format(TIMESTAMP));
         report.put("llm", llmInfo(envPath));
         report.put("case_filter", caseFilter);
+        report.put("negotiation_channel", negotiationChannelOverride == null
+                ? "per-case"
+                : negotiationChannelOverride);
 
         List<Map<String, Object>> cases = new ArrayList<>();
         report.put("cases", cases);
@@ -158,6 +170,8 @@ public final class NegotiationEvalApp {
         String caseId = String.valueOf(testCase.get("id"));
         String channel = String.valueOf(testCase.get("channel"));
         boolean fromText = "fromText".equals(channel);
+        String negotiationChannel = String.valueOf(testCase.getOrDefault("negotiation_channel", "fromData"));
+        boolean negotiationFromText = "fromText".equals(negotiationChannel);
         String inputText = String.valueOf(testCase.get("input_text"));
         Map<String, Object> inputData = asMap(testCase.get("input_data"));
 
@@ -177,6 +191,7 @@ public final class NegotiationEvalApp {
         Map<String, Object> record = new LinkedHashMap<>();
         record.put("case", caseId);
         record.put("channel", channel);
+        record.put("negotiation_channel", negotiationChannel);
         record.put("intent", testCase.get("intent"));
         Map<String, Object> input = new LinkedHashMap<>();
         input.put("fromText", fromText);
@@ -272,26 +287,35 @@ public final class NegotiationEvalApp {
         for (String slot : actualMissing) {
             missingItems.add(new NegotiationItem(slot, missingHint(phrasing, properties, slot)));
         }
-        String proposePrompt;
         NegotiationContext proposeContext = new NegotiationContext(
                 UUID.randomUUID().toString(), 1, NegotiationContext.DEFAULT_MAX_ROUNDS);
+        String proposePrompt;
         try {
             A2ATServer server = new A2ATServer(envPath);
-            MetadataContent propose = server.generateNegotiationProposePromptFromData(
-                    new NegotiationProposeData(
-                            proposeContext,
-                            new InformationProposeContent(missingItems, phrasing.get("propose_relationship"))),
-                    DemoTemplates.NEGOTIATION_PROPOSE);
+            MetadataContent propose = negotiationFromText
+                    ? server.generateNegotiationProposePromptFromText(
+                            itemsToProposeText(missingItems, phrasing), proposeContext, DemoTemplates.NEGOTIATION_PROPOSE)
+                    : server.generateNegotiationProposePromptFromData(
+                            new NegotiationProposeData(
+                                    proposeContext,
+                                    new InformationProposeContent(missingItems, phrasing.get("propose_relationship"))),
+                            DemoTemplates.NEGOTIATION_PROPOSE);
             proposePrompt = propose.promptText();
-            Map<String, Object> step = step("3. Negotiation-T propose generation (fromData)", "server");
+            Map<String, Object> step =
+                    step("3. Negotiation-T propose generation (" + negotiationChannel + ")", "server");
             step.put("negotiation_items", itemsJson(missingItems));
+            if (negotiationFromText) {
+                step.put("input_text", itemsToProposeText(missingItems, phrasing));
+            }
             step.put("generated_prompt", proposePrompt);
             step.put("template_uri", propose.templateUri());
             step.put("task_state", "INPUT_REQUIRED");
             steps.add(step);
-            emit("[eval]   [3] propose rendered for " + actualMissing + " -> INPUT_REQUIRED");
+            emit("[eval]   [3] propose rendered for " + actualMissing + " (" + negotiationChannel
+                    + ") -> INPUT_REQUIRED");
         } catch (A2ATError error) {
-            steps.add(errorStep("3. Negotiation-T propose generation (fromData)", "propose_generation", error));
+            steps.add(errorStep("3. Negotiation-T propose generation (" + negotiationChannel + ")",
+                    "propose_generation", error));
             emit("[eval]   [3] propose generation FAILED: " + error.getCode() + " " + error.getMessage());
             return finish(record, steps, negotiationTriggered, actualMissing, null, null, null, expectNegotiation,
                     expectMissing, expectFillCompletes);
@@ -358,23 +382,31 @@ public final class NegotiationEvalApp {
                 UUID.randomUUID().toString(), 1, NegotiationContext.DEFAULT_MAX_ROUNDS);
         try {
             A2ATClient client = new A2ATClient(envPath);
-            MetadataContent accept = client.generateNegotiationAcceptPromptFromData(
-                    new NegotiationEndingData(
-                            acceptContext,
-                            new InformationEndingContent(NegotiationConclusion.ACCEPT, filledItems(fills))),
-                    DemoTemplates.NEGOTIATION_ACCEPT);
+            List<NegotiationItem> filledItems = filledItems(fills);
+            MetadataContent accept = negotiationFromText
+                    ? client.generateNegotiationAcceptPromptFromText(
+                            itemsToAcceptText(filledItems, phrasing), acceptContext, DemoTemplates.NEGOTIATION_ACCEPT)
+                    : client.generateNegotiationAcceptPromptFromData(
+                            new NegotiationEndingData(
+                                    acceptContext,
+                                    new InformationEndingContent(NegotiationConclusion.ACCEPT, filledItems)),
+                            DemoTemplates.NEGOTIATION_ACCEPT);
             acceptPrompt = accept.promptText();
-            Map<String, Object> step = step("5. client fill + Negotiation-T accept generation (fromData)", "client");
+            Map<String, Object> step =
+                    step("5. client fill + Negotiation-T accept generation (" + negotiationChannel + ")", "client");
             step.put("client_fill", fills);
             step.put("filled_task_prompt", filledPrompt);
             step.put("filled_params", filledData);
+            if (negotiationFromText) {
+                step.put("input_text", itemsToAcceptText(filledItems, phrasing));
+            }
             step.put("generated_prompt", acceptPrompt);
             step.put("template_uri", accept.templateUri());
             steps.add(step);
-            emit("[eval]   [5] client fills " + fills.keySet() + ", accept rendered");
+            emit("[eval]   [5] client fills " + fills.keySet() + ", accept rendered (" + negotiationChannel + ")");
         } catch (A2ATError error) {
-            steps.add(errorStep("5. client fill + Negotiation-T accept generation (fromData)", "accept_generation",
-                    error));
+            steps.add(errorStep("5. client fill + Negotiation-T accept generation (" + negotiationChannel + ")",
+                    "accept_generation", error));
             emit("[eval]   [5] accept generation FAILED: " + error.getCode() + " " + error.getMessage());
             return finish(record, steps, negotiationTriggered, actualMissing, proposeValid, null, null,
                     expectNegotiation, expectMissing, expectFillCompletes);
@@ -629,6 +661,43 @@ public final class NegotiationEvalApp {
         return template.replace("{slot}", slot).replace("{description}", description == null ? "" : String.valueOf(description));
     }
 
+    /**
+     * Assembles the natural-language propose input for the fromText negotiation channel, mirroring the demo's
+     * {@code FromTextStrategy}: scenario-configured prefix, numbered item list, relationship sentence.
+     */
+    private static String itemsToProposeText(List<NegotiationItem> items, Map<String, String> phrasing) {
+        StringBuilder text = new StringBuilder(phrasing.getOrDefault("from_text_propose_prefix", ""));
+        appendNumberedItems(text, items);
+        String relationship = phrasing.get("propose_relationship");
+        if (relationship != null && !relationship.isBlank()) {
+            text.append(relationship);
+        }
+        return text.toString();
+    }
+
+    /**
+     * Assembles the natural-language accept input for the fromText negotiation channel: scenario-configured prefix,
+     * numbered item list, suffix sentence.
+     */
+    private static String itemsToAcceptText(List<NegotiationItem> items, Map<String, String> phrasing) {
+        StringBuilder text = new StringBuilder(phrasing.getOrDefault("from_text_accept_prefix", ""));
+        appendNumberedItems(text, items);
+        text.append(phrasing.getOrDefault("from_text_accept_suffix", ""));
+        return text.toString();
+    }
+
+    /** Generic numbered-list rule: {@code N. name：value；} per item, value omitted when blank. */
+    private static void appendNumberedItems(StringBuilder text, List<NegotiationItem> items) {
+        for (int i = 0; i < items.size(); i++) {
+            NegotiationItem item = items.get(i);
+            text.append(i + 1).append(". ").append(item.name());
+            if (item.value() != null && !item.value().isBlank()) {
+                text.append("：").append(item.value());
+            }
+            text.append("；");
+        }
+    }
+
     /** The supplement values the simulated client supplies, keyed by slot. */
     private static Map<String, String> fills(Set<String> missingSlots, Map<String, String> fillValues) {
         Map<String, String> fills = new LinkedHashMap<>();
@@ -697,11 +766,20 @@ public final class NegotiationEvalApp {
         return schema;
     }
 
-    /** Whether every server-extracted fill value matches the value the client sent for that slot. */
+    /**
+     * Whether every server-extracted fill value matches the value the client sent for that slot. The comparison is
+     * containment in either direction after whitespace removal: the extracted value may carry the slot's field label
+     * (e.g. 接入端口名称：P781-…) or only the bare value (e.g. P781-…), both of which faithfully transport the fill.
+     */
     private static boolean fillValuesMatch(Map<String, Object> extracted, Map<String, String> fills) {
         for (Map.Entry<String, String> entry : fills.entrySet()) {
             Object value = extracted.get(entry.getKey());
-            if (value == null || !normalize(String.valueOf(value)).contains(normalize(entry.getValue()))) {
+            if (value == null) {
+                return false;
+            }
+            String extractedText = normalize(String.valueOf(value));
+            String sentText = normalize(entry.getValue());
+            if (!extractedText.contains(sentText) && !sentText.contains(extractedText)) {
                 return false;
             }
         }

@@ -21,7 +21,10 @@
   },
   "negotiation_phrasing": {
     "missing_item_hint": "请提供{slot}：{description}",
-    "propose_relationship": "以上参数均为必选，缺少无法启动诊断"
+    "propose_relationship": "以上参数均为必选，缺少无法启动诊断",
+    "from_text_propose_prefix": "请提供以下缺失信息：",
+    "from_text_accept_prefix": "同意补充以下信息：",
+    "from_text_accept_suffix": "信息已完整，可以启动诊断。"
   },
   "client_fill_values": {
     "任务对象": "接入端口名称：P781-珠江新城-PTN7900-23-TPA1EG24-17",
