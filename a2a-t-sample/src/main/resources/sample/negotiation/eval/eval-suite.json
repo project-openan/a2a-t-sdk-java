@@ -1,6 +1,6 @@
 {
   "suite": "negotiation-interface-eval",
-  "description": "Private-line complaint negotiation closed-loop evaluation. Each case drives the negotiation prompt interfaces in message order: Task-T generation (fromData/fromText) -> server validation (missing-slot detection) -> Negotiation-T propose generation -> outbound propose validation -> client fill + accept generation -> inbound accept validation -> second Task-T validation. Channels: fromData is deterministic generation (no LLM for message rendering); fromText runs LLM slot extraction. All validation interfaces run the SDK pipeline (rule gate + one semantic LLM call).",
+  "description": "Private-line complaint negotiation closed-loop evaluation. Each case drives the negotiation prompt interfaces in message order: Task-T generation (fromData/fromText) -> server validation (missing-slot detection) -> Negotiation-T propose generation -> server outbound propose validation -> client inbound propose validation -> client fill + accept generation -> server inbound accept validation -> second Task-T validation. Channels: fromData feeds structured JSON (every key maps to one slot value) together with the task schema; fromText feeds natural language. Slot extraction and all validation interfaces run the SDK pipeline (rule gate + semantic LLM call), with the JSON schema passed on every generate/validate call. Slot requiredness is enforced at the validation gate (task_schema required list), not at generation: a prompt with missing required slots is still renderable, so negotiation can ask for exactly those gaps.",
   "scenario": "private-line-complaint",
   "template_uri": "Task-T/network-layer/private-line-complaint/v1",
   "task_schema": {
@@ -8,16 +8,32 @@
     "properties": {
       "任务对象": {
         "type": "string",
-        "description": "专线业务对象标识：专线名称 / 接入端口名称（网元名称+单板号+单板型号+端口号）/ 接入端口资源ID，三者提供其一"
+        "description": "专线业务对象标识，用于定位被投诉的专线业务",
+        "x-a2at-value-constraint": "专线名称：网络侧EMS网管的专线对象标识。接入端口名称：网络侧EMS网管的接入端口名称，格式为：网元名称+单板号+单板型号+端口号。接入端口资源ID：网络侧EMS网管的接入端口资源对象标识。三者提供其一。"
       },
-      "任务上下文": {
+      "投诉分类": {
         "type": "string",
-        "description": "故障现象（专线中断/专线质量差，必选）+ 故障发生时间（可选）+ OSS侧事件流水号（可选）"
+        "enum": ["专线中断", "专线质差"],
+        "description": "投诉场景分类，标识专线故障的现象类型",
+        "x-a2at-value-constraint": "取值仅限两种场景之一：专线中断（业务完全不可用）、专线质差（业务可用但质量劣化）。"
+      },
+      "问题发生时间": {
+        "type": "string",
+        "description": "故障或投诉现象的发生时间",
+        "x-a2at-value-constraint": "可选参数，允许为空，为空不构成校验错误；时间格式建议为 ISO 8601（如 2026-05-11T08:21:46Z）。"
+      },
+      "OSS侧事件流水号": {
+        "type": "string",
+        "description": "OSS侧的专线业务投诉工单流水号",
+        "x-a2at-value-constraint": "OSS侧事件流水号：填写OSS侧的专线业务投诉工单流水号，格式为 event-id-开头的事件标识。"
+      },
+      "投诉详情": {
+        "type": "string",
+        "description": "专线用户对业务投诉的描述，以及OSS侧的预处理信息",
+        "x-a2at-value-constraint": "可选参数，允许为空，为空不构成校验错误；自由文本描述，无格式约束。"
       }
     },
-    "required": [
-      "任务上下文"
-    ]
+    "required": ["任务对象", "投诉分类", "OSS侧事件流水号"]
   },
   "negotiation_phrasing": {
     "missing_item_hint": "请提供{slot}：{description}",
@@ -28,16 +44,22 @@
   },
   "client_fill_values": {
     "任务对象": "接入端口名称：P781-珠江新城-PTN7900-23-TPA1EG24-17",
-    "任务上下文": "故障现象：专线中断，业务完全不可用。问题发生时间：2026-06-02T14:30:00Z。"
+    "投诉分类": "专线中断",
+    "问题发生时间": "2026-06-02T14:30:00Z",
+    "OSS侧事件流水号": "event-id-20260602-08841",
+    "投诉详情": "客户业务全部不通，柜面交易无法办理。"
   },
   "cases": [
     {
       "id": "PLC-01",
       "channel": "fromData",
-      "intent": "结构化参数完整，不应触发协商",
+      "intent": "结构化数据完整（5槽齐备），不应触发协商",
       "input_data": {
         "任务对象": "接入端口名称：P781-珠江新城-PTN7900-23-TPA1EG24-17",
-        "任务上下文": "故障现象：专线质量差，深圳访问广州响应延迟骤升，交易接口频繁报连接超时。问题发生时间：2026-05-11T08:21:46Z。OSS侧事件流水号：event-id-20260511-09013。"
+        "投诉分类": "专线质差",
+        "问题发生时间": "2026-05-11T08:21:46Z",
+        "OSS侧事件流水号": "event-id-20260511-09013",
+        "投诉详情": "深圳访问广州响应延迟骤升，交易接口频繁报连接超时。"
       },
       "expect": {
         "negotiation_needed": false,
@@ -47,8 +69,8 @@
     {
       "id": "PLC-02",
       "channel": "fromText",
-      "intent": "自然语言完整（端口+现象+时间+流水号），不应触发协商",
-      "input_text": "深圳福田区某金融客户专线出现质量劣化。接入端口：P781-珠江新城-PTN7900-23-TPA1EG24-17。故障现象：专线质量差，深圳访问广州响应延迟骤升，交易接口频繁报连接超时。问题发生时间：2026-05-11T08:21:46Z。OSS侧事件流水号：event-id-20260511-09013。",
+      "intent": "自然语言完整（端口+分类+时间+流水号+详情），不应触发协商",
+      "input_text": "深圳福田区某金融客户专线出现质量劣化。接入端口：P781-珠江新城-PTN7900-23-TPA1EG24-17。故障现象：专线质差，深圳访问广州响应延迟骤升，交易接口频繁报连接超时。问题发生时间：2026-05-11T08:21:46Z。OSS侧事件流水号：event-id-20260511-09013。投诉详情：从5月11号早上8点半开始，核心交易系统访问非常慢，柜面和手机银行频繁报连接超时。",
       "expect": {
         "negotiation_needed": false,
         "missing_slots": []
@@ -57,53 +79,50 @@
     {
       "id": "PLC-03",
       "channel": "fromData",
-      "intent": "结构化缺任务对象，触发协商",
+      "intent": "结构化缺任务对象，触发任务对象协商",
       "input_data": {
         "任务对象": "",
-        "任务上下文": "故障现象：专线中断，客户业务全部不通。问题发生时间：2026-06-02T14:30:00Z。OSS侧事件流水号：event-id-20260602-08841。"
+        "投诉分类": "专线中断",
+        "问题发生时间": "2026-06-02T14:30:00Z",
+        "OSS侧事件流水号": "event-id-20260602-08841",
+        "投诉详情": "客户业务全部不通，柜面交易无法办理。"
       },
       "expect": {
         "negotiation_needed": true,
-        "missing_slots": [
-          "任务对象"
-        ],
+        "missing_slots": ["任务对象"],
         "fill_completes": true
       }
     },
     {
       "id": "PLC-04",
       "channel": "fromText",
-      "intent": "口语化缺专线标识，触发协商",
-      "input_text": "我们的专线出问题了，故障现象：专线中断，客户业务全部不通。问题发生时间：2026-06-02T14:30:00Z。OSS侧事件流水号：event-id-20260602-08841。",
+      "intent": "口语化缺专线标识（业务全断可推断投诉分类），触发任务对象协商",
+      "input_text": "我们的专线出问题了，业务全部都断了，完全用不了。问题发生时间：2026-06-02T14:30:00Z。OSS侧事件流水号：event-id-20260602-08841。",
       "expect": {
         "negotiation_needed": true,
-        "missing_slots": [
-          "任务对象"
-        ],
+        "missing_slots": ["任务对象"],
         "fill_completes": true
       }
     },
     {
       "id": "PLC-05",
       "channel": "fromText",
-      "intent": "自然语言两个槽全空（无对象无现象）：required 槽在生成期即被拦截，任务无法生成，协商不触发",
+      "intent": "自然语言必选槽全空（无对象无分类无流水号）：报文可生成（生成门不拦必选槽），校验检出全部必选槽缺失，触发三槽协商",
       "input_text": "帮我看一下专线的问题。",
       "expect": {
-        "negotiation_needed": false,
-        "missing_slots": [],
-        "generation_fails": true
+        "negotiation_needed": true,
+        "missing_slots": ["任务对象", "投诉分类", "OSS侧事件流水号"],
+        "fill_completes": true
       }
     },
     {
       "id": "PLC-06",
       "channel": "fromText",
       "intent": "任务对象模糊（非端口/ID/名称形态），触发任务对象协商",
-      "input_text": "故障现象：专线质量差，网页打开缓慢，视频卡顿。故障发生时间：2026-06-18T09:00:00Z。",
+      "input_text": "故障现象：专线质量差，网页打开缓慢，视频卡顿。问题发生时间：2026-06-18T09:00:00Z。OSS侧事件流水号：event-id-20260618-07721。",
       "expect": {
         "negotiation_needed": true,
-        "missing_slots": [
-          "任务对象"
-        ],
+        "missing_slots": ["任务对象"],
         "fill_completes": true
       }
     },
@@ -111,7 +130,7 @@
       "id": "PLC-07",
       "channel": "fromText",
       "intent": "口语化完整请求，端口埋在长句里，不应触发协商",
-      "input_text": "东莞松山湖科技园客户报障说专线卡，涉及端口 P662-松山湖北-PTN9900-12-TPB3EG12-08，成天丢包，业务系统登录都费劲，昨天下午三点开始的，流水号 event-id-20260619-55210。",
+      "input_text": "就是珠江新城那边 PTN7900 网元上 P781-珠江新城-PTN7900-23-TPA1EG24-17 这个接入端口带的专线，专线质差，深圳访问广州的响应延迟从12ms涨到了300多毫秒，问题发生时间：2026-05-11T08:21:46Z，OSS侧事件流水号：event-id-20260511-09013。",
       "expect": {
         "negotiation_needed": false,
         "missing_slots": []
@@ -120,13 +139,11 @@
     {
       "id": "PLC-08",
       "channel": "fromText",
-      "intent": "故障现象不明确（未指明中断或质差），触发任务上下文协商",
-      "input_text": "接入端口：P311-会展中心-ATN910C-05-TPA2EG8-03。专线好像有点问题，时好时坏，客户体验受影响。",
+      "intent": "自然语言未描述任何故障现象（投诉分类无从判定为中断或质差），触发投诉分类协商",
+      "input_text": "接入端口：P311-会展中心-ATN910C-05-TPA2EG8-03。OSS侧事件流水号：event-id-20260618-07721。",
       "expect": {
         "negotiation_needed": true,
-        "missing_slots": [
-          "任务上下文"
-        ],
+        "missing_slots": ["投诉分类"],
         "fill_completes": true
       }
     },
@@ -134,7 +151,7 @@
       "id": "PLC-09",
       "channel": "fromText",
       "intent": "端口误写在现象描述里（字段错位），抽取器应归位到任务对象，不触发协商",
-      "input_text": "故障现象：专线质量差。端口是 P120-南山智园-PTN7900-08-TPA1EG21-11，丢包严重。",
+      "input_text": "故障现象：专线中断，出现问题的接入端口是P781-珠江新城-PTN7900-23-TPA1EG24-17，业务完全不可用。问题发生时间：2026-06-02T14:30:00Z。OSS侧事件流水号：event-id-20260602-08841。",
       "expect": {
         "negotiation_needed": false,
         "missing_slots": []
@@ -143,20 +160,99 @@
     {
       "id": "PLC-10",
       "channel": "fromData",
-      "intent": "负例：补充值端口格式乱写，二次校验应拒绝（测校验器对值约束的把关）",
+      "intent": "负例：补充值投诉分类乱写（不符合中断/质差取值约束），二次校验应拒绝（测校验器对值约束的把关）",
       "input_data": {
-        "任务对象": "",
-        "任务上下文": "故障现象：专线中断，客户业务全部不通。问题发生时间：2026-06-02T14:30:00Z。OSS侧事件流水号：event-id-20260602-08841。"
+        "任务对象": "接入端口名称：P781-珠江新城-PTN7900-23-TPA1EG24-17",
+        "投诉分类": "",
+        "问题发生时间": "2026-06-02T14:30:00Z",
+        "OSS侧事件流水号": "event-id-20260602-08841",
+        "投诉详情": "客户业务全部不通，柜面交易无法办理。"
       },
       "fill_override": {
-        "任务对象": "端口是坏的"
+        "投诉分类": "不知道是什么问题"
       },
       "expect": {
         "negotiation_needed": true,
-        "missing_slots": [
-          "任务对象"
-        ],
+        "missing_slots": ["投诉分类"],
         "fill_completes": false
+      }
+    },
+    {
+      "id": "PLC-11",
+      "channel": "fromData",
+      "intent": "结构化缺投诉分类（任务上下文子槽缺失），触发投诉分类协商",
+      "input_data": {
+        "任务对象": "接入端口名称：P311-会展中心-ATN910C-05-TPA2EG8-03",
+        "投诉分类": "",
+        "问题发生时间": "2026-06-18T09:00:00Z",
+        "OSS侧事件流水号": "event-id-20260618-07721",
+        "投诉详情": "网页打开缓慢，视频卡顿。"
+      },
+      "expect": {
+        "negotiation_needed": true,
+        "missing_slots": ["投诉分类"],
+        "fill_completes": true
+      }
+    },
+    {
+      "id": "PLC-12",
+      "channel": "fromData",
+      "intent": "结构化缺OSS侧事件流水号（任务上下文子槽缺失），触发流水号协商",
+      "input_data": {
+        "任务对象": "接入端口名称：P311-会展中心-ATN910C-05-TPA2EG8-03",
+        "投诉分类": "专线质差",
+        "问题发生时间": "2026-06-18T09:00:00Z",
+        "OSS侧事件流水号": "",
+        "投诉详情": "网页打开缓慢，视频卡顿。"
+      },
+      "expect": {
+        "negotiation_needed": true,
+        "missing_slots": ["OSS侧事件流水号"],
+        "fill_completes": true
+      }
+    },
+    {
+      "id": "PLC-13",
+      "channel": "fromData",
+      "intent": "可选槽缺失（问题发生时间/投诉详情为空），不应触发协商",
+      "input_data": {
+        "任务对象": "接入端口名称：P781-珠江新城-PTN7900-23-TPA1EG24-17",
+        "投诉分类": "专线中断",
+        "问题发生时间": "",
+        "OSS侧事件流水号": "event-id-20260602-08841",
+        "投诉详情": ""
+      },
+      "expect": {
+        "negotiation_needed": false,
+        "missing_slots": []
+      }
+    },
+    {
+      "id": "PLC-14",
+      "channel": "fromText",
+      "intent": "自然语言缺OSS侧事件流水号（任务上下文子槽缺失），触发流水号协商",
+      "input_text": "接入端口：P311-会展中心-ATN910C-05-TPA2EG8-03。故障现象：专线中断，业务完全不可用，柜面交易无法办理。问题发生时间：2026-06-18T09:00:00Z。",
+      "expect": {
+        "negotiation_needed": true,
+        "missing_slots": ["OSS侧事件流水号"],
+        "fill_completes": true
+      }
+    },
+    {
+      "id": "PLC-15",
+      "channel": "fromData",
+      "intent": "结构化双槽缺失（任务对象+投诉分类），协商应同时请求两个槽",
+      "input_data": {
+        "任务对象": "",
+        "投诉分类": "",
+        "问题发生时间": "2026-06-18T09:00:00Z",
+        "OSS侧事件流水号": "event-id-20260618-07721",
+        "投诉详情": "客户业务全部不通。"
+      },
+      "expect": {
+        "negotiation_needed": true,
+        "missing_slots": ["任务对象", "投诉分类"],
+        "fill_completes": true
       }
     }
   ]

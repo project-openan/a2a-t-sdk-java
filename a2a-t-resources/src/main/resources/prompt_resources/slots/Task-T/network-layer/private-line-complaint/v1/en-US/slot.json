@@ -5,22 +5,46 @@
   "properties": {
     "task_object": {
       "type": "string",
-      "description": "Private line name, access port name, and access port resource ID; provide one of the three parameters to identify the private line service object.",
+      "description": "Identifier of the private line service object under complaint, used to locate the service.",
       "examples": [
-        "Access port resource ID: f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        "Access port name: P781-Zhujiang New Town-PTN7900-23-TPA1EG24-17"
       ],
-      "x-a2at-value-constraint": "Private line name: the private line object identifier in the network-side EMS NMS. Access port name: the access port name in the network-side EMS NMS, in the format: network element name + board number + board model + port number. Access port resource ID: the access port resource object identifier in the network-side EMS NMS."
+      "x-a2at-value-constraint": "Private line name: the private line object identifier in the network-side EMS NMS. Access port name: the access port name in the network-side EMS NMS, in the format: network element name + board number + board model + port number. Access port resource ID: the access port resource object identifier in the network-side EMS NMS. Provide one of the three."
     },
-    "task_context": {
+    "complaint_category": {
       "type": "string",
-      "description": "Provide the fault phenomenon description of the private line service and the context information of the diagnosis task.",
+      "description": "Complaint scenario category, indicating the fault phenomenon type of the private line.",
+      "enum": ["private line interruption", "poor private line quality"],
       "examples": [
-        "Fault phenomenon: private line interruption. Fault sequence number: fault-id-1-017-20230511-09013"
+        "private line interruption",
+        "poor private line quality"
       ],
-      "x-a2at-value-constraint": "Fault phenomenon: includes two scenarios, \"private line interruption\" and \"poor private line quality\". Required parameter. Fault occurrence time. Optional parameter. Fault or event sequence number on the OSS side. Optional parameter."
+      "x-a2at-value-constraint": "Only one of two scenarios is allowed: private line interruption (service completely unavailable) or poor private line quality (service available but degraded)."
+    },
+    "problem_occurrence_time": {
+      "type": "string",
+      "description": "Occurrence time of the fault or complaint phenomenon.",
+      "examples": [
+        "2026-05-11T08:21:46Z"
+      ],
+      "x-a2at-value-constraint": "Optional parameter; an empty value is allowed and is not a validation error. Time is recommended in ISO 8601 format (for example, 2026-05-11T08:21:46Z)."
+    },
+    "oss_event_sequence_number": {
+      "type": "string",
+      "description": "Private line service complaint work order sequence number on the OSS side.",
+      "examples": [
+        "event-id-20260511-09013"
+      ],
+      "x-a2at-value-constraint": "OSS-side event sequence number: fill in the private line service complaint work order sequence number on the OSS side, in the format of an event identifier starting with event-id-."
+    },
+    "complaint_details": {
+      "type": "string",
+      "description": "The private line user's description of the service complaint, plus OSS-side preprocessing information.",
+      "examples": [
+        "Starting from 8:30 a.m. on May 11, the response latency from Shenzhen to Guangzhou suddenly increased from an average of 12ms to 320ms, and accessing the core trading system of the Guangzhou data center became very slow. The trading interfaces of the counter and mobile banking frequently report 'connection timeout'. Normal business operations take a dozen seconds or even half a minute to return results!"
+      ],
+      "x-a2at-value-constraint": "Optional parameter; an empty value is allowed and is not a validation error. Free-text description with no format constraint."
     }
   },
-  "required": [
-    "task_context"
-  ]
+  "required": []
 }

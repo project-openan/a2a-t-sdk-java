@@ -125,17 +125,27 @@ java @a2a-t-sample/target/fromtext.javaargs.txt /path/to/.env
 
 `NegotiationEvalApp` 是纯 Java 评测入口，对 `eval-suite.json` 里的每个用例按报文顺序驱动协商 prompt 接口，逐步采集证据并输出可回放的 JSON 报告：
 
-| 步骤 | 接口 | 说明 |
-|---|---|---|
-| 1. Task-T 生成 | `generateTaskPromptFromDataWithSchema` / `FromText` | 按 case 的 `channel` 字段选通道 |
-| 2. 服务端校验 | `validateTaskPromptAndDataFilling` | 缺槽检测 |
-| 3. Negotiation-T propose 生成 | `generateNegotiationProposePromptFromData` / `FromText` | 按 case �� `negotiation_channel` 字段选通道 |
-| 4. 出站 propose 校验 | `validateProposePromptAndDataFilling` | 显式 `NegotiationContext` |
-| 5. 客户端补槽 + accept 生成 | `generateNegotiationAcceptPromptFromData` / `FromText` | 补槽值来自 suite 的 `client_fill_values` |
-| 6. 入站 accept 校验 | `validateAcceptPromptAndDataFilling` | 校验抽取的槽值与补槽值一致 |
-| 7. 二次 Task-T 校验 | `validateTaskPromptAndDataFilling` | 断言闭环后无缺槽 |
+| 步骤 | 角色 | 接口 | 说明 |
+|---|---|---|---|
+| 1. Task-T 生成 | client | `generateTaskPromptFromDataWithSchema` / `FromText` | 按 case 的 `channel` 字段选通道；fromData 传入结构化 JSON（每个 key 对应一个槽位值）+ JSON schema |
+| 2. 服务端校验 | server | `validateTaskPromptAndDataFilling` | 传入 JSON schema 做缺槽检测 |
+| 3. Negotiation-T propose 生成 | server | `generateNegotiationProposePromptFromData` / `FromText` | 按 case 的 `negotiation_channel` 字段选通道 |
+| 4. 出站 propose 自检 | server | `validateProposePromptAndDataFilling` | 发送前自检，显式 `NegotiationContext` |
+| 5. 入站 propose 校验 | client | `validateProposePromptAndDataFilling` | 客户端校验收到的协商请求，提取"需要补充的槽位清单"，补槽由该清单驱动 |
+| 6. 客户端补槽 + accept 生成 | client | `generateTaskPromptFromDataWithSchema` + `generateNegotiationAcceptPromptFromData` / `FromText` | 补槽值来自 suite 的 `client_fill_values` |
+| 7. 入站 accept 校验 | server | `validateAcceptPromptAndDataFilling` | 校验抽取的槽值与补槽值一致 |
+| 8. 二次 Task-T 校验 | server | `validateTaskPromptAndDataFilling` | 断言闭环后无缺槽 |
 
-通道语义：`fromData` 为确定性规则渲染（报文生成不走 LLM）；`fromText` 为 LLM 槽位抽取。所有校验接口均走 SDK 完整管线（规则门 + 一次语义 LLM 调用）。**需要真实 LLM API key**（env 文件参考根目录 `env.example`，至少配置 `A2AT_LLM_PROVIDER` / `A2AT_LLM_MODEL` / `A2AT_LLM_API_KEY` / `A2AT_LLM_BASE_URL`）。
+**API 调用证据**：报告的每个步骤都记录 `api_calls`（SDK 方法名 + 完整输入参数，含传入的 JSON schema 全文），可从报告直接核对每次调用是否携带 schema、用了哪个模板 URI 和协商上下文。
+
+**协议约定**（两条常见问题）：
+
+1. **服务端发起协商后，客户端是否还需调用 validate？** 是。SDK 在 client/server 两个门面上提供对称的 `validate*PromptAndDataFilling` API：发送方出站自检（步骤 4），接收方入站校验（步骤 5/7）。客户端收到 propose 后应调 `validateProposePromptAndDataFilling` 提取需要补充的槽位清单，再据此补槽。
+2. **客户端接受协商并补充报文后，服务端如何合并原始模板与协商补充内容？** 无增量合并 API。合并发生在客户端：客户端持有完整参数集（round-1 提取参数 + 补槽值），用 `generateTaskPromptFromDataWithSchema` **重新渲染整份 Task-T**（步骤 6），随 accept 一并发送；服务端对完整报文做 `validateTaskPromptAndDataFilling`（步骤 8）提参，不做"原始模板+增量"拼接。
+
+**槽位契约（双门语义）**：任务 schema 定义 5 个槽位（`任务对象`、`投诉分类`、`问题发生时间`、`OSS侧事件流水号`、`投诉详情`），必选项为 `任务对象`/`投诉分类`/`OSS侧事件流水号`。必选性在**校验门**（调用方传入的 task_schema required 列表）强制：缺必选槽的报文可以生成（生成门不拦截），由校验检出缺槽并触发协商——这正是协商流程的前提。
+
+通道语义：`fromData` 传结构化 JSON + schema；`fromText` 传自然语言由 LLM 抽取。所有生成/校验接口均走 SDK 管线（规则门 + 语义 LLM 调用）。**需要真实 LLM API key**（env 文件参考根目录 `env.example`，至少配置 `A2AT_LLM_PROVIDER` / `A2AT_LLM_MODEL` / `A2AT_LLM_API_KEY` / `A2AT_LLM_BASE_URL`）。
 
 运行命令：
 
@@ -158,7 +168,7 @@ java @a2a-t-sample/target/eval.javaargs.txt --out eval-report-my-model.json /pat
 
 **换用其他模型测试**：只需在 env 文件里改 4 个 LLM 变量（`A2AT_LLM_PROVIDER` / `A2AT_LLM_MODEL` / `A2AT_LLM_API_KEY` / `A2AT_LLM_BASE_URL`），无需改任何代码或用例。报告的 `llm` 字段会记录当次使用的 provider / model / base_url，`negotiation_channel` 字段记录当次通道（`per-case` 或强制值），便于横向对比多个模型的报告。
 
-用例集：`sample/negotiation/eval/eval-suite.json`（每条用例含输入文本/结构化数据、期望是否触发协商、期望缺槽、期望补槽闭环，含正反两类断言）。报告中每个 case 输出逐步证据（生成 prompt 原文、校验判定、耗时），`summary` 汇总通过率。
+用例集：`sample/negotiation/eval/eval-suite.json`（15 条用例：fromData/fromText × 完整输入/任务对象缺失/投诉分类缺失/OSS流水号缺失/可选槽缺失/双槽缺失/负例补槽约束违反，含正反两类断言）。报告中每个 case 输出逐步证据（`api_calls`、生成 prompt 原文、校验判定与抽取参数、耗时），`metrics` 汇总通过率。
 
 ## 授权策略（Authorization-T）演示 Demo
 
