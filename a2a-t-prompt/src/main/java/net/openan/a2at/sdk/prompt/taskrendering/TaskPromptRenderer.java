@@ -13,6 +13,11 @@ import net.openan.a2at.sdk.prompt.taskrendering.exception.TaskPromptRenderExcept
  * <p>This renderer carries the <b>collapse</b> blank-slot policy of {@link SectionedTemplateRenderer}: a slot section
  * keeps its scaffolding and its standalone slot line collapses to the bare slot placeholder.
  *
+ * <p>A section is identified as a slot section when its first non-empty body line begins with a double-braced
+ * placeholder {@code {{name}}}. Whatever follows the placeholder (marker text, parenthesized prose, nothing) is
+ * discarded on collapse. Single-brace example text (e.g. {@code {00:00~06:00,2Mbps}}) never triggers slot-section
+ * identification.
+ *
  * @since 2026-06
  */
 public final class TaskPromptRenderer implements SectionedTemplateRenderer {
@@ -29,7 +34,7 @@ public final class TaskPromptRenderer implements SectionedTemplateRenderer {
     }
     private static final Pattern SECTION_HEADER_PATTERN = Pattern.compile("^##\\s+.+$");
     private static final Pattern STANDALONE_SLOT_LINE_PATTERN = Pattern.compile(
-            "^\\s*(\\{\\{?\\s*[^{}]+?\\s*\\}\\}?)(?:\\s*(?:\\(Required\\)|\\(Optional\\)|（必选）|（可选）))?\\s*$");
+            "^\\s*(\\{\\{([^{}]+)\\}\\}).*$");
 
     /**
      * Renders a template by replacing slot placeholders with normalized slot values.

@@ -10,12 +10,12 @@ import java.util.regex.Pattern;
  * Sectioned template renderer with the <b>drop</b> blank-slot policy.
  *
  * <p>A template is split into sections on {@code ## } title lines; any content before the first title, including a
- * leading HTML description comment, is discarded. A section whose first non-empty body line is a slot placeholder line
- * such as {@code {{required_information_items}} (required)} — or the same shape with the full-width required/optional
- * markers used by zh-CN templates — is a slot section: it is rendered as the title followed by the slot value, or
- * dropped entirely when the slot value is null or blank. Every other section is static and passes through with
- * placeholder substitution applied. Rendered sections are joined with a single blank line and the result carries no
- * trailing newline.
+ * leading HTML description comment, is discarded. A section whose first non-empty body line begins with a
+ * double-braced placeholder {@code {{name}}} is a slot section: it is rendered as the title followed by the slot
+ * value, or dropped entirely when the slot value is null or blank. Whatever follows the placeholder (marker text,
+ * parenthesized prose, nothing) is ignored for identification. Every other section is static and passes through
+ * with placeholder substitution applied. Rendered sections are joined with a single blank line and the result
+ * carries no trailing newline.
  *
  * @since 2026-08
  */
@@ -24,7 +24,7 @@ public final class DropBlankSlotSectionRenderer implements SectionedTemplateRend
     private static final String SECTION_TITLE_PREFIX = "## ";
 
     private static final Pattern SLOT_LINE_PATTERN =
-            Pattern.compile("^\\{\\{([^{}]+)\\}\\}\\s*(（必填）|（选填）|\\(required\\)|\\(optional\\))$");
+            Pattern.compile("^\\{\\{([^{}]+)\\}\\}.*$");
 
     private static final Pattern SLOT_TOKEN_PATTERN = Pattern.compile("\\{\\{([^{}]+)\\}\\}");
 
@@ -35,7 +35,7 @@ public final class DropBlankSlotSectionRenderer implements SectionedTemplateRend
      * @param slots slot values keyed by the language-specific slot name; a null or blank value drops the slot section
      * @return rendered message text with sections joined by one blank line and no trailing newline; empty string when
      *     no section remains
-     * @throws IllegalArgumentException if the template text is null
+     * @throws NullPointerException if the template text is null
      */
     @Override
     public String render(String templateText, Map<String, String> slots) {

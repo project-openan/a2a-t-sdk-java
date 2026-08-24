@@ -7,8 +7,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Renders a sectioned prompt template by filling slot values under one blank-slot policy.
  *
- * <p>A sectioned template is split into sections on {@code ## } title lines; any content before the first title is
- * preamble and is discarded. A section whose first non-empty body line is a standalone slot placeholder line is a
+ * <p>A sectioned template is split into sections on {@code ## } title lines; preamble handling is policy-specific —
+ * the drop policy discards content before the first title, while the collapse policy may retain it. A section whose first non-empty body line is a standalone slot placeholder line is a
  * slot section driven by that slot; every other section is static and passes through with placeholder substitution.
  *
  * <p>Implementations differ in how they treat a slot section whose value is null or blank:
