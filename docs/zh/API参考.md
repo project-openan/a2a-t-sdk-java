@@ -17,6 +17,9 @@ A2A-T SDK 的对外 API 收敛在两个门面上：客户端门面 `A2ATClient`�
 | Negotiation-T | `validateProposePromptAndDataFilling` | A2A-T Client / A2A-T Server | 校验协商发起报文合规性并按Schema提取参数 | 是（1次LLM语义校验） |
 | Negotiation-T | `validateAcceptPromptAndDataFilling` | A2A-T Client / A2A-T Server | 校验协商接受报文合规性并按Schema提取参数 | 是（1次LLM语义校验） |
 | Negotiation-T | `validateRejectPromptAndDataFilling` | A2A-T Client / A2A-T Server | 校验协商拒绝报文合规性并按Schema提取参数 | 是（1次LLM语义校验） |
+| Negotiation-T | `generateNegotiationAbortPromptFromText` | A2A-T Client / A2A-T Server | 从自然语言文本生成协商终止（abort）报文 | 是（1次LLM内容抽取） |
+| Negotiation-T | `generateNegotiationAbortPromptFromData` | A2A-T Client / A2A-T Server | 从结构化数据确定性生成协商终止报文（不调用LLM） | 否 |
+| Negotiation-T | `validateAbortPromptAndDataFilling` | A2A-T Client / A2A-T Server | 校验协商终止报文合规性并按Schema提取参数 | 是（1次LLM语义校验） |
 | Task-T | `generateTaskPromptFromText` | A2A-T Client | 从自然语言文本按指定Task-T模板生成任务提示词（跳过场景识别） | 是（1次LLM槽位提取） |
 | Task-T | `generateTaskPromptFromDataWithSchema` | A2A-T Client | 从结构化数据+语义Schema按指定Task-T模板生成任务提示词 | 是（1次LLM槽位提取） |
 | Task-T | `validateTaskPromptAndDataFilling` | A2A-T Server | 校验Task-T任务提示词合规性并按Schema提取参数 | 是（1次LLM语义校验与提参） |
@@ -32,7 +35,7 @@ A2A-T SDK 的对外 API 收敛在两个门面上：客户端门面 `A2ATClient`�
 **公共数据类型与约定**
 
 - **TemplateUri：**模板 URI 值类型，推荐用 `net.openan.a2at.sdk.core.model.StandardTemplates` 常量构造，如 `StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE`（URI 为 `Negotiation-T/information-negotiation/propose/v1`）；来自外部的字符串用 `TemplateUri.parse(String)` 解析，返回 `Optional<TemplateUri>` 且不抛异常。
-- **协商会话上下文：**`NegotiationContext(id, round, maxRounds)`（id 为 UUID 形态、round 从 1 起、默认轮次预算 `DEFAULT_MAX_ROUNDS = 5`），随消息 metadata 传输、不经 LLM；`NegotiationContext.of(id, round)` 使用默认预算，`nextRound()` 推进轮次。
+- **协商会话上下文：**`NegotiationContext(id, round, maxRounds, performative)`（id 为 UUID 形态、round 从 1 起、默认轮次预算 `DEFAULT_MAX_ROUNDS = 5`，performative 表明 context 随哪类协商消息出行：`PROPOSE` / `ACCEPT` / `REJECT` / `ABORT`），随消息 metadata 传输、不经 LLM；`NegotiationContext.of(id, round, performative)` 使用默认预算，`nextRound()` 推进轮次。
 - **异常体系：**所有 SDK 处理失败均为 `A2ATError` 子类——生成失败抛 `PromptGenerationException`（Task-T / Notification-T / Authorization-T）或 `NegotiationGenerationException`（Negotiation-T），校验+提参失败抛 `ContentValidationException`（Task-T / Notification-T / Authorization-T，携带 `errors()` 槽位错误明细与 `params()` 部分提取参数）或 `NegotiationParamExtractionException`（Negotiation-T）。捕获 `A2ATError` 即可覆盖全部处理失败，`getCode()` 获取机器可读错误码。
 - **SlotValidationError：**逐槽位校验错误明细，随校验失败异常或失败负载返回，各节“输出说明”中的失败结构均引用此定义：
 
@@ -83,7 +86,8 @@ import net.openan.a2at.sdk.core.model.StandardTemplates;
 A2ATClient client = new A2ATClient(Path.of("client.env"));
 
 NegotiationContext ctx = new NegotiationContext(
-        "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 1, NegotiationContext.DEFAULT_MAX_ROUNDS);
+        "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 1, NegotiationContext.DEFAULT_MAX_ROUNDS,
+        NegotiationPerformative.PROPOSE);
 
 MetadataContent propose = client.generateNegotiationProposePromptFromText(
         "请提供以下缺失信息：1. 接入端口名称：请提供业务接入端口名称；"
@@ -298,7 +302,8 @@ import net.openan.a2at.sdk.negotiation.content.InformationProposeContent;
 import net.openan.a2at.sdk.negotiation.content.NegotiationItem;
 import net.openan.a2at.sdk.negotiation.content.NegotiationProposeData;
 
-NegotiationContext ctx = new NegotiationContext("3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 2, 5);
+NegotiationContext ctx = new NegotiationContext("3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 2, 5,
+        NegotiationPerformative.PROPOSE);
 
 MetadataContent propose = client.generateNegotiationProposePromptFromData(
         new NegotiationProposeData(
@@ -1566,7 +1571,175 @@ result.failure() =
 { code=slot_validation_error, message=Required slot '任务对象' is missing., stage=slot_validation }
 ```
 
+### 1.3.21 generateNegotiationAbortPromptFromText
 
+**API定义**
 
+```java
+public MetadataContent generateNegotiationAbortPromptFromText(
+        String text, NegotiationContext context, TemplateUri templateUri)
+```
 
+**典型场景**：协商任一方判定本轮协商无法继续（达到协商轮次上限、超时、token 消耗超限等），从自然语言的终止说明生成协商终止（abort）报文通知对端。
 
+**功能说明**：从自然语言文本生成协商终止报文，含一步 LLM 结构化抽取（抽取终止原因）。终止报文与协商类型无关，`templateUri` 必须为 common abort 模板（`StandardTemplates.NEGOTIATION_ABORT`，URI 为 `Negotiation-T/common/abort/v1`），context 的 performative 应为 `ABORT`。
+
+**输入说明**
+
+| 参数 | 类型 | 必填 | 说明 |
+| ---- | ---- | ---- | ---- |
+| text | String | 是 | 协商终止原因的自然语言描述 |
+| context | `NegotiationContext` | 是 | 协商会话上下文（performative 为 `ABORT`） |
+| templateUri | TemplateUri | 是 | common abort 模板 |
+
+**请求样例**
+
+```java
+MetadataContent abort = client.generateNegotiationAbortPromptFromText(
+        "达到协商轮次上限，本次协商确认结束。",
+        ctx,
+        StandardTemplates.NEGOTIATION_ABORT);
+```
+
+**输出说明**
+
+成功时返回 `MetadataContent`（结构同 [1.3.1](#131-generatenegotiationproposepromptfromtext)）。
+
+失败时抛 `NegotiationGenerationException`（结构同 1.3.1）。错误码：
+
+- `template_not_found`（模板或提示词资源缺失）
+
+- `negotiation_content_extract_failed`（无法从文本抽取终止原因，可重试）
+
+- `negotiation_llm_infrastructure_error`（LLM 基础设施故障，可重试）
+
+- `negotiation_invalid_input`（文本为空或抽取内容与 abort 阶段不符）
+
+- `negotiation_slot_missing`（缺少必需槽位）
+
+入参为 null 抛 `NullPointerException`，templateUri 的 phase 段不是 `abort` 抛 `IllegalArgumentException`。
+
+**响应样例**
+
+```text
+templateUri : Negotiation-T/common/abort/v1
+extensionUri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/v1
+promptText  :
+## 协商结果
+Abort
+
+## 协商终止原因
+达到协商轮次上限，本次协商确认结束。
+```
+
+### 1.3.22 generateNegotiationAbortPromptFromData
+
+**API定义**
+
+```java
+public MetadataContent generateNegotiationAbortPromptFromData(
+        NegotiationAbortData data, TemplateUri templateUri)
+```
+
+**典型场景**：协商任一方程序化判定终止条件成立后，以结构化终止原因生成协商终止报文回传。
+
+**功能说明**：从类型化数据确定性生成协商终止报文，**不调用 LLM**。终止报文与协商类型无关，`templateUri` 必须为 common abort 模板。
+
+**输入说明**
+
+| 参数 | 类型 | 必填 | 说明 |
+| ---- | ---- | ---- | ---- |
+| data | `NegotiationAbortData(context, content)` | 是 | 协商上下文（performative 为 `ABORT`）+ 终止内容 |
+| templateUri | TemplateUri | 是 | common abort 模板 |
+
+终止内容：`NegotiationAbortContent(terminationReason)`，terminationReason 为协商终止原因（必填）。
+
+**请求样例**
+
+```java
+import net.openan.a2at.sdk.negotiation.content.NegotiationAbortContent;
+import net.openan.a2at.sdk.negotiation.content.NegotiationAbortData;
+
+MetadataContent abort = client.generateNegotiationAbortPromptFromData(
+        new NegotiationAbortData(
+                ctx,
+                new NegotiationAbortContent("达到协商轮次上限，本次协商确认结束。")),
+        StandardTemplates.NEGOTIATION_ABORT);
+```
+
+**输出说明**
+
+成功时返回 `MetadataContent`（结构同 [1.3.1](#131-generatenegotiationproposepromptfromtext)）。
+
+失败时抛 `NegotiationGenerationException`（结构同 1.3.1）。错误码：
+
+- `template_not_found`（模板缺失）
+
+- `negotiation_slot_missing`（渲染缺少必需槽位）
+
+编程错误：入参或其 context 为 null 抛 `NullPointerException`；终止原因为空或 phase 段不是 `abort` 抛 `IllegalArgumentException`。
+
+**响应样例**
+
+```text
+templateUri : Negotiation-T/common/abort/v1
+extensionUri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/v1
+promptText  :
+## 协商结果
+Abort
+
+## 协商终止原因
+达到协商轮次上限，本次协商确认结束。
+```
+
+### 1.3.23 validateAbortPromptAndDataFilling
+
+**API定义**
+
+```java
+public FilledParamData validateAbortPromptAndDataFilling(
+        String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri)
+```
+
+**典型场景**：协商一方校验对端发来的终止报文，提取终止原因，据此结束本地协商状态并回收任务。
+
+**功能说明**：校验一条协商终止（abort）报文并按 Schema 提取参数。流水线同 1.3.7，区别仅在于：报文须满足 abort 阶段的语义约束（结论为 Abort、携带协商终止原因板块），`templateUri` 必须为 common abort 模板。
+
+**输入说明**：同 1.3.7，prompt 为终止报文文本，templateUri 为 common abort 模板。
+
+**请求样例**
+
+```java
+FilledParamData abortParams = server.validateAbortPromptAndDataFilling(
+        abortPrompt, ctx, schema, StandardTemplates.NEGOTIATION_ABORT);
+```
+
+**输出说明**
+
+成功时返回 `FilledParamData`（结构同 [1.3.7](#137-validateproposepromptanddatafilling)），`data()` 携带终止原因中按 Schema 提取的参数与上下文参数。
+
+失败时抛 `NegotiationParamExtractionException`（结构同 1.3.7）。错误码：
+
+- `negotiation_invalid_input`（报文不是 abort 协商消息或 context 为 null）
+
+- `negotiation_rule_violation`（协商上下文违反结构规则）
+
+- `negotiation_semantic_rejected`（结论不是 Abort 或缺少终止原因板块）
+
+- `negotiation_llm_infrastructure_error`（LLM 基础设施故障，可重试）
+
+- `template_not_found`（校验提示词资源缺失）
+
+编程错误：prompt 或 schema 为 null 抛 `NullPointerException`，prompt 为空白或 phase 段不是 `abort` 抛 `IllegalArgumentException`。
+
+**响应样例**
+
+```text
+abortParams.data() =
+{
+  termination_reason=达到协商轮次上限，本次协商确认结束。,
+  id=3dbc13b5-bd57-4c2b-b503-24e381b6c8d3,
+  round=1,
+  maxRounds=5
+}
+```

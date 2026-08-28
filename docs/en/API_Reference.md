@@ -17,6 +17,9 @@ The public APIs of the A2A-T SDK converge on two facades: the client facade `A2A
 | Negotiation-T | `validateProposePromptAndDataFilling` | A2A-T Client / A2A-T Server | Validates a negotiation propose message and extracts parameters per a schema | Yes (1 LLM semantic-validation call) |
 | Negotiation-T | `validateAcceptPromptAndDataFilling` | A2A-T Client / A2A-T Server | Validates a negotiation accept message and extracts parameters per a schema | Yes (1 LLM semantic-validation call) |
 | Negotiation-T | `validateRejectPromptAndDataFilling` | A2A-T Client / A2A-T Server | Validates a negotiation reject message and extracts parameters per a schema | Yes (1 LLM semantic-validation call) |
+| Negotiation-T | `generateNegotiationAbortPromptFromText` | A2A-T Client / A2A-T Server | Generates a negotiation abort message from natural-language text | Yes (1 LLM content-extraction call) |
+| Negotiation-T | `generateNegotiationAbortPromptFromData` | A2A-T Client / A2A-T Server | Deterministically generates a negotiation abort message from structured data (no LLM call) | No |
+| Negotiation-T | `validateAbortPromptAndDataFilling` | A2A-T Client / A2A-T Server | Validates a negotiation abort message and extracts parameters per the schema | Yes (1 LLM semantic-validation call) |
 | Task-T | `generateTaskPromptFromText` | A2A-T Client | Generates a task prompt from natural-language text with the specified Task-T template (skips scenario recognition) | Yes (1 LLM slot-extraction call) |
 | Task-T | `generateTaskPromptFromDataWithSchema` | A2A-T Client | Generates a task prompt from structured data plus a semantic schema with the specified Task-T template | Yes (1 LLM slot-extraction call) |
 | Task-T | `validateTaskPromptAndDataFilling` | A2A-T Server | Validates a Task-T task prompt and extracts parameters per a schema | Yes (1 LLM semantic-validation and extraction call) |
@@ -32,7 +35,7 @@ The public APIs of the A2A-T SDK converge on two facades: the client facade `A2A
 **Common Data Types and Conventions**
 
 - **TemplateUri:** the template URI value type. Prefer building it with the `net.openan.a2at.sdk.core.model.StandardTemplates` constants, e.g. `StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE` (URI `Negotiation-T/information-negotiation/propose/v1`); for strings coming from outside the code, parse them with `TemplateUri.parse(String)`, which returns an `Optional<TemplateUri>` and never throws.
-- **Negotiation session context:** `NegotiationContext(id, round, maxRounds)` (id in UUID form, round starting at 1, default round budget `DEFAULT_MAX_ROUNDS = 5`); it travels with the message metadata and never goes through the LLM. `NegotiationContext.of(id, round)` uses the default budget, and `nextRound()` advances the round.
+- **Negotiation session context:** `NegotiationContext(id, round, maxRounds, performative)` (id in UUID form, round starting at 1, default round budget `DEFAULT_MAX_ROUNDS = 5`; performative states which kind of negotiation message the context travels with: `PROPOSE` / `ACCEPT` / `REJECT` / `ABORT`); it travels with the message metadata and never goes through the LLM. `NegotiationContext.of(id, round, performative)` uses the default budget, and `nextRound()` advances the round.
 - **Exception hierarchy:** every SDK processing failure is a subclass of `A2ATError` — generation failures throw `PromptGenerationException` (Task-T / Notification-T / Authorization-T) or `NegotiationGenerationException` (Negotiation-T); validation-plus-extraction failures throw `ContentValidationException` (Task-T / Notification-T / Authorization-T, carrying the `errors()` slot error details and the `params()` partial extraction parameters) or `NegotiationParamExtractionException` (Negotiation-T). Catching `A2ATError` covers all processing failures, and `getCode()` returns the machine-readable error code.
 - **SlotValidationError:** per-slot validation error details, returned with validation-failure exceptions or failure payloads; the failure structures in the "Output" sections of each API all reference this definition:
 
@@ -83,7 +86,8 @@ import net.openan.a2at.sdk.core.model.StandardTemplates;
 A2ATClient client = new A2ATClient(Path.of("client.env"));
 
 NegotiationContext ctx = new NegotiationContext(
-        "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 1, NegotiationContext.DEFAULT_MAX_ROUNDS);
+        "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 1, NegotiationContext.DEFAULT_MAX_ROUNDS,
+        NegotiationPerformative.PROPOSE);
 
 MetadataContent propose = client.generateNegotiationProposePromptFromText(
         "Please provide the following missing information: 1. Access port name: please provide the service access port name; "
@@ -300,7 +304,8 @@ import net.openan.a2at.sdk.negotiation.content.InformationProposeContent;
 import net.openan.a2at.sdk.negotiation.content.NegotiationItem;
 import net.openan.a2at.sdk.negotiation.content.NegotiationProposeData;
 
-NegotiationContext ctx = new NegotiationContext("3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 2, 5);
+NegotiationContext ctx = new NegotiationContext("3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 2, 5,
+        NegotiationPerformative.PROPOSE);
 
 MetadataContent propose = client.generateNegotiationProposePromptFromData(
         new NegotiationProposeData(
@@ -1574,7 +1579,175 @@ result.failure() =
 { code=slot_validation_error, message=Required slot 'task_object' is missing., stage=slot_validation }
 ```
 
+### 1.3.21 generateNegotiationAbortPromptFromText
 
+**API Definition**
 
+```java
+public MetadataContent generateNegotiationAbortPromptFromText(
+        String text, NegotiationContext context, TemplateUri templateUri)
+```
 
+**Typical scenario**: either negotiation party concludes that the negotiation cannot continue (round limit reached, timeout, token budget exhausted, etc.) and generates a negotiation abort message from a natural-language termination statement.
 
+**Functionality**: generates a negotiation abort message from natural-language text with one LLM structured-extraction step (extracting the termination reason). The abort message is negotiation-type independent; `templateUri` must be the common abort template (`StandardTemplates.NEGOTIATION_ABORT`, URI `Negotiation-T/common/abort/v1`), and the context performative should be `ABORT`.
+
+**Input**
+
+| Parameter | Type | Required | Description |
+| ---- | ---- | ---- | ---- |
+| text | String | Yes | Natural-language description of the termination reason |
+| context | `NegotiationContext` | Yes | Negotiation session context (performative `ABORT`) |
+| templateUri | TemplateUri | Yes | Common abort template |
+
+**Request example**
+
+```java
+MetadataContent abort = client.generateNegotiationAbortPromptFromText(
+        "Reached the negotiation round limit. This negotiation is confirmed and ended.",
+        ctx,
+        StandardTemplates.NEGOTIATION_ABORT);
+```
+
+**Output**
+
+On success returns `MetadataContent` (same structure as [1.3.1](#131-generatenegotiationproposepromptfromtext)).
+
+On failure throws `NegotiationGenerationException` (same structure as 1.3.1). Error codes:
+
+- `template_not_found` (template or prompt resource missing)
+
+- `negotiation_content_extract_failed` (termination reason not extractable from the text, retriable)
+
+- `negotiation_llm_infrastructure_error` (LLM infrastructure failure, retriable)
+
+- `negotiation_invalid_input` (text empty or extracted content does not match the abort phase)
+
+- `negotiation_slot_missing` (required slot missing)
+
+A null argument throws `NullPointerException`; a templateUri whose phase segment is not `abort` throws `IllegalArgumentException`.
+
+**Response example**
+
+```text
+templateUri : Negotiation-T/common/abort/v1
+extensionUri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/v1
+promptText  :
+## Negotiation Result
+Abort
+
+## Negotiation Termination Reason
+Reached the negotiation round limit. This negotiation is confirmed and ended.
+```
+
+### 1.3.22 generateNegotiationAbortPromptFromData
+
+**API Definition**
+
+```java
+public MetadataContent generateNegotiationAbortPromptFromData(
+        NegotiationAbortData data, TemplateUri templateUri)
+```
+
+**Typical scenario**: either negotiation party programmatically decides that a termination condition holds and generates the abort message from a structured termination reason.
+
+**Functionality**: deterministically generates a negotiation abort message from typed data, **with no LLM call**. The abort message is negotiation-type independent; `templateUri` must be the common abort template.
+
+**Input**
+
+| Parameter | Type | Required | Description |
+| ---- | ---- | ---- | ---- |
+| data | `NegotiationAbortData(context, content)` | Yes | Negotiation context (performative `ABORT`) + termination content |
+| templateUri | TemplateUri | Yes | Common abort template |
+
+Termination content: `NegotiationAbortContent(terminationReason)`, where terminationReason is the required termination reason.
+
+**Request example**
+
+```java
+import net.openan.a2at.sdk.negotiation.content.NegotiationAbortContent;
+import net.openan.a2at.sdk.negotiation.content.NegotiationAbortData;
+
+MetadataContent abort = client.generateNegotiationAbortPromptFromData(
+        new NegotiationAbortData(
+                ctx,
+                new NegotiationAbortContent("Reached the negotiation round limit. This negotiation is confirmed and ended.")),
+        StandardTemplates.NEGOTIATION_ABORT);
+```
+
+**Output**
+
+On success returns `MetadataContent` (same structure as [1.3.1](#131-generatenegotiationproposepromptfromtext)).
+
+On failure throws `NegotiationGenerationException` (same structure as 1.3.1). Error codes:
+
+- `template_not_found` (template missing)
+
+- `negotiation_slot_missing` (required slot missing during rendering)
+
+Programming errors: a null argument or null context throws `NullPointerException`; a blank termination reason or a phase segment other than `abort` throws `IllegalArgumentException`.
+
+**Response example**
+
+```text
+templateUri : Negotiation-T/common/abort/v1
+extensionUri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/v1
+promptText  :
+## Negotiation Result
+Abort
+
+## Negotiation Termination Reason
+Reached the negotiation round limit. This negotiation is confirmed and ended.
+```
+
+### 1.3.23 validateAbortPromptAndDataFilling
+
+**API Definition**
+
+```java
+public FilledParamData validateAbortPromptAndDataFilling(
+        String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri)
+```
+
+**Typical scenario**: one party validates the peer abort message, extracts the termination reason, and closes the local negotiation state accordingly.
+
+**Functionality**: validates a negotiation abort message and extracts parameters per the schema. The pipeline is the same as 1.3.7, except that the message must satisfy the abort-phase semantic constraints (conclusion Abort, with a negotiation-termination-reason section) and `templateUri` must be the common abort template.
+
+**Input**: same as 1.3.7, with prompt being the abort message text and templateUri the common abort template.
+
+**Request example**
+
+```java
+FilledParamData abortParams = server.validateAbortPromptAndDataFilling(
+        abortPrompt, ctx, schema, StandardTemplates.NEGOTIATION_ABORT);
+```
+
+**Output**
+
+On success returns `FilledParamData` (same structure as [1.3.7](#137-validateproposepromptanddatafilling)); `data()` carries the parameters extracted from the termination reason per the schema plus the context parameters.
+
+On failure throws `NegotiationParamExtractionException` (same structure as 1.3.7). Error codes:
+
+- `negotiation_invalid_input` (message is not an abort negotiation message or context is null)
+
+- `negotiation_rule_violation` (negotiation context violates the structural rules)
+
+- `negotiation_semantic_rejected` (conclusion is not Abort or the termination-reason section is missing)
+
+- `negotiation_llm_infrastructure_error` (LLM infrastructure failure, retriable)
+
+- `template_not_found` (validation prompt resource missing)
+
+Programming errors: null prompt or schema throws `NullPointerException`; a blank prompt or a phase segment other than `abort` throws `IllegalArgumentException`.
+
+**Response example**
+
+```text
+abortParams.data() =
+{
+  termination_reason=Reached the negotiation round limit. This negotiation is confirmed and ended.,
+  id=3dbc13b5-bd57-4c2b-b503-24e381b6c8d3,
+  round=1,
+  maxRounds=5
+}
+```
