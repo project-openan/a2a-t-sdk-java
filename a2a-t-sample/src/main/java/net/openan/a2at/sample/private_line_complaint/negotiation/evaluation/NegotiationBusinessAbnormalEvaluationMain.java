@@ -168,8 +168,8 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
         }
         request.put("context", contextPayload(context));
         request.put("template_uri", testCase.api().contains("propose")
-                ? NegotiationSampleFlow.PROPOSE_TEMPLATE_URI.uri()
-                : NegotiationSampleFlow.ENDING_TEMPLATE_URI.uri());
+                ? NegotiationSampleFlow.PROPOSE_TEMPLATE_URI
+                : NegotiationSampleFlow.ENDING_TEMPLATE_URI);
         return request;
     }
 

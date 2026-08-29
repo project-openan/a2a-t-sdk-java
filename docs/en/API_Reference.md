@@ -44,22 +44,24 @@ The A2A-T SDK exposes exactly two public entry points: the client entry `A2ATCli
 | message | String | Human-readable error description, rendered by the SDK from the message template of the error code and following `A2AT_LANGUAGE` |
 | facts | Map&lt;String, String&gt; | Structured fact values behind the rendered message (e.g. `section_label`, `index`, `field_label`), may be null |
 
-- **TemplateUri:** the template URI value type. Prefer building it with the `net.openan.a2at.sdk.core.model.StandardTemplates` constants; for strings coming from outside the code, parse them with `TemplateUri.parse(String)`, which returns an `Optional<TemplateUri>` and never throws. The currently supported TemplateUri constants are listed below:
+- **Template URI:** the `A2ATClient` and `A2ATServer` facades declare the template selection of every template-specific method as a plain `String templateUri` (e.g. `Task-T/network-layer/private-line-complaint/v1`). Prefer passing the `net.openan.a2at.sdk.core.model.StandardTemplates` String constants (constant name suffixed `_URI`, each with a typed `TemplateUri` twin named without the suffix); strings coming from outside the code are passed directly. The typed value type `TemplateUri` is still used by the lower-level service layer (e.g. `NegotiationContentService`), where it can be obtained with `TemplateUri.parse(String)`, which returns an `Optional<TemplateUri>` and never throws. The currently supported template URI constants (String form) are listed below:
 
 | Constant | Description | TemplateUri |
 | ---- | ---- | ---- |
-| StandardTemplates.ENERGY_SAVING | Task-T energy-saving task template | Task-T/network-layer/ran-energy-saving/v1 |
-| StandardTemplates.PRIVATE_LINE_COMPLAINT | Task-T private-line complaint task template | Task-T/network-layer/private-line-complaint/v1 |
-| StandardTemplates.SUBSCRIBE_INCIDENT | Notification-T incident subscription notification template | Notification-T/network-layer/subscribe-incident/v1 |
-| StandardTemplates.SERVICE_RECOVERY | Notification-T service recovery notification template | Notification-T/network-layer/service-recovery/v1 |
-| StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT | Authorization-T authorization policy management template | Authorization-T/authorization-policy-management/v1 |
-| StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE | Negotiation-T information negotiation propose template | Negotiation-T/information-negotiation/propose/v1 |
-| StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT | Negotiation-T information negotiation accept/reject template | Negotiation-T/information-negotiation/accept-reject/v1 |
-| StandardTemplates.TARGET_NEGOTIATION_PROPOSE | Negotiation-T target negotiation propose template | Negotiation-T/target-negotiation/propose/v1 |
-| StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT | Negotiation-T target negotiation accept/reject template | Negotiation-T/target-negotiation/accept-reject/v1 |
-| StandardTemplates.FEASIBILITY_NEGOTIATION_PROPOSE | Negotiation-T feasibility negotiation propose template | Negotiation-T/feasibility-negotiation/propose/v1 |
-| StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT | Negotiation-T feasibility negotiation accept/reject template | Negotiation-T/feasibility-negotiation/accept-reject/v1 |
-| StandardTemplates.NEGOTIATION_ABORT | Negotiation-T common negotiation abort template | Negotiation-T/common/abort/v1 |
+| StandardTemplates.ENERGY_SAVING_URI | Task-T energy-saving task template | Task-T/network-layer/ran-energy-saving/v1 |
+| StandardTemplates.PRIVATE_LINE_COMPLAINT_URI | Task-T private-line complaint task template | Task-T/network-layer/private-line-complaint/v1 |
+| StandardTemplates.SUBSCRIBE_INCIDENT_URI | Notification-T incident subscription notification template | Notification-T/network-layer/subscribe-incident/v1 |
+| StandardTemplates.SERVICE_RECOVERY_URI | Notification-T service recovery notification template | Notification-T/network-layer/service-recovery/v1 |
+| StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI | Authorization-T authorization policy management template | Authorization-T/authorization-policy-management/v1 |
+| StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI | Negotiation-T information negotiation propose template | Negotiation-T/information-negotiation/propose/v1 |
+| StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI | Negotiation-T information negotiation accept/reject template | Negotiation-T/information-negotiation/accept-reject/v1 |
+| StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI | Negotiation-T target negotiation propose template | Negotiation-T/target-negotiation/propose/v1 |
+| StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI | Negotiation-T target negotiation accept/reject template | Negotiation-T/target-negotiation/accept-reject/v1 |
+| StandardTemplates.FEASIBILITY_NEGOTIATION_PROPOSE_URI | Negotiation-T feasibility negotiation propose template | Negotiation-T/feasibility-negotiation/propose/v1 |
+| StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT_URI | Negotiation-T feasibility negotiation accept/reject template | Negotiation-T/feasibility-negotiation/accept-reject/v1 |
+| StandardTemplates.NEGOTIATION_ABORT_URI | Negotiation-T common negotiation abort template | Negotiation-T/common/abort/v1 |
+
+- **Facade template URI failure policy (both `A2ATClient` and `A2ATServer`):** every facade method that takes a `templateUri` parameter (including `getPrompt`) accepts a raw URI string. A null template URI throws `NullPointerException`; a blank or malformed URI (fewer than three segments, or a segment that is not simple) throws `IllegalArgumentException` with the message `Unparseable template URI: <input>`. This replaces the previous behavior where a null typed template URI on the server task/notification/authorization validate trio threw `ContentValidationException` with the code `negotiation.invalid_input` — such programming errors are now plain JDK exceptions, not part of the `A2ATError` tree.
 
 
 
@@ -76,7 +78,7 @@ The A2A-T SDK exposes exactly two public entry points: the client entry `A2ATCli
 
 ```java
 public MetadataContent generateNegotiationProposePromptFromText(
-        String text, NegotiationContext context, TemplateUri templateUri)
+        String text, NegotiationContext context, String templateUri)
 ```
 
 **Typical scenarios**: after receiving a Task-T task message with missing parameters, the server agent uses natural language to send a "supplement the missing information" negotiation request to the client agent; also applicable when the client agent initiates a target-clarification or feasibility-evaluation request to the server.
@@ -89,7 +91,7 @@ public MetadataContent generateNegotiationProposePromptFromText(
 | ---- | ---- | ---- | ---- |
 | text | String | Yes | Natural-language text describing the negotiation proposal (e.g. the list of missing information items to request); the input length is limited by the `A2AT_INPUT_TEXT_MAX_CHARS` configuration item, default 16384 |
 | context | NegotiationContext | Yes | Negotiation session context, injected directly into the `negotiationContext` metadata of the generated message without going through the LLM |
-| templateUri | TemplateUri | Yes | Propose template, e.g. `StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE` |
+| templateUri | String | Yes | Propose template, e.g. `StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI` |
 
 **Request Example**
 
@@ -110,7 +112,7 @@ MetadataContent propose = client.generateNegotiationProposePromptFromText(
         "Please provide the following missing information: complaint category: private line interruption or poor private line quality. "
                 + "Both parameters are required; diagnosis cannot start without them.",
         ctx,
-        StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE);
+        StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI);
 
 // The generated metadata travels with the A2A message
 Map<String, Object> metadata = propose.buildMetadataContent();
@@ -150,7 +152,7 @@ Error codes:
 
 - `negotiation.field_missing` (a required field is missing)
 
-A null argument throws `NullPointerException`; a templateUri whose phase segment is not `propose` throws `IllegalArgumentException`.
+A null argument throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) or a templateUri whose phase segment is not `propose` throws `IllegalArgumentException`.
 
 **Response Example**
 
@@ -171,7 +173,7 @@ Please supplement the relevant content based on <Required Information Items>.
 
 ```java
 public MetadataContent generateNegotiationAcceptPromptFromText(
-        String text, NegotiationContext context, TemplateUri templateUri)
+        String text, NegotiationContext context, String templateUri)
 ```
 
 **Typical scenarios**: after receiving the peer's information-negotiation request, the negotiation responder (usually the client agent) supplements/delivers the requested information in natural language and generates an accept message to return, e.g. confirming that diagnosis can start after supplementing the access port name and complaint category.
@@ -184,7 +186,7 @@ public MetadataContent generateNegotiationAcceptPromptFromText(
 | ---- | ---- | ---- | ---- |
 | text | String | Yes | Natural-language text describing the acceptance (e.g. the list of supplemented/delivered information items); the input length is limited by the `A2AT_INPUT_TEXT_MAX_CHARS` configuration item, default 16384 |
 | context | NegotiationContext | Yes | Negotiation session context |
-| templateUri | TemplateUri | Yes | Accept-reject template, e.g. `StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT` |
+| templateUri | String | Yes | Accept-reject template, e.g. `StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI` |
 
 **Request Example**
 
@@ -194,7 +196,7 @@ MetadataContent accept = client.generateNegotiationAcceptPromptFromText(
                 + "2. Complaint category: dedicated-line quality degradation. "
                 + "The information is complete and diagnosis can start.",
         ctx,
-        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **Output**
@@ -235,7 +237,7 @@ Accept
 
 ```java
 public MetadataContent generateNegotiationRejectPromptFromText(
-        String text, NegotiationContext context, TemplateUri templateUri)
+        String text, NegotiationContext context, String templateUri)
 ```
 
 **Typical scenarios**: when the negotiation responder (usually the client agent) cannot satisfy the peer's negotiation request, it generates a reject message in natural language to return and end the current negotiation round, e.g. the access port name cannot be provided because the site inventory is unavailable.
@@ -250,7 +252,7 @@ public MetadataContent generateNegotiationRejectPromptFromText(
 MetadataContent reject = client.generateNegotiationRejectPromptFromText(
         "I refuse to supplement the information: the access port name cannot be provided because the site inventory is unavailable. This negotiation is over.",
         ctx,
-        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **Output**
@@ -290,7 +292,7 @@ Reject
 
 ```java
 public MetadataContent generateNegotiationProposePromptFromData(
-        NegotiationProposeData data, TemplateUri templateUri)
+        NegotiationProposeData data, String templateUri)
 ```
 
 **Typical scenarios**: the same initiation scenarios as the fromText variant, but the input is structured data constructed by the business system (e.g. the server agent automatically generates the negotiation-request items from the missing-slot list detected by `validateTaskPromptAndDataFilling`), suitable for scenarios that require deterministic message content and want to avoid the nondeterminism of LLM extraction.
@@ -302,7 +304,7 @@ public MetadataContent generateNegotiationProposePromptFromData(
 | Parameter | Type | Required | Description |
 | ---- | ---- | ---- | ---- |
 | data | `NegotiationProposeData(context, content)` | Yes | Negotiation context plus typed propose content; the content type depends on the negotiation type |
-| templateUri | TemplateUri | Yes | Propose template |
+| templateUri | String | Yes | Propose template |
 
 Propose content of the three negotiation types:
 
@@ -334,7 +336,7 @@ MetadataContent propose = client.generateNegotiationProposePromptFromData(
                                 new NegotiationItem("Complaint Category", "e.g. dedicated-line quality degradation"),
                                 new NegotiationItem("Private Line Service Identifier", null)),
                         "OR")),
-        StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE);
+        StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI);
 ```
 
 **Output**
@@ -347,9 +349,9 @@ On failure, throws `NegotiationGenerationException` (structure same as 1.3.1). E
 
 - `negotiation.content_invalid` (a typed content field is invalid, e.g. blank required items or a blank required description)
 
-- `negotiation.field_missing` (a required field is missing during rendering)
+- `template.render_failed` (template rendering failure)
 
-There are also two categories of programming errors (outside the `A2ATError` tree, standard JDK exceptions): a null argument or a null context within it throws `NullPointerException`; a content type that does not match the template's negotiation type, or a phase segment that is not `propose`, throws `IllegalArgumentException`.
+There are also two categories of programming errors (outside the `A2ATError` tree, standard JDK exceptions): a null argument or a null context within it throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1), a content type that does not match the template's negotiation type, or a phase segment that is not `propose`, throws `IllegalArgumentException`.
 
 **Response Example**
 
@@ -373,7 +375,7 @@ Relationship between missing items: OR
 
 ```java
 public MetadataContent generateNegotiationAcceptPromptFromData(
-        NegotiationEndingData data, TemplateUri templateUri)
+        NegotiationEndingData data, String templateUri)
 ```
 
 **Typical scenarios**: the negotiation responder (usually the client agent) programmatically fills in the parameters per the peer's requested slot list and generates an accept message from structured items to return.
@@ -385,7 +387,7 @@ public MetadataContent generateNegotiationAcceptPromptFromData(
 | Parameter | Type | Required | Description |
 | ---- | ---- | ---- | ---- |
 | data | `NegotiationEndingData(context, content)` | Yes | Negotiation context plus typed accept content (conclusion is `ACCEPT`) |
-| templateUri | TemplateUri | Yes | Accept-reject template |
+| templateUri | String | Yes | Accept-reject template |
 
 Accept content of the three negotiation types: `InformationEndingContent(ACCEPT, items)` (list of delivered information items), `TargetEndingContent(ACCEPT, confirmedIntent, null)` (finally confirmed intent), `FeasibilityEndingContent(ACCEPT, feasibilitySummary)` (feasibility assessment conclusion summary).
 
@@ -404,7 +406,7 @@ MetadataContent accept = client.generateNegotiationAcceptPromptFromData(
                         List.of(
                                 new NegotiationItem("Access Port Name", "P533-Zhujiang Old Town-PTN3900-23-TPA1EG24-1"),
                                 new NegotiationItem("Complaint Category", "dedicated-line quality degradation")))),
-        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **Output**
@@ -417,9 +419,9 @@ On failure, throws `NegotiationGenerationException` (structure same as 1.3.1). E
 
 - `negotiation.content_invalid` (a typed content field is invalid, e.g. blank required items or a blank required description)
 
-- `negotiation.field_missing` (a required field is missing during rendering)
+- `template.render_failed` (template rendering failure)
 
-Programming errors: a null argument or a null context within it throws `NullPointerException`; a mismatched content type or a phase segment that is not `accept-reject` throws `IllegalArgumentException`. A `conclusion` that is not `ACCEPT` is rejected with the `negotiation.conclusion_mismatch` business error.
+Programming errors: a null argument or a null context within it throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1), a mismatched content type or a phase segment that is not `accept-reject` throws `IllegalArgumentException`; a `conclusion` that is not `ACCEPT` is rejected with the `negotiation.conclusion_mismatch` business error.
 
 **Response Example**
 
@@ -441,7 +443,7 @@ Accept
 
 ```java
 public MetadataContent generateNegotiationRejectPromptFromData(
-        NegotiationEndingData data, TemplateUri templateUri)
+        NegotiationEndingData data, String templateUri)
 ```
 
 **Typical scenarios**: the negotiation responder, after programmatically determining that the peer's request cannot be satisfied, generates a reject message from structured items (the items that cannot be provided and the reasons) to return.
@@ -459,7 +461,7 @@ MetadataContent reject = client.generateNegotiationRejectPromptFromData(
                 new InformationEndingContent(
                         NegotiationConclusion.REJECT,
                         List.of(new NegotiationItem("Access Port Name", "cannot be provided because the port inventory is temporarily unavailable on the workbench side")))),
-        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **Output**
@@ -472,9 +474,9 @@ On failure, throws `NegotiationGenerationException` (structure same as 1.3.1). E
 
 - `negotiation.content_invalid` (a typed content field is invalid, e.g. blank required items or a blank required description)
 
-- `negotiation.field_missing` (a required field is missing during rendering)
+- `template.render_failed` (template rendering failure)
 
-Programming errors: a null argument or a null context within it throws `NullPointerException`; a mismatched content type or a phase segment that is not `accept-reject` throws `IllegalArgumentException`. A `conclusion` that is not `REJECT` is rejected with the `negotiation.conclusion_mismatch` business error.
+Programming errors: a null argument or a null context within it throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1), a mismatched content type or a phase segment that is not `accept-reject` throws `IllegalArgumentException`; a `conclusion` that is not `REJECT` is rejected with the `negotiation.conclusion_mismatch` business error.
 
 **Response Example**
 
@@ -495,7 +497,7 @@ Reject
 
 ```java
 public FilledParamData validateProposePromptAndDataFilling(
-        String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri)
 ```
 
 **Typical scenarios**: an outbound self-check by the initiator (server agent) before sending a negotiation request; or the receiver (client agent) validating an inbound negotiation request and extracting the list of slots to supplement, driving the subsequent parameter filling.
@@ -509,7 +511,7 @@ public FilledParamData validateProposePromptAndDataFilling(
 | prompt | String | Yes | Negotiation propose message text to validate (`MetadataContent.promptText()`); the input length is limited by the `A2AT_INPUT_TEXT_MAX_CHARS` configuration item, default 16384 |
 | context | NegotiationContext | Yes | Negotiation context traveling with the message; a null value is reported as `negotiation.invalid_input` |
 | schema | Map&lt;String, Object&gt; | Yes | Caller-provided parameter JSON Schema declaring the parameters to extract |
-| templateUri | TemplateUri | Yes | Propose template |
+| templateUri | String | Yes | Propose template |
 
 **Request Example**
 
@@ -532,7 +534,7 @@ Map<String, Object> schema = Map.of(
 
 // proposePrompt is the negotiation propose message text sent by the peer
 FilledParamData requested = client.validateProposePromptAndDataFilling(
-        proposePrompt, ctx, schema, StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE);
+        proposePrompt, ctx, schema, StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI);
 
 // After filtering out the context parameters (id/round/maxRounds), the remaining keys
 // are the slots to supplement
@@ -559,9 +561,7 @@ Error codes:
 
 - `negotiation.invalid_input` (the message is not a negotiation message, or the context is null)
 
-- `negotiation.invalid_context_id` (the context id is not a valid UUID)
-
-- `negotiation.round_exceeded` (the context round exceeds the configured maximum)
+- `negotiation.rule_violation` (the negotiation context violates a rule; the nested slot error codes in `getErrors()` identify the concrete rule, e.g. `negotiation.invalid_context_id`, `negotiation.round_exceeded`)
 
 - `negotiation.semantic_rejected` (semantic validation rejected the message; the per-slot details in `getErrors()` use the closed `negotiation.*` code set, e.g. `negotiation.conclusion_content_mismatch`, `negotiation.missing_result_content`, `negotiation.field_inconsistency`)
 
@@ -569,7 +569,7 @@ Error codes:
 
 - `template.not_found` (validation prompt resources missing)
 
-Programming errors: a null prompt or schema throws `NullPointerException`; a blank prompt or a mismatched phase segment throws `IllegalArgumentException`.
+Programming errors: a null prompt, schema or templateUri throws `NullPointerException`; a blank prompt, a blank or malformed templateUri (see the facade failure policy in 1.1), or a mismatched phase segment throws `IllegalArgumentException`.
 
 **Response Example**
 
@@ -590,7 +590,7 @@ requested.data() =
 
 ```java
 public FilledParamData validateAcceptPromptAndDataFilling(
-        String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri)
 ```
 
 **Typical scenarios**: the initiator (server agent) validates the accept message returned by the peer, extracts the delivered parameter values, and cross-checks them against the expected fill values before continuing task execution.
@@ -609,7 +609,7 @@ A2ATServer server = new A2ATServer(Path.of("server.env"));
 // acceptPrompt is the accept message text returned by the client;
 // acceptContext is its negotiation context
 FilledParamData acceptParams = server.validateAcceptPromptAndDataFilling(
-        acceptPrompt, acceptContext, schema, StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        acceptPrompt, acceptContext, schema, StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **Output**
@@ -620,7 +620,7 @@ On failure, throws `NegotiationParamExtractionException` (structure same as 1.3.
 
 - `negotiation.invalid_input` (the message is not an accept negotiation message, or the context is null)
 
-- `negotiation.invalid_context_id` / `negotiation.round_exceeded` (the negotiation context violates a structural rule)
+- `negotiation.rule_violation` (the negotiation context violates a rule; the nested slot error codes in `getErrors()` identify the concrete rule, e.g. `negotiation.invalid_context_id`, `negotiation.round_exceeded`)
 
 - `negotiation.semantic_rejected` (the conclusion is not Accept, or the content does not satisfy the accept-phase constraints)
 
@@ -628,7 +628,7 @@ On failure, throws `NegotiationParamExtractionException` (structure same as 1.3.
 
 - `template.not_found` (validation prompt resources missing)
 
-Programming errors: a null prompt or schema throws `NullPointerException`; a blank prompt or a phase segment that is not `accept-reject` throws `IllegalArgumentException`.
+Programming errors: a null prompt, schema or templateUri throws `NullPointerException`; a blank prompt, a blank or malformed templateUri (see the facade failure policy in 1.1), or a phase segment that is not `accept-reject` throws `IllegalArgumentException`.
 
 **Response Example**
 
@@ -649,7 +649,7 @@ acceptParams.data() =
 
 ```java
 public FilledParamData validateRejectPromptAndDataFilling(
-        String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri)
 ```
 
 **Typical scenarios**: the initiator (server agent) validates the reject message returned by the peer, extracts the rejection reason, and terminates the task or escalates to manual handling accordingly.
@@ -662,7 +662,7 @@ public FilledParamData validateRejectPromptAndDataFilling(
 
 ```java
 FilledParamData rejectParams = server.validateRejectPromptAndDataFilling(
-        rejectPrompt, ctx, schema, StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        rejectPrompt, ctx, schema, StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **Output**
@@ -673,7 +673,7 @@ On failure, throws `NegotiationParamExtractionException` (structure same as 1.3.
 
 - `negotiation.invalid_input` (the message is not a reject negotiation message, or the context is null)
 
-- `negotiation.invalid_context_id` / `negotiation.round_exceeded` (the negotiation context violates a structural rule)
+- `negotiation.rule_violation` (the negotiation context violates a rule; the nested slot error codes in `getErrors()` identify the concrete rule, e.g. `negotiation.invalid_context_id`, `negotiation.round_exceeded`)
 
 - `negotiation.semantic_rejected` (the conclusion is not Reject, or the content does not satisfy the reject-phase constraints)
 
@@ -681,7 +681,7 @@ On failure, throws `NegotiationParamExtractionException` (structure same as 1.3.
 
 - `template.not_found` (validation prompt resources missing)
 
-Programming errors: a null prompt or schema throws `NullPointerException`; a blank prompt or a phase segment that is not `accept-reject` throws `IllegalArgumentException`.
+Programming errors: a null prompt, schema or templateUri throws `NullPointerException`; a blank prompt, a blank or malformed templateUri (see the facade failure policy in 1.1), or a phase segment that is not `accept-reject` throws `IllegalArgumentException`.
 
 **Response Example**
 
@@ -700,7 +700,7 @@ rejectParams.data() =
 **API Definition**
 
 ```java
-public MetadataContent generateTaskPromptFromText(String text, TemplateUri templateUri)
+public MetadataContent generateTaskPromptFromText(String text, String templateUri)
 ```
 
 **Typical scenarios**: the client agent converts the user's natural-language task description (e.g. a private-line complaint diagnosis request) into a Task-T protocol message for a specified scenario; suitable when the target template is already known and scenario recognition should be skipped.
@@ -712,7 +712,7 @@ public MetadataContent generateTaskPromptFromText(String text, TemplateUri templ
 | Parameter | Type | Required | Description |
 | ---- | ---- | ---- | ---- |
 | text | String | Yes | Natural-language task description; the input length is limited by the `A2AT_INPUT_TEXT_MAX_CHARS` configuration item, default 16384 |
-| templateUri | TemplateUri | Yes | Task-T template, e.g. `StandardTemplates.PRIVATE_LINE_COMPLAINT` (`Task-T/network-layer/private-line-complaint/v1`) |
+| templateUri | String | Yes | Task-T template, e.g. `StandardTemplates.PRIVATE_LINE_COMPLAINT_URI` (`Task-T/network-layer/private-line-complaint/v1`) |
 
 **Request Example**
 
@@ -729,7 +729,7 @@ MetadataContent metadata = client.generateTaskPromptFromText(
                 + "the customer reports poor private line quality. Starting from 8:30 AM on May 11, 2026, accessing the core "
                 + "systems in Guangzhou from Shenzhen has been extremely slow, latency jumped from 12ms to 320ms, the counter "
                 + "and mobile banking keep reporting connection timeouts, and the OSS sequence number is event-id-20260511-09013.",
-        StandardTemplates.PRIVATE_LINE_COMPLAINT);
+        StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
 ```
 
 **Output**
@@ -772,7 +772,7 @@ Error codes:
 
 - `input.text_too_long` (input longer than `A2AT_INPUT_TEXT_MAX_CHARS`)
 
-Programming errors: a null text or templateUri throws `NullPointerException`.
+Programming errors: a null text or templateUri throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`.
 
 **Response Example**
 
@@ -812,7 +812,7 @@ Requirement: The complaint diagnosis task result should include the following in
 
 ```java
 public MetadataContent generateTaskPromptFromDataWithSchema(
-        Map<String, Object> data, Map<String, Object> schema, TemplateUri templateUri)
+        Map<String, Object> data, Map<String, Object> schema, String templateUri)
 ```
 
 **Typical scenarios**: the client agent converts structured task parameters from an upstream system (field names may differ from the template slots; the schema describes the field semantics) into a Task-T protocol message; suitable when the task parameters are already available in structured form.
@@ -825,7 +825,7 @@ public MetadataContent generateTaskPromptFromDataWithSchema(
 | ---- | ---- | ---- | ---- |
 | data | Map&lt;String, Object&gt; | Yes | Structured business-field input; keys are business field names and values are field values |
 | schema | Map&lt;String, Object&gt; | Yes (non-empty) | Field-semantics JSON Schema describing the meaning and constraints of each field |
-| templateUri | TemplateUri | Yes | Task-T template |
+| templateUri | String | Yes | Task-T template |
 
 **Request Example**
 
@@ -855,14 +855,14 @@ Map<String, Object> semanticsSchema = Map.of(
         "required", List.of("portName", "complaintScenario"));
 
 MetadataContent metadata = client.generateTaskPromptFromDataWithSchema(
-        data, semanticsSchema, StandardTemplates.PRIVATE_LINE_COMPLAINT);
+        data, semanticsSchema, StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
 ```
 
 **Output**
 
 On success, returns `MetadataContent` (structure same as [1.3.10](#1310-generatetaskpromptfromtext)).
 
-On failure, throws `PromptGenerationException` (structure same as 1.3.10). Programming errors: a null argument throws `NullPointerException`; an empty schema map throws `IllegalArgumentException`.
+On failure, throws `PromptGenerationException` (structure same as 1.3.10). Programming errors: a null argument throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) or an empty schema map throws `IllegalArgumentException`.
 
 **Response Example** (same template as 1.3.10; slot values come from the structured input, and `faultDetail` is a truncated sample value)
 
@@ -902,7 +902,7 @@ Requirement: The complaint diagnosis task result should include the following in
 
 ```java
 public FilledParamData validateTaskPromptAndDataFilling(
-        String prompt, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, Map<String, Object> schema, String templateUri)
 ```
 
 **Typical scenarios**: the parameter validation and extraction entry point for the server agent after receiving a Task-T message and before business execution; also the decision point for "missing-slot detection" in the negotiation flow — when a required parameter is missing, the caller decides whether to initiate a negotiation to supplement it.
@@ -915,7 +915,7 @@ public FilledParamData validateTaskPromptAndDataFilling(
 | ---- | ---- | ---- | ---- |
 | prompt | String | Yes (non-blank) | Task prompt message text to validate (`MetadataContent.promptText()`); the input length is limited by the `A2AT_INPUT_TEXT_MAX_CHARS` configuration item, default 16384 |
 | schema | Map&lt;String, Object&gt; | Yes | Caller-provided parameter JSON Schema declaring the parameters to extract/validate and the required constraints |
-| templateUri | TemplateUri | Yes | Task-T template (the prefix segment must be `Task-T`) |
+| templateUri | String | Yes | Task-T template (the prefix segment must be `Task-T`) |
 
 **Request Example**
 
@@ -943,7 +943,7 @@ Map<String, Object> validationSchema = Map.of(
 
 Map<String, Object> extracted = server
         .validateTaskPromptAndDataFilling(
-                metadata.promptText(), validationSchema, StandardTemplates.PRIVATE_LINE_COMPLAINT)
+                metadata.promptText(), validationSchema, StandardTemplates.PRIVATE_LINE_COMPLAINT_URI)
         .data();
 ```
 
@@ -974,7 +974,7 @@ Error codes:
 
 - `input.text_too_long` (prompt longer than `A2AT_INPUT_TEXT_MAX_CHARS`)
 
-Programming errors: a null prompt / schema / templateUri throws `NullPointerException`; a blank prompt throws `IllegalArgumentException`.
+Programming errors: a null prompt / schema / templateUri throws `NullPointerException`; a blank prompt or a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`.
 
 **Response Example**
 
@@ -1001,7 +1001,7 @@ ContentValidationException: [negotiation.semantic_rejected] ...
 **API Definition**
 
 ```java
-public MetadataContent generateNotificationPromptFromText(String text, TemplateUri templateUri)
+public MetadataContent generateNotificationPromptFromText(String text, String templateUri)
 ```
 
 **Typical scenarios**: the client agent converts a natural-language subscription requirement (e.g. a service recovery event subscription) into a Notification-T subscription message for a specified scenario.
@@ -1013,7 +1013,7 @@ public MetadataContent generateNotificationPromptFromText(String text, TemplateU
 | Parameter | Type | Required | Description |
 | ---- | ---- | ---- | ---- |
 | text | String | Yes | Natural-language subscription description (notification topic, subscribe condition, notification data format, etc.); the input length is limited by the `A2AT_INPUT_TEXT_MAX_CHARS` configuration item, default 16384 |
-| templateUri | TemplateUri | Yes | Notification-T template, e.g. `StandardTemplates.SUBSCRIBE_INCIDENT`, `StandardTemplates.SERVICE_RECOVERY` |
+| templateUri | String | Yes | Notification-T template, e.g. `StandardTemplates.SUBSCRIBE_INCIDENT_URI`, `StandardTemplates.SERVICE_RECOVERY_URI` |
 
 **Request Example**
 
@@ -1022,10 +1022,9 @@ import java.nio.file.Path;
 import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 
 A2ATClient client = new A2ATClient(Path.of("client.env"));
-TemplateUri templateUri = TemplateUri.parse("Notification-T/network-layer/service-recovery/v1").orElseThrow();
+String templateUri = StandardTemplates.SERVICE_RECOVERY_URI;
 
 MetadataContent result = client.generateNotificationPromptFromText(
         "I want to subscribe to service recovery events. The notification data format is as follows: "
@@ -1040,7 +1039,7 @@ MetadataContent result = client.generateNotificationPromptFromText(
 
 On success, returns `MetadataContent` (structure same as [1.3.10](#1310-generatetaskpromptfromtext); `extensionUri` is `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Notification-T/v1`).
 
-On failure, throws `PromptGenerationException` (structure same as 1.3.10). Programming errors: a null text or templateUri throws `NullPointerException`.
+On failure, throws `PromptGenerationException` (structure same as 1.3.10). Programming errors: a null text or templateUri throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`.
 
 **Response Example** (rendered per the template; the actual text varies with the LLM slot-extraction result. This example input does not specify a subscribe condition, so that slot is left empty)
 
@@ -1079,7 +1078,7 @@ Service recovery event
 
 ```java
 public MetadataContent generateNotificationPromptFromDataWithSchema(
-        Map<String, Object> data, Map<String, Object> schema, TemplateUri templateUri)
+        Map<String, Object> data, Map<String, Object> schema, String templateUri)
 ```
 
 **Typical scenarios**: the client agent converts structured subscription parameters submitted by an upstream system or UI into a Notification-T subscription message; suitable when the subscription parameters are already available in structured form.
@@ -1092,7 +1091,7 @@ public MetadataContent generateNotificationPromptFromDataWithSchema(
 | ---- | ---- | ---- | ---- |
 | data | Map&lt;String, Object&gt; | Yes | Structured subscription input (e.g. the subscribe condition and the notification data format field list) |
 | schema | Map&lt;String, Object&gt; | Yes (non-empty) | Field-semantics JSON Schema |
-| templateUri | TemplateUri | Yes | Notification-T template |
+| templateUri | String | Yes | Notification-T template |
 
 **Request Example**
 
@@ -1133,7 +1132,7 @@ MetadataContent result = client.generateNotificationPromptFromDataWithSchema(
 
 On success, returns `MetadataContent` (structure same as [1.3.10](#1310-generatetaskpromptfromtext); `extensionUri` is `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Notification-T/v1`).
 
-On failure, throws `PromptGenerationException` (structure same as 1.3.10). Programming errors: a null argument throws `NullPointerException`; an empty schema map throws `IllegalArgumentException`.
+On failure, throws `PromptGenerationException` (structure same as 1.3.10). Programming errors: a null argument throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) or an empty schema map throws `IllegalArgumentException`.
 
 **Response Example** (same template as 1.3.13; slot values come from the structured input: `Subscribe Condition` is filled with `condition`, and `Notification Data Format` is rendered per the `reportFormat` list — field layout is illustrative)
 
@@ -1173,7 +1172,7 @@ Subnetwork name: xx subnetwork (optional)
 
 ```java
 public FilledParamData validateNotificationPromptAndDataFilling(
-        String prompt, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, Map<String, Object> schema, String templateUri)
 ```
 
 **Typical scenarios**: the server agent validates a received Notification-T subscription message, extracts the subscription parameters (topic/condition/report format), and establishes the subscription accordingly.
@@ -1186,7 +1185,7 @@ public FilledParamData validateNotificationPromptAndDataFilling(
 | ---- | ---- | ---- | ---- |
 | prompt | String | Yes (non-blank) | Notification subscription prompt message text to validate; the input length is limited by the `A2AT_INPUT_TEXT_MAX_CHARS` configuration item, default 16384 |
 | schema | Map&lt;String, Object&gt; | Yes | Caller-provided parameter JSON Schema |
-| templateUri | TemplateUri | Yes | Notification-T template (the prefix segment must be `Notification-T`) |
+| templateUri | String | Yes | Notification-T template (the prefix segment must be `Notification-T`) |
 
 **Request Example**
 
@@ -1224,7 +1223,7 @@ On failure, throws `ContentValidationException` (structure same as 1.3.12). Erro
 
 - `input.text_too_long` (prompt longer than `A2AT_INPUT_TEXT_MAX_CHARS`)
 
-Programming errors: a null prompt / schema / templateUri throws `NullPointerException`; a blank prompt throws `IllegalArgumentException`.
+Programming errors: a null prompt / schema / templateUri throws `NullPointerException`; a blank prompt or a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`.
 
 **Response Example**
 
@@ -1242,7 +1241,7 @@ result.data() =
 **API Definition**
 
 ```java
-public MetadataContent generateAuthPromptFromText(String text, TemplateUri templateUri)
+public MetadataContent generateAuthPromptFromText(String text, String templateUri)
 ```
 
 **Typical scenarios**: the client agent converts a natural-language authorization request (add/modify/delete/query network operation authorization policies) into an Authorization-T message.
@@ -1254,7 +1253,7 @@ public MetadataContent generateAuthPromptFromText(String text, TemplateUri templ
 | Parameter | Type | Required | Description |
 | ---- | ---- | ---- | ---- |
 | text | String | Yes | Natural-language authorization description (operation type + network operation authorization policy content); the input length is limited by the `A2AT_INPUT_TEXT_MAX_CHARS` configuration item, default 16384 |
-| templateUri | TemplateUri | Yes | Authorization-T template: `StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT` (`Authorization-T/authorization-policy-management/v1`) |
+| templateUri | String | Yes | Authorization-T template: `StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI` (`Authorization-T/authorization-policy-management/v1`) |
 
 **Request Example**
 
@@ -1268,14 +1267,14 @@ A2ATClient client = new A2ATClient(Path.of("client.env"));
 
 MetadataContent result = client.generateAuthPromptFromText(
         "Add an authorization for the campus private network, use service recovery for handling, do a tunnel optimization, and leave the validity period to be filled in later",
-        StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT);
+        StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI);
 ```
 
 **Output**
 
 On success, returns `MetadataContent` (structure same as [1.3.10](#1310-generatetaskpromptfromtext); `extensionUri` is `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Authorization-T/v1`).
 
-On failure, throws `PromptGenerationException` (structure same as 1.3.10); for example, an operation type outside the "add/modify/delete/query authorization policy" range is rejected with `slot.constraint_violated`. Programming errors: a null text or templateUri throws `NullPointerException`.
+On failure, throws `PromptGenerationException` (structure same as 1.3.10); for example, an operation type outside the "add/modify/delete/query authorization policy" range is rejected with `slot.constraint_violated`. Programming errors: a null text or templateUri throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`.
 
 **Response Example**
 
@@ -1304,7 +1303,7 @@ campus private network, service recovery, tunnel optimization
 
 ```java
 public MetadataContent generateAuthPromptFromDataWithSchema(
-        Map<String, Object> data, Map<String, Object> schema, TemplateUri templateUri)
+        Map<String, Object> data, Map<String, Object> schema, String templateUri)
 ```
 
 **Typical scenarios**: the client agent converts structured authorization policy data submitted field by field by an authorization management UI or system into an Authorization-T message.
@@ -1317,7 +1316,7 @@ public MetadataContent generateAuthPromptFromDataWithSchema(
 | ---- | ---- | ---- | ---- |
 | data | Map&lt;String, Object&gt; | Yes | Structured authorization input (operation type, policy count, policy detail list, etc.) |
 | schema | Map&lt;String, Object&gt; | Yes (non-empty) | Field-semantics JSON Schema |
-| templateUri | TemplateUri | Yes | Authorization-T template |
+| templateUri | String | Yes | Authorization-T template |
 
 **Request Example**
 
@@ -1353,14 +1352,14 @@ Map<String, Object> schema = Map.of(
                                         "validityPeriod", Map.of("type", "string"))))));
 
 MetadataContent result = client.generateAuthPromptFromDataWithSchema(
-        data, schema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT);
+        data, schema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI);
 ```
 
 **Output**
 
 On success, returns `MetadataContent` (structure same as [1.3.10](#1310-generatetaskpromptfromtext); `extensionUri` is `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Authorization-T/v1`).
 
-On failure, throws `PromptGenerationException` (structure same as 1.3.10). Programming errors: a null argument throws `NullPointerException`; an empty schema map throws `IllegalArgumentException`.
+On failure, throws `PromptGenerationException` (structure same as 1.3.10). Programming errors: a null argument throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) or an empty schema map throws `IllegalArgumentException`.
 
 **Response Example**
 
@@ -1389,7 +1388,7 @@ campus private network, service recovery, tunnel optimization, permanently valid
 
 ```java
 public FilledParamData validateAuthPromptAndDataFilling(
-        String prompt, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, Map<String, Object> schema, String templateUri)
 ```
 
 **Typical scenarios**: the server agent validates a received Authorization-T message, extracts the operation type and policy list, and performs the authorization policy management action accordingly.
@@ -1402,7 +1401,7 @@ public FilledParamData validateAuthPromptAndDataFilling(
 | ---- | ---- | ---- | ---- |
 | prompt | String | Yes (non-blank) | Authorization prompt message text to validate; the input length is limited by the `A2AT_INPUT_TEXT_MAX_CHARS` configuration item, default 16384 |
 | schema | Map&lt;String, Object&gt; | Yes | Caller-provided parameter JSON Schema (containing `operationType`, `policyList`, etc.) |
-| templateUri | TemplateUri | Yes | Authorization-T template (the prefix segment must be `Authorization-T`) |
+| templateUri | String | Yes | Authorization-T template (the prefix segment must be `Authorization-T`) |
 
 **Request Example**
 
@@ -1417,7 +1416,7 @@ Map<String, Object> paramSchema = MAPPER.readValue(
 // (array whose entries carry policyId/businessScenario/handlingType/operationName/validityPeriod)
 
 FilledParamData result = server.validateAuthPromptAndDataFilling(
-        metadata.promptText(), paramSchema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT);
+        metadata.promptText(), paramSchema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI);
 ```
 
 **Output**
@@ -1434,7 +1433,7 @@ On failure, throws `ContentValidationException` (structure same as 1.3.12). Erro
 
 - `input.text_too_long` (prompt longer than `A2AT_INPUT_TEXT_MAX_CHARS`)
 
-Programming errors: a null prompt / schema / templateUri throws `NullPointerException`; a blank prompt throws `IllegalArgumentException`.
+Programming errors: a null prompt / schema / templateUri throws `NullPointerException`; a blank prompt or a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`.
 
 **Response Example**
 

@@ -100,7 +100,7 @@ public final class AuthzSampleMain {
         Map<String, Object> paramSchema = loadParamSchema();
 
         List<AuthzScenario> scenarios = AuthzScenarioLoader.load(SCENARIOS_RESOURCE);
-        TemplateUri templateUri = StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT;
+        String templateUri = StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI;
 
         AuthzPromptGenerator generator = buildGenerator(envPath, templateUri, capture);
         AuthzPromptValidator validator = buildValidator(envPath, capture);
@@ -194,7 +194,7 @@ public final class AuthzSampleMain {
         }
     }
 
-    static AuthzPromptGenerator buildGenerator(Path envPath, TemplateUri templateUri, AuthzReasoningCapture capture) {
+    static AuthzPromptGenerator buildGenerator(Path envPath, String templateUri, AuthzReasoningCapture capture) {
         if (capture == null) {
             A2ATClient client = new A2ATClient(envPath);
             return scenario -> {
@@ -219,16 +219,17 @@ public final class AuthzSampleMain {
                 .config(config)
                 .llmClient(decorated);
         ClientPromptGenerationOrchestrator orchestrator = builder.buildPromptGenerationOrchestrator();
+        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
         return scenario -> {
             if (AuthzScenario.FROM_TEXT.equals(scenario.entry())) {
                 String text = (String) scenario.input().get("text");
-                return orchestrator.generateAuthPromptFromText(text, templateUri);
+                return orchestrator.generateAuthPromptFromText(text, parsedTemplateUri);
             }
             @SuppressWarnings("unchecked")
             Map<String, Object> data = (Map<String, Object>) scenario.input().get("data");
             @SuppressWarnings("unchecked")
             Map<String, Object> schema = (Map<String, Object>) scenario.input().get("schema");
-            return orchestrator.generateAuthPromptFromDataWithSchema(data, schema, templateUri);
+            return orchestrator.generateAuthPromptFromDataWithSchema(data, schema, parsedTemplateUri);
         };
     }
 
@@ -245,7 +246,13 @@ public final class AuthzSampleMain {
                 .config(config)
                 .llmClient(decorated);
         ContentValidator contentValidator = builder.buildAuthContentValidator();
-        return contentValidator::validate;
+        return (prompt, schema, templateUri) -> contentValidator.validate(prompt, schema, parseTemplateUri(templateUri));
+    }
+
+    /** Parses a template URI string for the typed orchestrator/content-validator seams. */
+    private static TemplateUri parseTemplateUri(String templateUri) {
+        return TemplateUri.parse(templateUri)
+                .orElseThrow(() -> new IllegalArgumentException("Unparseable template URI: " + templateUri));
     }
 
     static void printScenarioReport(AuthzScenario scenario, ScenarioOutcome outcome) {

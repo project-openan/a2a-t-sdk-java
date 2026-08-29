@@ -24,7 +24,6 @@ import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
 import net.openan.a2at.sdk.core.model.NegotiationPerformative;
 import net.openan.a2at.sdk.core.model.SlotValidationError;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.core.validation.ContentValidationException;
 import net.openan.a2at.sdk.negotiation.content.InformationEndingContent;
 import net.openan.a2at.sdk.negotiation.content.InformationProposeContent;
@@ -193,7 +192,7 @@ public final class NegotiationEvalApp {
         String inputText = String.valueOf(testCase.get("input_text"));
         Map<String, Object> inputData = asMap(testCase.get("input_data"));
 
-        TemplateUri taskTemplate = parseTemplate(String.valueOf(suite.get("template_uri")));
+        String taskTemplate = String.valueOf(suite.get("template_uri"));
         Map<String, Object> taskSchema = asMap(suite.get("task_schema"));
         Map<String, String> phrasing = stringMap(suite.get("negotiation_phrasing"));
         Map<String, Object> properties = asMap(taskSchema.get("properties"));
@@ -238,7 +237,7 @@ public final class NegotiationEvalApp {
             taskGenerationInput.put("data", inputData);
             taskGenerationInput.put("schema", taskSchema);
         }
-        taskGenerationInput.put("template_uri", taskTemplate.uri());
+        taskGenerationInput.put("template_uri", taskTemplate);
         String taskGenerationApi =
                 fromText ? "A2ATClient.generateTaskPromptFromText" : "A2ATClient.generateTaskPromptFromDataWithSchema";
         String taskPrompt;
@@ -286,7 +285,7 @@ public final class NegotiationEvalApp {
         Map<String, Object> taskValidationInput = Map.of(
                 "prompt", taskPrompt,
                 "schema", taskSchema,
-                "template_uri", taskTemplate.uri());
+                "template_uri", taskTemplate);
         Set<String> actualMissing;
         Map<String, Object> extractedRound1 = new LinkedHashMap<>();
         try {
@@ -359,7 +358,7 @@ public final class NegotiationEvalApp {
             }
             proposeGenerationInput.put("data", proposeData);
         }
-        proposeGenerationInput.put("template_uri", DemoTemplates.NEGOTIATION_PROPOSE.uri());
+        proposeGenerationInput.put("template_uri", DemoTemplates.NEGOTIATION_PROPOSE);
         String proposeGenerationApi = negotiationFromText
                 ? "A2ATServer.generateNegotiationProposePromptFromText"
                 : "A2ATServer.generateNegotiationProposePromptFromData";
@@ -412,7 +411,7 @@ public final class NegotiationEvalApp {
                 "prompt", proposePrompt,
                 "context", contextJson(proposeContext),
                 "schema", negotiationSchema(actualMissing, taskSchema),
-                "template_uri", DemoTemplates.NEGOTIATION_PROPOSE.uri());
+                "template_uri", DemoTemplates.NEGOTIATION_PROPOSE);
         Boolean proposeValid = null;
         try {
             long nanos = System.nanoTime();
@@ -482,7 +481,7 @@ public final class NegotiationEvalApp {
                                     "prompt", proposePrompt,
                                     "context", contextJson(proposeContext),
                                     "schema", negotiationSchema(actualMissing, taskSchema),
-                                    "template_uri", DemoTemplates.NEGOTIATION_PROPOSE.uri())));
+                                    "template_uri", DemoTemplates.NEGOTIATION_PROPOSE)));
             step.put("client_requested_slots", new ArrayList<>(clientRequestedSlots));
             steps.add(step);
             emit("[eval]   [5] client extracted requested slots: " + clientRequestedSlots + " (" + secs(nanos) + "s)");
@@ -505,7 +504,7 @@ public final class NegotiationEvalApp {
                                     "prompt", proposePrompt,
                                     "context", contextJson(proposeContext),
                                     "schema", negotiationSchema(actualMissing, taskSchema),
-                                    "template_uri", DemoTemplates.NEGOTIATION_PROPOSE.uri())));
+                                    "template_uri", DemoTemplates.NEGOTIATION_PROPOSE)));
             step.put("client_requested_slots", List.of());
             steps.add(step);
             emit("[eval]   [5] client propose validation REJECTED: " + error.getCode() + " " + error.getMessage()
@@ -531,7 +530,7 @@ public final class NegotiationEvalApp {
         Map<String, Object> filledGenerationInput = Map.of(
                 "data", filledData,
                 "schema", taskSchema,
-                "template_uri", taskTemplate.uri());
+                "template_uri", taskTemplate);
         try {
             A2ATClient client = new A2ATClient(envPath);
             filledPrompt = client.generateTaskPromptFromDataWithSchema(filledData, taskSchema, taskTemplate)
@@ -578,7 +577,7 @@ public final class NegotiationEvalApp {
                             "conclusion", NegotiationConclusion.ACCEPT.toString(),
                             "items", itemsJson(filledItems(fills))));
         }
-        acceptGenerationInput.put("template_uri", DemoTemplates.NEGOTIATION_ACCEPT.uri());
+        acceptGenerationInput.put("template_uri", DemoTemplates.NEGOTIATION_ACCEPT);
         String acceptGenerationApi = negotiationFromText
                 ? "A2ATClient.generateNegotiationAcceptPromptFromText"
                 : "A2ATClient.generateNegotiationAcceptPromptFromData";
@@ -635,7 +634,7 @@ public final class NegotiationEvalApp {
                 "prompt", acceptPrompt,
                 "context", contextJson(acceptContext),
                 "schema", negotiationSchema(slotsToFill, taskSchema),
-                "template_uri", DemoTemplates.NEGOTIATION_ACCEPT.uri());
+                "template_uri", DemoTemplates.NEGOTIATION_ACCEPT);
         Boolean acceptValid = null;
         Boolean fillValueMatch = null;
         Map<String, Object> extractedAcceptParams = null;
@@ -680,7 +679,7 @@ public final class NegotiationEvalApp {
         Map<String, Object> secondValidationInput = Map.of(
                 "prompt", filledPrompt,
                 "schema", taskSchema,
-                "template_uri", taskTemplate.uri());
+                "template_uri", taskTemplate);
         Boolean fillCompleted = null;
         try {
             long nanos = System.nanoTime();
@@ -1288,19 +1287,12 @@ public final class NegotiationEvalApp {
                 .count();
     }
 
-    private static TemplateUri parseTemplate(String templateUri) {
-        return TemplateUri.parse(templateUri)
-                .orElseThrow(() -> new IllegalArgumentException("Unparseable template URI: " + templateUri));
-    }
-
     /** Negotiation template URIs used by the closed loop; kept local so the evaluator stays self-contained. */
     private static final class DemoTemplates {
 
-        static final TemplateUri NEGOTIATION_PROPOSE =
-                parseTemplate("Negotiation-T/information-negotiation/propose/v1");
+        static final String NEGOTIATION_PROPOSE = "Negotiation-T/information-negotiation/propose/v1";
 
-        static final TemplateUri NEGOTIATION_ACCEPT =
-                parseTemplate("Negotiation-T/information-negotiation/accept-reject/v1");
+        static final String NEGOTIATION_ACCEPT = "Negotiation-T/information-negotiation/accept-reject/v1";
 
         private DemoTemplates() {}
     }

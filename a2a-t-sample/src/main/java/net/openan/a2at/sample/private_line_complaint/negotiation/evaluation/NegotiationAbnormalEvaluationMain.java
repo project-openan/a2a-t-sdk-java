@@ -160,7 +160,7 @@ public final class NegotiationAbnormalEvaluationMain {
         long startedAt = System.nanoTime();
         NegotiationPerformative performative = NegotiationPerformative.valueOf(testCase.performative());
         NegotiationContext context = contextFor(testCase.contextMode(), performative);
-        TemplateUri templateUri = templateFor(testCase.template());
+        String templateUri = templateFor(testCase.template());
         Map<String, Object> request = new LinkedHashMap<>();
         if (testCase.api().startsWith("generate_")) {
             request.put("text", testCase.input());
@@ -168,7 +168,7 @@ public final class NegotiationAbnormalEvaluationMain {
             request.put("prompt", testCase.input());
             request.put("schema", schemaFor(testCase.api(), testCase.schemaMode()));
         }
-        request.put("template_uri", templateUri == null ? null : templateUri.uri());
+        request.put("template_uri", templateUri);
         request.put("context", context == null ? null : contextPayload(context));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", testCase.id());
@@ -281,7 +281,7 @@ public final class NegotiationAbnormalEvaluationMain {
                 ? NegotiationPerformative.ACCEPT
                 : testCase.api().contains("reject") ? NegotiationPerformative.REJECT : NegotiationPerformative.PROPOSE;
         NegotiationContext context = new NegotiationContext(UUID.randomUUID().toString(), 1, 3, performative);
-        TemplateUri template = testCase.api().contains("propose")
+        String template = testCase.api().contains("propose")
                 ? NegotiationSampleFlow.PROPOSE_TEMPLATE_URI
                 : NegotiationSampleFlow.ENDING_TEMPLATE_URI;
         ScriptedLlmClient llm = new ScriptedLlmClient(testCase.payload());
@@ -301,7 +301,7 @@ public final class NegotiationAbnormalEvaluationMain {
             request.put("schema", schemaFor(testCase.api(), null));
         }
         request.put("context", contextPayload(context));
-        request.put("template_uri", template.uri());
+        request.put("template_uri", template);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", testCase.id());
         result.put("api", scriptedApiMethod(testCase.api()));
@@ -309,7 +309,7 @@ public final class NegotiationAbnormalEvaluationMain {
         result.put("expected_exception", testCase.expectedException());
         result.put("expected_code", testCase.expectedCode());
         try {
-            Object response = invoke(orchestrator, testCase, context, template);
+            Object response = invoke(orchestrator, testCase, context, parseTemplateUri(template));
             result.put("response", responseSummary(response));
             result.put("outcome", "unexpected_success");
             result.put("passed", false);
@@ -352,7 +352,7 @@ public final class NegotiationAbnormalEvaluationMain {
             A2ATServer server,
             NegotiationAbnormalEvaluationCase testCase,
             NegotiationContext context,
-            TemplateUri templateUri) {
+            String templateUri) {
         return switch (testCase.api()) {
             case "generate_propose" -> client.generateNegotiationProposePromptFromText(
                     testCase.input(), context, templateUri);
@@ -395,17 +395,21 @@ public final class NegotiationAbnormalEvaluationMain {
         return new NegotiationContext(UUID.randomUUID().toString(), 1, 3, performative);
     }
 
-    private static TemplateUri templateFor(String template) {
+    private static String templateFor(String template) {
         return switch (template == null ? "null" : template.toLowerCase(java.util.Locale.ROOT)) {
             case "null" -> null;
             case "propose" -> NegotiationSampleFlow.PROPOSE_TEMPLATE_URI;
             case "ending" -> NegotiationSampleFlow.ENDING_TEMPLATE_URI;
-            case "unknown_propose" -> TemplateUri.of(
-                    "Negotiation-T", List.of("information-negotiation", "propose"), "v999");
-            case "unknown_ending" -> TemplateUri.of(
-                    "Negotiation-T", List.of("information-negotiation", "accept-reject"), "v999");
+            case "unknown_propose" -> "Negotiation-T/information-negotiation/propose/v999";
+            case "unknown_ending" -> "Negotiation-T/information-negotiation/accept-reject/v999";
             default -> throw new IllegalArgumentException("Unknown abnormal evaluation template: " + template);
         };
+    }
+
+    /** Parses a template URI string for the typed {@code NegotiationGenerationOrchestrator} seam. */
+    private static TemplateUri parseTemplateUri(String templateUri) {
+        return TemplateUri.parse(templateUri)
+                .orElseThrow(() -> new IllegalArgumentException("Unparseable template URI: " + templateUri));
     }
 
     private static String apiMethod(String api) {

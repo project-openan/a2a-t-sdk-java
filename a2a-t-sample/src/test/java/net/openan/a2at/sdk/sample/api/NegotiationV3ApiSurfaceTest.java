@@ -16,7 +16,6 @@ import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.FilledParamData;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.server.A2ATServer;
 import org.junit.jupiter.api.Test;
 
@@ -96,21 +95,25 @@ class NegotiationV3ApiSurfaceTest {
     }
 
     @Test
-    void sixTargetApisUseStructuredTemplateUri() {
-        Set<String> targetMethods = Set.of(
-                "generateNegotiationProposePromptFromText",
-                "generateNegotiationAcceptPromptFromText",
-                "generateNegotiationRejectPromptFromText",
-                "validateProposePromptAndDataFilling",
-                "validateAcceptPromptAndDataFilling",
-                "validateRejectPromptAndDataFilling");
+    void allFacadeTemplateUriParamsAreStrings() {
         for (Class<?> facade : List.of(A2ATClient.class, A2ATServer.class)) {
-            Arrays.stream(facade.getMethods())
-                    .filter(method -> targetMethods.contains(method.getName()))
-                    .forEach(method -> assertEquals(
-                            TemplateUri.class,
-                            method.getParameterTypes()[method.getParameterCount() - 1],
-                            "last parameter of " + facade.getSimpleName() + "." + method.getName()));
+            List<Method> methodsWithTemplateUri = Arrays.stream(facade.getDeclaredMethods())
+                    .filter(method -> java.lang.reflect.Modifier.isPublic(method.getModifiers())
+                            && !java.lang.reflect.Modifier.isStatic(method.getModifiers()))
+                    .filter(method -> Arrays.stream(method.getParameters())
+                            .anyMatch(parameter -> "templateUri".equals(parameter.getName())))
+                    .toList();
+            assertFalse(methodsWithTemplateUri.isEmpty(), facade.getSimpleName() + " must declare templateUri methods");
+            for (Method method : methodsWithTemplateUri) {
+                for (java.lang.reflect.Parameter parameter : method.getParameters()) {
+                    if ("templateUri".equals(parameter.getName())) {
+                        assertEquals(
+                                String.class,
+                                parameter.getType(),
+                                "templateUri parameter of " + facade.getSimpleName() + "." + method.getName());
+                    }
+                }
+            }
         }
     }
 

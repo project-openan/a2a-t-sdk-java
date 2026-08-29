@@ -80,15 +80,15 @@ class InputTextLengthLimitTest {
         ContentValidationException taskError = assertThrows(
                 ContentValidationException.class,
                 () -> server.validateTaskPromptAndDataFilling(
-                        oversizedPrompt, schema, StandardTemplates.ENERGY_SAVING));
+                        oversizedPrompt, schema, StandardTemplates.ENERGY_SAVING_URI));
         ContentValidationException notificationError = assertThrows(
                 ContentValidationException.class,
                 () -> server.validateNotificationPromptAndDataFilling(
-                        oversizedPrompt, schema, StandardTemplates.SUBSCRIBE_INCIDENT));
+                        oversizedPrompt, schema, StandardTemplates.SUBSCRIBE_INCIDENT_URI));
         ContentValidationException authError = assertThrows(
                 ContentValidationException.class,
                 () -> server.validateAuthPromptAndDataFilling(
-                        oversizedPrompt, schema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT));
+                        oversizedPrompt, schema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI));
 
         assertEquals(ErrorCatalog.INPUT_TEXT_TOO_LONG.getCode(), taskError.getCode());
         assertEquals(ErrorCatalog.INPUT_TEXT_TOO_LONG.getCode(), notificationError.getCode());

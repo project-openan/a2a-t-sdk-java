@@ -35,8 +35,8 @@ class NegotiationSampleFlowTest {
         NegotiationSampleFlow.NegotiationFlowResult result = run(NegotiationDecision.ACCEPT);
 
         assertEquals(NegotiationDecision.ACCEPT, result.decision());
-        assertEquals(NegotiationSampleFlow.PROPOSE_TEMPLATE_URI.uri(), result.propose().templateUri());
-        assertEquals(NegotiationSampleFlow.ENDING_TEMPLATE_URI.uri(), result.ending().templateUri());
+        assertEquals(NegotiationSampleFlow.PROPOSE_TEMPLATE_URI, result.propose().templateUri());
+        assertEquals(NegotiationSampleFlow.ENDING_TEMPLATE_URI, result.ending().templateUri());
         assertEquals(ExtensionUriConstants.NEGOTIATION_T_EXTENSION_URI, result.propose().extensionUri());
         assertContextIsShared(result);
         assertEquals(

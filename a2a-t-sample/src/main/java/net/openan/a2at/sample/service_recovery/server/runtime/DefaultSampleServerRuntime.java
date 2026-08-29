@@ -20,7 +20,6 @@ import net.openan.a2at.sample.service_recovery.server.registry.ServerRegistryCli
 import net.openan.a2at.sample.service_recovery.shared.env.SampleEnvironmentPathResolver;
 import net.openan.a2at.sample.service_recovery.shared.error.ValueErrorException;
 import net.openan.a2at.sample.service_recovery.shared.registry.RegistryAgentCardMapper;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.server.A2ATServer;
 import org.a2aproject.sdk.server.agentexecution.AgentExecutor;
 import org.a2aproject.sdk.server.events.InMemoryQueueManager;
@@ -96,9 +95,7 @@ public final class DefaultSampleServerRuntime implements SampleServerRuntime, A2
     @Override
     public NotificationPromptValidator buildNotificationValidator(Path envPath) {
         A2ATServer server = new A2ATServer(envPath);
-        TemplateUri templateUri = TemplateUri.parse(ServiceRecoverySampleInputs.TEMPLATE_URI)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Malformed template URI: " + ServiceRecoverySampleInputs.TEMPLATE_URI));
+        String templateUri = ServiceRecoverySampleInputs.TEMPLATE_URI;
         return promptText -> server.validateNotificationPromptAndDataFilling(
                 promptText,
                 ServiceRecoverySampleInputs.validationParamSchema(),

@@ -26,7 +26,6 @@ import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
 import net.openan.a2at.sdk.core.model.NegotiationPerformative;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.negotiation.content.InformationEndingContent;
 import net.openan.a2at.sdk.negotiation.content.InformationProposeContent;
 import net.openan.a2at.sdk.negotiation.content.NegotiationConclusion;
@@ -137,7 +136,7 @@ public final class NegotiationFromDataApiEvalApp {
         String relationship = input.containsKey("relationship")
                 ? String.valueOf(input.get("relationship"))
                 : null;
-        TemplateUri template = resolveTemplate(api, input);
+        String template = resolveTemplate(api, input);
 
         NegotiationPerformative performative = "propose".equals(api)
                 ? NegotiationPerformative.PROPOSE
@@ -168,7 +167,7 @@ public final class NegotiationFromDataApiEvalApp {
         if (input.containsKey("relationship")) {
             generateInput.put("relationship", relationship);
         }
-        generateInput.put("template_uri", template.uri());
+        generateInput.put("template_uri", template);
 
         Map<String, Object> record = new LinkedHashMap<>();
         record.put("case", caseId);
@@ -253,7 +252,7 @@ public final class NegotiationFromDataApiEvalApp {
             validateInput.put("prompt", prompt);
             validateInput.put("context", contextJson(context));
             validateInput.put("schema", extractionSchema);
-            validateInput.put("template_uri", template.uri());
+            validateInput.put("template_uri", template);
             Map<String, Object> validateStep = step("2. validate + extract " + api + " (fromData)", validateRole);
             api(validateStep, apiCall(validateMethod, validateInput));
             try {
@@ -377,13 +376,13 @@ public final class NegotiationFromDataApiEvalApp {
         return failure;
     }
 
-    private static TemplateUri resolveTemplate(String api, Map<String, Object> input) {
+    private static String resolveTemplate(String api, Map<String, Object> input) {
         if (input.containsKey("template")) {
-            return parseTemplate(String.valueOf(input.get("template")));
+            return String.valueOf(input.get("template"));
         }
         return "propose".equals(api)
-                ? StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE
-                : StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT;
+                ? StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI
+                : StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI;
     }
 
     private static void check(List<Map<String, Object>> checks, String name, boolean pass) {
@@ -439,11 +438,6 @@ public final class NegotiationFromDataApiEvalApp {
         } catch (IOException exception) {
             throw new UncheckedIOException("Failed to load the eval suite: " + SUITE_RESOURCE, exception);
         }
-    }
-
-    private static TemplateUri parseTemplate(String templateUri) {
-        return TemplateUri.parse(templateUri)
-                .orElseThrow(() -> new IllegalArgumentException("Unparseable template URI: " + templateUri));
     }
 
     private static Map<String, Object> step(String name, String role) {

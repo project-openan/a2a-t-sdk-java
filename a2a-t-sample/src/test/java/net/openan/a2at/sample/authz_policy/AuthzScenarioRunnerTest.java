@@ -21,13 +21,12 @@ import net.openan.a2at.sdk.core.model.FilledParamData;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.SlotValidationError;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.core.validation.ContentValidationException;
 import org.junit.jupiter.api.Test;
 
 class AuthzScenarioRunnerTest {
 
-    private static final TemplateUri TEMPLATE_URI = StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT;
+    private static final String TEMPLATE_URI = StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI;
     private static final Map<String, Object> PARAM_SCHEMA = Map.of("properties", Map.of(), "required", Map.of());
     private static final AuthzExpected SUCCESS = new AuthzExpected(
             new ClientExpected(null, "generated prompt", null), new ServerExpected("success", null, null));
@@ -42,7 +41,7 @@ class AuthzScenarioRunnerTest {
         AtomicReference<String> calledEntry = new AtomicReference<>();
         AuthzPromptGenerator generator = scenario -> {
             calledEntry.set(scenario.entry());
-            return new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+            return new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         };
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
@@ -58,7 +57,7 @@ class AuthzScenarioRunnerTest {
         AtomicReference<String> calledEntry = new AtomicReference<>();
         AuthzPromptGenerator generator = scenario -> {
             calledEntry.set(scenario.entry());
-            return new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+            return new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         };
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
@@ -73,7 +72,7 @@ class AuthzScenarioRunnerTest {
     @Test
     void should_match_WhenExpectedSuccessAndValidationPasses() {
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of("k", "v"));
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenario scenario = new AuthzScenario("test", "from_text", Map.of("text", "hello"), SUCCESS);
@@ -89,7 +88,7 @@ class AuthzScenarioRunnerTest {
     @Test
     void should_match_WhenExpectedSemanticRejectedAndSemanticRejected() {
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> {
             throw new ContentValidationException(
                     ErrorCatalog.NEGOTIATION_SEMANTIC_REJECTED.getCode(), "semantic rejected");
@@ -109,7 +108,7 @@ class AuthzScenarioRunnerTest {
     @Test
     void should_notMatch_WhenExpectedSuccessAndValidationRejected() {
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> {
             throw new ContentValidationException(
                     ErrorCatalog.NEGOTIATION_SEMANTIC_REJECTED.getCode(), "semantic rejected");
@@ -128,7 +127,7 @@ class AuthzScenarioRunnerTest {
     @Test
     void should_notMatch_WhenExpectedSemanticRejectedAndValidationPasses() {
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of("k", "v"));
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenario scenario =
@@ -145,7 +144,7 @@ class AuthzScenarioRunnerTest {
     @Test
     void should_match_WhenPromptTextDiffersFromExpectation() {
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "different prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "different prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenario scenario = new AuthzScenario("test", "from_text", Map.of("text", "hello"), SUCCESS);
@@ -164,7 +163,7 @@ class AuthzScenarioRunnerTest {
                 new ClientExpected(null, "expected prompt", null),
                 new ServerExpected("success", null, Map.of("操作类型", "新增授权策略")));
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "drifted prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "drifted prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of("操作类型", "新增授权策略"));
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenario scenario = new AuthzScenario("test", "from_text", Map.of("text", "hello"), expected);
@@ -181,7 +180,7 @@ class AuthzScenarioRunnerTest {
         AuthzExpected expected = new AuthzExpected(
                 new ClientExpected(null, "generated prompt  \n", null), new ServerExpected("success", null, null));
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "  generated prompt\n", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "  generated prompt\n", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenario scenario = new AuthzScenario("test", "from_text", Map.of("text", "hello"), expected);
@@ -249,7 +248,7 @@ class AuthzScenarioRunnerTest {
     @Test
     void should_notMatch_WhenExpectedSuccessAndValidatorThrowsInfrastructureError() {
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> {
             throw new ContentValidationException(ErrorCatalog.LLM_INVOCATION_FAILED.getCode(), "infrastructure error");
         };
@@ -268,7 +267,7 @@ class AuthzScenarioRunnerTest {
     @Test
     void should_notMatch_WhenExpectedSuccessAndValidatorThrowsResourceNotFound() {
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> {
             throw new ContentValidationException(ErrorCatalog.TEMPLATE_NOT_FOUND.getCode(), "resource not found");
         };
@@ -287,7 +286,7 @@ class AuthzScenarioRunnerTest {
     @Test
     void should_notMatch_WhenExpectedSuccessAndValidatorThrowsUnknownCode() {
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> {
             throw new ContentValidationException("unknown_code", "unknown error");
         };
@@ -380,7 +379,7 @@ class AuthzScenarioRunnerTest {
                 new ClientExpected(null, "generated prompt", null),
                 new ServerExpected("success", null, Map.of("操作类型", "新增授权策略", "策略列表", List.of(Map.of("业务场景", "校园专网")))));
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         Map<String, Object> actualEntry = new java.util.LinkedHashMap<>();
         actualEntry.put("策略标识", null);
         actualEntry.put("业务场景", "校园专网");
@@ -402,7 +401,7 @@ class AuthzScenarioRunnerTest {
                 new ClientExpected(null, "generated prompt", null),
                 new ServerExpected("success", null, Map.of("策略列表", List.of(Map.of("业务场景", "校园专网")))));
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator =
                 (prompt, schema, templateUri) -> new FilledParamData(Map.of("策略列表", List.of(Map.of("业务场景", "医疗专线"))));
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
@@ -420,7 +419,7 @@ class AuthzScenarioRunnerTest {
                 new ClientExpected(null, "generated prompt", null),
                 new ServerExpected("success", null, Map.of("策略列表", List.of(Map.of("业务场景", "校园专网")))));
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) ->
                 new FilledParamData(Map.of("策略列表", List.of(Map.of("业务场景", "校园专网"), Map.of("业务场景", "医疗专线"))));
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
@@ -454,7 +453,7 @@ class AuthzScenarioRunnerTest {
     void should_warn_WhenMutationAndEmptyPolicyListSection() {
         String promptText = "## 授权策略的操作类型\n新增授权策略\n\n## 授权策略的操作描述\n描述\n\n## 动网操作的授权策略列表\n\n\n\n## 预期输出\n输出格式";
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), promptText, "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, promptText, "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenario scenario = new AuthzScenario("test", "from_text", Map.of("text", "hello"), SUCCESS);
@@ -469,7 +468,7 @@ class AuthzScenarioRunnerTest {
     void should_warn_WhenModifyAndEmptyPolicyListSection() {
         String promptText = "## 授权策略的操作类型\n修改授权策略\n\n## 授权策略的操作描述\n描述\n\n## 动网操作的授权策略列表\n\n## 预期输出\n输出格式";
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), promptText, "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, promptText, "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenario scenario = new AuthzScenario("test", "from_text", Map.of("text", "hello"), SUCCESS);
@@ -484,7 +483,7 @@ class AuthzScenarioRunnerTest {
     void should_notWarn_WhenQueryAndEmptyPolicyListSection() {
         String promptText = "## 授权策略的操作类型\n查询授权策略\n\n## 授权策略的操作描述\n描述\n\n## 动网操作的授权策略列表\n\n## 预期输出\n输出格式";
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), promptText, "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, promptText, "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenario scenario = new AuthzScenario("test", "from_text", Map.of("text", "hello"), SUCCESS);
@@ -499,7 +498,7 @@ class AuthzScenarioRunnerTest {
     void should_notWarn_WhenMutationAndNonEmptyPolicyListSection() {
         String promptText = "## 授权策略的操作类型\n新增授权策略\n\n## 授权策略的操作描述\n描述\n\n## 动网操作的授权策略列表\n校园专网，紧急扩容\n\n## 预期输出\n输出格式";
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), promptText, "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, promptText, "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenario scenario = new AuthzScenario("test", "from_text", Map.of("text", "hello"), SUCCESS);
@@ -514,7 +513,7 @@ class AuthzScenarioRunnerTest {
     void should_notWarn_WhenPromptTextHasUnknownSectionOrder() {
         String promptText = "## 授权策略的操作描述\n描述\n\n## 授权策略的操作类型\n新增授权策略\n\n## 预期输出\n输出格式\n\n## 动网操作的授权策略列表\n\n";
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), promptText, "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, promptText, "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenario scenario = new AuthzScenario("test", "from_text", Map.of("text", "hello"), SUCCESS);
@@ -529,7 +528,7 @@ class AuthzScenarioRunnerTest {
     void should_notWarn_WhenNoOperationTypeSection() {
         String promptText = "## 授权策略的操作描述\n描述\n\n## 动网操作的授权策略列表\n\n## 预期输出\n输出格式";
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), promptText, "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, promptText, "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenario scenario = new AuthzScenario("test", "from_text", Map.of("text", "hello"), SUCCESS);
@@ -545,7 +544,7 @@ class AuthzScenarioRunnerTest {
         Map<String, Object> scenarioSchema = Map.of("处置规则", "应为短语");
         AtomicReference<Map<String, Object>> receivedSchema = new AtomicReference<>();
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> {
             receivedSchema.set(schema);
             return new FilledParamData(Map.of());
@@ -563,7 +562,7 @@ class AuthzScenarioRunnerTest {
     void should_useDefaultSchema_WhenValidateSchemaAbsent() {
         AtomicReference<Map<String, Object>> receivedSchema = new AtomicReference<>();
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> {
             receivedSchema.set(schema);
             return new FilledParamData(Map.of());

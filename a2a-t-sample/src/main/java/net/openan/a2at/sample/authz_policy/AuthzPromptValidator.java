@@ -2,7 +2,6 @@ package net.openan.a2at.sample.authz_policy;
 
 import java.util.Map;
 import net.openan.a2at.sdk.core.model.FilledParamData;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 
 /**
  * Functional interface for validating an authorization prompt and extracting filled slot data.
@@ -12,5 +11,5 @@ import net.openan.a2at.sdk.core.model.TemplateUri;
 @FunctionalInterface
 public interface AuthzPromptValidator {
 
-    FilledParamData validate(String prompt, Map<String, Object> schema, TemplateUri templateUri);
+    FilledParamData validate(String prompt, Map<String, Object> schema, String templateUri);
 }

@@ -210,7 +210,8 @@ public final class NegotiationGenerationOrchestrator {
      *     resource exists for the URI and language, {@code negotiation.content_extract_failed} or
      *     {@code llm.invocation_failed} or {@code llm.response_invalid} when the extraction step fails after exhausting
      *     its retries, {@code negotiation.field_missing} when the extracted content misses a required field, or
-     *     {@code negotiation.invalid_input} when the text is blank or the extracted content contradicts the phase, or
+     *     {@code negotiation.invalid_input} when the text is blank or the extracted content contradicts the phase,
+     *     {@code template.render_failed} when rendering the template fails, or
      *     {@code input.text_too_long} when the text exceeds the configured maximum length
      */
     public MetadataContent generateProposeFromText(
@@ -240,8 +241,8 @@ public final class NegotiationGenerationOrchestrator {
      *     {@code llm.invocation_failed} or {@code llm.response_invalid} when the extraction step fails after exhausting
      *     its retries, {@code negotiation.field_missing} when the extracted content misses a required field, or
      *     {@code negotiation.invalid_input} when the text is blank, {@code negotiation.conclusion_mismatch} when the
-     *     extracted conclusion is not {@code Accept}, or {@code input.text_too_long} when the text exceeds the
-     *     configured maximum length
+     *     extracted conclusion is not {@code Accept}, {@code template.render_failed} when rendering the template
+     *     fails, or {@code input.text_too_long} when the text exceeds the configured maximum length
      */
     public MetadataContent generateAcceptFromText(
             String text, @NonNull NegotiationContext context, @NonNull TemplateUri templateUri) {
@@ -270,8 +271,8 @@ public final class NegotiationGenerationOrchestrator {
      *     {@code llm.invocation_failed} or {@code llm.response_invalid} when the extraction step fails after exhausting
      *     its retries, {@code negotiation.field_missing} when the extracted content misses a required field, or
      *     {@code negotiation.invalid_input} when the text is blank, {@code negotiation.conclusion_mismatch} when the
-     *     extracted conclusion is not {@code Reject}, or {@code input.text_too_long} when the text exceeds the
-     *     configured maximum length
+     *     extracted conclusion is not {@code Reject}, {@code template.render_failed} when rendering the template
+     *     fails, or {@code input.text_too_long} when the text exceeds the configured maximum length
      */
     public MetadataContent generateRejectFromText(
             String text, @NonNull NegotiationContext context, @NonNull TemplateUri templateUri) {
@@ -299,8 +300,8 @@ public final class NegotiationGenerationOrchestrator {
      *     resource exists for the URI and language, {@code negotiation.content_extract_failed} or
      *     {@code llm.invocation_failed} or {@code llm.response_invalid} when the extraction step fails after exhausting
      *     its retries, {@code negotiation.field_missing} when the extracted content misses the termination reason, or
-     *     {@code negotiation.invalid_input} when the text is blank, or {@code input.text_too_long} when the text
-     *     exceeds the configured maximum length
+     *     {@code negotiation.invalid_input} when the text is blank, {@code template.render_failed} when rendering the
+     *     template fails, or {@code input.text_too_long} when the text exceeds the configured maximum length
      */
     public MetadataContent generateAbortFromText(
             String text, @NonNull NegotiationContext context, @NonNull TemplateUri templateUri) {

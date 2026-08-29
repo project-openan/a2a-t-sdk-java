@@ -3,7 +3,6 @@ package net.openan.a2at.sample.negotiation.shared;
 import java.util.List;
 import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.MetadataContent;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
 import net.openan.a2at.sdk.negotiation.content.NegotiationItem;
 import net.openan.a2at.sdk.server.A2ATServer;
@@ -36,7 +35,7 @@ public interface NegotiationStrategy {
             NegotiationContext ctx,
             List<NegotiationItem> missingItems,
             String relationship,
-            TemplateUri templateUri);
+            String templateUri);
 
     /**
      * Generates an accept-phase negotiation message from the filled information items (client facade).
@@ -48,7 +47,7 @@ public interface NegotiationStrategy {
      * @return generated metadata content
      */
     MetadataContent generateAccept(
-            A2ATClient facade, NegotiationContext ctx, List<NegotiationItem> filledItems, TemplateUri templateUri);
+            A2ATClient facade, NegotiationContext ctx, List<NegotiationItem> filledItems, String templateUri);
 
     /**
      * Generates an accept-phase negotiation message from the filled information items (server facade).
@@ -60,5 +59,5 @@ public interface NegotiationStrategy {
      * @return generated metadata content
      */
     MetadataContent generateAcceptServer(
-            A2ATServer server, NegotiationContext ctx, List<NegotiationItem> filledItems, TemplateUri templateUri);
+            A2ATServer server, NegotiationContext ctx, List<NegotiationItem> filledItems, String templateUri);
 }

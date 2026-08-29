@@ -17,7 +17,6 @@ import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
 import net.openan.a2at.sdk.core.model.NegotiationPerformative;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMClientFactory;
@@ -103,7 +102,7 @@ class NegotiationFacadeOutputSymmetryTest {
                 assertNotNull(clientResult.promptText());
                 assertEquals(clientResult, serverResult, "case " + symmetryCase.label() + " [" + language + "]");
                 assertEquals(clientResult.buildMetadataContent(), serverResult.buildMetadataContent());
-                assertEquals(symmetryCase.templateUri().uri(), clientResult.templateUri());
+                assertEquals(symmetryCase.templateUri(), clientResult.templateUri());
                 assertEquals(
                         symmetryCase.performative(),
                         clientResult.negotiationContext().performative(),
@@ -158,7 +157,7 @@ class NegotiationFacadeOutputSymmetryTest {
                 new SymmetryCase(
                         "information_propose",
                         NegotiationPerformative.PROPOSE,
-                        StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE,
+                        StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI,
                         new NegotiationProposeData(
                                 new NegotiationContext(
                                         "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 2, 5, NegotiationPerformative.PROPOSE),
@@ -171,7 +170,7 @@ class NegotiationFacadeOutputSymmetryTest {
                 new SymmetryCase(
                         "target_propose",
                         NegotiationPerformative.PROPOSE,
-                        StandardTemplates.TARGET_NEGOTIATION_PROPOSE,
+                        StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI,
                         new NegotiationProposeData(
                                 new NegotiationContext(
                                         "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 1, 5, NegotiationPerformative.PROPOSE),
@@ -184,7 +183,7 @@ class NegotiationFacadeOutputSymmetryTest {
                 new SymmetryCase(
                         "feasibility_propose",
                         NegotiationPerformative.PROPOSE,
-                        StandardTemplates.FEASIBILITY_NEGOTIATION_PROPOSE,
+                        StandardTemplates.FEASIBILITY_NEGOTIATION_PROPOSE_URI,
                         new NegotiationProposeData(
                                 new NegotiationContext(
                                         "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 2, 5, NegotiationPerformative.PROPOSE),
@@ -197,43 +196,43 @@ class NegotiationFacadeOutputSymmetryTest {
                 endingCase(
                         "information_accept",
                         NegotiationPerformative.ACCEPT,
-                        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT,
+                        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI,
                         new InformationEndingContent(
                                 NegotiationConclusion.ACCEPT,
                                 List.of(new NegotiationItem("area information", "Songshan Lake")))),
                 endingCase(
                         "target_accept",
                         NegotiationPerformative.ACCEPT,
-                        StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT,
+                        StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI,
                         new TargetEndingContent(NegotiationConclusion.ACCEPT, "The confirmed intent.", null)),
                 endingCase(
                         "feasibility_accept",
                         NegotiationPerformative.ACCEPT,
-                        StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT,
+                        StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT_URI,
                         new FeasibilityEndingContent(NegotiationConclusion.ACCEPT, "The target is achievable.")),
                 endingCase(
                         "information_reject",
                         NegotiationPerformative.REJECT,
-                        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT,
+                        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI,
                         new InformationEndingContent(
                                 NegotiationConclusion.REJECT,
                                 List.of(new NegotiationItem("area information", "not available")))),
                 endingCase(
                         "target_reject",
                         NegotiationPerformative.REJECT,
-                        StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT,
+                        StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI,
                         new TargetEndingContent(NegotiationConclusion.REJECT, null, "The intent is unclear.")),
                 endingCase(
                         "feasibility_reject",
                         NegotiationPerformative.REJECT,
-                        StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT,
+                        StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT_URI,
                         new FeasibilityEndingContent(NegotiationConclusion.REJECT, "The target is not achievable.")));
     }
 
     private static SymmetryCase endingCase(
             String label,
             NegotiationPerformative performative,
-            TemplateUri templateUri,
+            String templateUri,
             NegotiationEndingContent content) {
         return new SymmetryCase(
                 label,
@@ -245,7 +244,7 @@ class NegotiationFacadeOutputSymmetryTest {
 
     /** One symmetry case: a fixed input addressed to one of the three from-data generation methods. */
     private record SymmetryCase(
-            String label, NegotiationPerformative performative, TemplateUri templateUri, Object data) {
+            String label, NegotiationPerformative performative, String templateUri, Object data) {
 
         MetadataContent generate(ProposeGenerator propose, EndingGenerator accept, EndingGenerator reject) {
             return switch (performative) {
@@ -260,13 +259,13 @@ class NegotiationFacadeOutputSymmetryTest {
     @FunctionalInterface
     private interface ProposeGenerator {
 
-        MetadataContent generate(NegotiationProposeData data, TemplateUri templateUri);
+        MetadataContent generate(NegotiationProposeData data, String templateUri);
     }
 
     @FunctionalInterface
     private interface EndingGenerator {
 
-        MetadataContent generate(NegotiationEndingData data, TemplateUri templateUri);
+        MetadataContent generate(NegotiationEndingData data, String templateUri);
     }
 
     public static final class RecordingClient implements LLMClient {

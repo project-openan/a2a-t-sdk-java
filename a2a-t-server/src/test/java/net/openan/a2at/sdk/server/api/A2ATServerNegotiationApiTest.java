@@ -39,7 +39,7 @@ class A2ATServerNegotiationApiTest {
                 new NegotiationProposeData(
                         new NegotiationContext(UUID, 1, 5, NegotiationPerformative.PROPOSE),
                         new InformationProposeContent(List.of(new NegotiationItem("节能区域", "松山湖")), null)),
-                INFORMATION_PROPOSE);
+                INFORMATION_PROPOSE_URI);
 
         assertEquals(INFORMATION_PROPOSE_URI, result.templateUri());
         assertFalse(result.promptText().isBlank());
@@ -59,7 +59,7 @@ class A2ATServerNegotiationApiTest {
                 new NegotiationProposeData(
                         new NegotiationContext(UUID, 1, 5, NegotiationPerformative.PROPOSE),
                         new InformationProposeContent(List.of(new NegotiationItem("Region", "Songshan Lake")), null)),
-                INFORMATION_PROPOSE);
+                INFORMATION_PROPOSE_URI);
 
         assertEquals(INFORMATION_PROPOSE_URI, result.templateUri());
         assertFalse(result.promptText().isBlank());
@@ -81,7 +81,7 @@ class A2ATServerNegotiationApiTest {
                 new NegotiationAbortData(
                         new NegotiationContext(UUID, 5, 5, NegotiationPerformative.ABORT),
                         new NegotiationAbortContent("达到协商轮次上限，本次协商确认结束。")),
-                StandardTemplates.NEGOTIATION_ABORT);
+                StandardTemplates.NEGOTIATION_ABORT_URI);
 
         assertEquals(StandardTemplates.NEGOTIATION_ABORT.uri(), result.templateUri());
         assertTrue(result.promptText().contains("## 协商结果\nAbort"));
@@ -94,7 +94,7 @@ class A2ATServerNegotiationApiTest {
         A2ATServer server = new A2ATServer(writeEnv("zh-CN"));
 
         PromptTemplate template =
-                server.getPrompt(StandardTemplates.NEGOTIATION_ABORT).orElseThrow();
+                server.getPrompt(StandardTemplates.NEGOTIATION_ABORT_URI).orElseThrow();
         assertEquals(StandardTemplates.NEGOTIATION_ABORT, template.templateUri());
         assertFalse(template.content().isBlank());
     }
@@ -103,13 +103,13 @@ class A2ATServerNegotiationApiTest {
     void queriesSingleNegotiationTemplateWithoutThrowing() throws IOException {
         A2ATServer server = new A2ATServer(writeEnv("zh-CN"));
 
-        assertTrue(server.getPrompt(INFORMATION_PROPOSE).isPresent());
-        assertTrue(server.getPrompt(StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT)
+        assertTrue(server.getPrompt(INFORMATION_PROPOSE_URI).isPresent());
+        assertTrue(server.getPrompt(StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT_URI)
                 .isPresent());
         assertFalse(server.getPrompt(
-                        TemplateUri.of(StandardTemplates.NEGOTIATION_EXTENSION_NAME, "unknown-negotiation", "propose"))
+                        StandardTemplates.NEGOTIATION_EXTENSION_NAME + "/unknown-negotiation/propose/v1")
                 .isPresent());
-        PromptTemplate template = server.getPrompt(INFORMATION_PROPOSE).orElseThrow();
+        PromptTemplate template = server.getPrompt(INFORMATION_PROPOSE_URI).orElseThrow();
         assertEquals(INFORMATION_PROPOSE, template.templateUri());
         assertFalse(template.content().isBlank());
     }

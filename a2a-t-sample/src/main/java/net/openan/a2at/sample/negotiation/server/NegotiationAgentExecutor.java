@@ -162,7 +162,7 @@ public final class NegotiationAgentExecutor implements AgentExecutor {
                 List.<org.a2aproject.sdk.spec.Part<?>>of(new DataPart(Map.of(DemoConstants.TASK_T_URI, diagnosis))),
                 "faultManagement.Diagnosis",
                 "SPN private-line diagnosis result",
-                Map.of(DemoConstants.TEMPLATE_URI_KEY, DemoConstants.TASK_TEMPLATE.uri()),
+                Map.of(DemoConstants.TEMPLATE_URI_KEY, DemoConstants.TASK_TEMPLATE),
                 false,
                 true);
         emit("[server] diagnosis artifact emitted");
@@ -258,16 +258,10 @@ public final class NegotiationAgentExecutor implements AgentExecutor {
         return value == null || (value instanceof String s && s.isBlank());
     }
 
-    /** Parses a rendered template URI string back into a {@code TemplateUri} for metadata building. */
-    private static net.openan.a2at.sdk.core.model.TemplateUri parseTemplateUri(String templateUri) {
-        return net.openan.a2at.sdk.core.model.TemplateUri.parse(templateUri)
-                .orElseThrow(() -> new IllegalArgumentException("Unparseable template URI: " + templateUri));
-    }
-
     private static Message buildReplyMessage(
             RequestContext ctx, MetadataContent content, Map<String, Object> contextMap, String extensionUri) {
-        Map<String, Object> replyMetadata = NegotiationMessage.buildMetadata(
-                extensionUri, content.promptText(), parseTemplateUri(content.templateUri()), contextMap);
+        Map<String, Object> replyMetadata =
+                NegotiationMessage.buildMetadata(extensionUri, content.promptText(), content.templateUri(), contextMap);
         return Message.builder()
                 .messageId(UUID.randomUUID().toString())
                 .contextId(ctx.getContextId())

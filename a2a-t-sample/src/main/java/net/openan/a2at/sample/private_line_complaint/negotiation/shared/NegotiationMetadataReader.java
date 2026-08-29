@@ -5,7 +5,6 @@ import net.openan.a2at.sdk.core.model.ExtensionUriConstants;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
 import net.openan.a2at.sdk.core.model.NegotiationPerformative;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 
 /** Reads and validates Negotiation-T metadata received over A2A. */
 public final class NegotiationMetadataReader {
@@ -13,14 +12,14 @@ public final class NegotiationMetadataReader {
     private NegotiationMetadataReader() {
     }
 
-    public static String readPrompt(Map<String, ?> metadata, TemplateUri expectedTemplateUri) {
+    public static String readPrompt(Map<String, ?> metadata, String expectedTemplateUri) {
         if (metadata == null) {
             throw new IllegalArgumentException("Negotiation metadata is required");
         }
         String templateUri = stringValue(metadata.get(MetadataContent.TEMPLATE_URI_METADATA_KEY));
-        if (!expectedTemplateUri.uri().equals(templateUri)) {
+        if (!expectedTemplateUri.equals(templateUri)) {
             throw new IllegalArgumentException(
-                    "Unexpected negotiation template URI: expected=" + expectedTemplateUri.uri() + ", actual=" + templateUri);
+                    "Unexpected negotiation template URI: expected=" + expectedTemplateUri + ", actual=" + templateUri);
         }
         String prompt = stringValue(metadata.get(ExtensionUriConstants.NEGOTIATION_T_EXTENSION_URI));
         if (prompt.isBlank()) {

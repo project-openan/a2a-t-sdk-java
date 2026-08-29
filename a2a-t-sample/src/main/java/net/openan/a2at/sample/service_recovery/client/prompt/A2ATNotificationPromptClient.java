@@ -3,7 +3,6 @@ package net.openan.a2at.sample.service_recovery.client.prompt;
 import java.util.Map;
 import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.MetadataContent;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 
 /**
  * {@link SamplePromptClient} adapter delegating to the real {@link A2ATClient} facade.
@@ -28,17 +27,12 @@ public final class A2ATNotificationPromptClient implements SamplePromptClient {
 
     @Override
     public MetadataContent generateNotificationPromptFromText(String text, String templateUri) {
-        return delegate.generateNotificationPromptFromText(text, parse(templateUri));
+        return delegate.generateNotificationPromptFromText(text, templateUri);
     }
 
     @Override
     public MetadataContent generateNotificationPromptFromDataWithSchema(
             Map<String, Object> data, Map<String, Object> schema, String templateUri) {
-        return delegate.generateNotificationPromptFromDataWithSchema(data, schema, parse(templateUri));
-    }
-
-    private static TemplateUri parse(String templateUri) {
-        return TemplateUri.parse(templateUri)
-                .orElseThrow(() -> new IllegalArgumentException("Malformed template URI: " + templateUri));
+        return delegate.generateNotificationPromptFromDataWithSchema(data, schema, templateUri);
     }
 }

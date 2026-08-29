@@ -22,7 +22,6 @@ import net.openan.a2at.sample.authz_policy.AuthzScenarioRunner.ScenarioResult;
 import net.openan.a2at.sdk.core.model.FilledParamData;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMResponse;
 import org.junit.jupiter.api.Test;
@@ -34,7 +33,7 @@ class AuthzSampleMainConcurrencyTest {
     private static final String CONTENT_VALIDATION_SYSTEM =
             "/prompt_resources/prompts/content_validation/zh-CN/system.md";
 
-    private static final TemplateUri TEMPLATE_URI = StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT;
+    private static final String TEMPLATE_URI = StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI;
 
     private static final String ENV_CONTENT =
             "A2AT_LLM_PROVIDER=openai\nA2AT_LLM_MODEL=gpt-4\nA2AT_LLM_API_KEY=sk-test\n"

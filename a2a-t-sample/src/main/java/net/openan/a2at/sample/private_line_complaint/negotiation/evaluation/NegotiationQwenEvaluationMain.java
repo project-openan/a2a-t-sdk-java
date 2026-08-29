@@ -208,8 +208,8 @@ public final class NegotiationQwenEvaluationMain {
         NegotiationEvaluationCase proposeCase = testCase.proposeCase();
         boolean fromData = "fromData".equals(channel);
         Map<String, Object> request = fromData
-                ? Map.of("data", proposeCase.data(), "template_uri", NegotiationSampleFlow.PROPOSE_TEMPLATE_URI.uri())
-                : Map.of("text", proposeCase.text(), "template_uri", NegotiationSampleFlow.PROPOSE_TEMPLATE_URI.uri());
+                ? Map.of("data", proposeCase.data(), "template_uri", NegotiationSampleFlow.PROPOSE_TEMPLATE_URI)
+                : Map.of("text", proposeCase.text(), "template_uri", NegotiationSampleFlow.PROPOSE_TEMPLATE_URI);
         try {
             MetadataContent content = fromData
                     ? server.generateNegotiationProposePromptFromData(
@@ -247,13 +247,13 @@ public final class NegotiationQwenEvaluationMain {
             writeStage(processLogger, apiTrace, stageEvent(runId, testCase, "validate_propose_and_fill", "propose", channel, null, Map.of(
                     "prompt", prompt,
                     "schema", schema,
-                    "template_uri", NegotiationSampleFlow.PROPOSE_TEMPLATE_URI.uri()), Map.of("filled_data", filled.data()), startedAt, null));
+                    "template_uri", NegotiationSampleFlow.PROPOSE_TEMPLATE_URI), Map.of("filled_data", filled.data()), startedAt, null));
             return filled;
         } catch (RuntimeException exception) {
             writeStage(processLogger, apiTrace, stageEvent(runId, testCase, "validate_propose_and_fill", "propose", channel, null, Map.of(
                     "prompt", prompt,
                     "schema", schema,
-                    "template_uri", NegotiationSampleFlow.PROPOSE_TEMPLATE_URI.uri()), null, startedAt, exception));
+                    "template_uri", NegotiationSampleFlow.PROPOSE_TEMPLATE_URI), null, startedAt, exception));
             throw exception;
         }
     }
@@ -283,9 +283,9 @@ public final class NegotiationQwenEvaluationMain {
                 ? Map.of("data", Map.of(
                         "items", itemsJson(endingItems),
                         "conclusion", accept ? NegotiationConclusion.ACCEPT.toString() : NegotiationConclusion.REJECT.toString()),
-                        "template_uri", NegotiationSampleFlow.ENDING_TEMPLATE_URI.uri())
+                        "template_uri", NegotiationSampleFlow.ENDING_TEMPLATE_URI)
                 : Map.of("text", endingInputText,
-                        "template_uri", NegotiationSampleFlow.ENDING_TEMPLATE_URI.uri());
+                        "template_uri", NegotiationSampleFlow.ENDING_TEMPLATE_URI);
         try {
             MetadataContent content = fromData
                     ? accept
@@ -334,13 +334,13 @@ public final class NegotiationQwenEvaluationMain {
                             prompt, context, schema, NegotiationSampleFlow.ENDING_TEMPLATE_URI);
             writeStage(processLogger, apiTrace, stageEvent(runId, testCase, "validate_" + testCase.decision() + "_and_fill",
                     testCase.decision(), channel, null, Map.of("prompt", prompt, "schema", schema,
-                            "template_uri", NegotiationSampleFlow.ENDING_TEMPLATE_URI.uri()),
+                            "template_uri", NegotiationSampleFlow.ENDING_TEMPLATE_URI),
                     Map.of("filled_data", filled.data()), startedAt, null));
             return filled;
         } catch (RuntimeException exception) {
             writeStage(processLogger, apiTrace, stageEvent(runId, testCase, "validate_" + testCase.decision() + "_and_fill",
                     testCase.decision(), channel, null, Map.of("prompt", prompt, "schema", schema,
-                            "template_uri", NegotiationSampleFlow.ENDING_TEMPLATE_URI.uri()), null, startedAt, exception));
+                            "template_uri", NegotiationSampleFlow.ENDING_TEMPLATE_URI), null, startedAt, exception));
             throw exception;
         }
     }

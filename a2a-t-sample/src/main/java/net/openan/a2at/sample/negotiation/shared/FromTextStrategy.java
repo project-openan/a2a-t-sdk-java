@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.MetadataContent;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
 import net.openan.a2at.sdk.negotiation.content.NegotiationItem;
 import net.openan.a2at.sdk.server.A2ATServer;
@@ -27,21 +26,21 @@ public final class FromTextStrategy implements NegotiationStrategy {
             NegotiationContext ctx,
             List<NegotiationItem> missingItems,
             String relationship,
-            TemplateUri templateUri) {
+            String templateUri) {
         String text = itemsToProposeText(missingItems, relationship);
         return server.generateNegotiationProposePromptFromText(text, ctx, templateUri);
     }
 
     @Override
     public MetadataContent generateAccept(
-            A2ATClient facade, NegotiationContext ctx, List<NegotiationItem> filledItems, TemplateUri templateUri) {
+            A2ATClient facade, NegotiationContext ctx, List<NegotiationItem> filledItems, String templateUri) {
         String text = itemsToAcceptText(filledItems);
         return facade.generateNegotiationAcceptPromptFromText(text, ctx, templateUri);
     }
 
     @Override
     public MetadataContent generateAcceptServer(
-            A2ATServer server, NegotiationContext ctx, List<NegotiationItem> filledItems, TemplateUri templateUri) {
+            A2ATServer server, NegotiationContext ctx, List<NegotiationItem> filledItems, String templateUri) {
         String text = itemsToAcceptText(filledItems);
         return server.generateNegotiationAcceptPromptFromText(text, ctx, templateUri);
     }

@@ -42,7 +42,7 @@ class AuthorizationEntryPointMetadataTest {
 
         MetadataContent result = client.generateAuthPromptFromText(
                 "新增两条动网操作授权策略：业务投诉诊断/业务抢通/隧道调优/限期生效（2026-06-01~2030-06-18）；载波调度/业务抢通/载波调度/永久生效",
-                StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT);
+                StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI);
 
         assertNotNull(result);
         assertEquals(
@@ -61,7 +61,7 @@ class AuthorizationEntryPointMetadataTest {
         Map<String, Object> schema = Map.of("操作类型", "授权策略操作类型，取值范围：新增/修改/删除/查询授权策略");
 
         MetadataContent result = client.generateAuthPromptFromDataWithSchema(
-                data, schema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT);
+                data, schema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI);
 
         assertNotNull(result);
         assertEquals(

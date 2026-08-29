@@ -43,7 +43,7 @@ class AuthorizationContentValidatorTest {
         String prompt = "新增两条动网操作授权策略：业务投诉诊断/业务抢通/隧道调优/限期生效";
 
         FilledParamData result = assertDoesNotThrow(() -> server.validateAuthPromptAndDataFilling(
-                prompt, schemaMap, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT));
+                prompt, schemaMap, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI));
 
         assertNotNull(result);
         assertEquals(Map.of("授权策略的操作类型", "新增授权策略"), result.data());

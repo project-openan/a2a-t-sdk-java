@@ -19,13 +19,12 @@ import net.openan.a2at.sample.authz_policy.AuthzScenarioRunner.ScenarioOutcome;
 import net.openan.a2at.sdk.core.model.FilledParamData;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class AuthzScenarioExecutorTest {
 
-    private static final TemplateUri TEMPLATE_URI = StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT;
+    private static final String TEMPLATE_URI = StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI;
     private static final Map<String, Object> PARAM_SCHEMA = Map.of("properties", Map.of(), "required", Map.of());
     private static final AuthzExpected SUCCESS = new AuthzExpected(
             new ClientExpected(null, "generated prompt", null), new ServerExpected("success", null, null));
@@ -52,7 +51,7 @@ class AuthzScenarioExecutorTest {
             } else {
                 gate.countDown();
             }
-            return new MetadataContent(TEMPLATE_URI.uri(), scenario.label(), "Authorization-T/v1");
+            return new MetadataContent(TEMPLATE_URI, scenario.label(), "Authorization-T/v1");
         };
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
@@ -76,7 +75,7 @@ class AuthzScenarioExecutorTest {
                 case "boom-assert":
                     throw new AssertionError("assertion failure");
                 default:
-                    return new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                    return new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
             }
         };
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
@@ -102,7 +101,7 @@ class AuthzScenarioExecutorTest {
     @Test
     void should_deliverProgressCallbacks_WithDistinctCompletionIndices() {
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenarioExecutor executor = new AuthzScenarioExecutor(runner);
@@ -123,7 +122,7 @@ class AuthzScenarioExecutorTest {
     @Test
     void should_runAllScenariosSerially_WhenSingleWorker() {
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenarioExecutor executor = new AuthzScenarioExecutor(runner);
@@ -154,7 +153,7 @@ class AuthzScenarioExecutorTest {
     @Test
     void should_notThrow_WhenProgressListenerIsNull() {
         AuthzPromptGenerator generator =
-                scenario -> new MetadataContent(TEMPLATE_URI.uri(), "generated prompt", "Authorization-T/v1");
+                scenario -> new MetadataContent(TEMPLATE_URI, "generated prompt", "Authorization-T/v1");
         AuthzPromptValidator validator = (prompt, schema, templateUri) -> new FilledParamData(Map.of());
         AuthzScenarioRunner runner = new AuthzScenarioRunner(generator, validator);
         AuthzScenarioExecutor executor = new AuthzScenarioExecutor(runner);

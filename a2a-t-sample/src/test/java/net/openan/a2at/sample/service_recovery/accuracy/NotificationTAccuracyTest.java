@@ -21,7 +21,6 @@ import java.util.Objects;
 import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.FilledParamData;
 import net.openan.a2at.sdk.core.model.MetadataContent;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.core.validation.ContentValidationException;
 import net.openan.a2at.sdk.server.A2ATServer;
 import org.junit.jupiter.api.AfterAll;
@@ -41,7 +40,7 @@ class NotificationTAccuracyTest {
 
     private static A2ATClient client;
     private static A2ATServer server;
-    private static TemplateUri templateUri;
+    private static String templateUri;
     private static Map<String, Object> dataSchema;
     private static Map<String, Object> validationSchema;
     private static boolean apiKeyConfigured;
@@ -53,8 +52,7 @@ class NotificationTAccuracyTest {
 
     @BeforeAll
     static void setup() throws Exception {
-        templateUri = TemplateUri.parse(TEMPLATE_URI_STR)
-                .orElseThrow(() -> new IllegalStateException("Invalid template URI: " + TEMPLATE_URI_STR));
+        templateUri = TEMPLATE_URI_STR;
 
         dataSchema = loadJsonResource(DATA_SCHEMA_RESOURCE);
         validationSchema = loadJsonResource(VALIDATION_SCHEMA_RESOURCE);

@@ -107,7 +107,7 @@ class A2ATClientNegotiationEnvConfigTest {
                 new NegotiationProposeData(
                         new NegotiationContext(UUID, 1, 5, NegotiationPerformative.PROPOSE),
                         new InformationProposeContent(List.of(new NegotiationItem("节能区域", "松山湖")), null)),
-                INFORMATION_PROPOSE);
+                INFORMATION_PROPOSE_URI);
 
         assertTrue(result.promptText().contains("所需信息项"), "the zh-CN language must select the Chinese templates");
         assertFalse(
@@ -119,7 +119,7 @@ class A2ATClientNegotiationEnvConfigTest {
                 () -> client.generateNegotiationProposePromptFromText(
                         "请提供节能区域。",
                         new NegotiationContext(UUID, 1, 5, NegotiationPerformative.PROPOSE),
-                        INFORMATION_PROPOSE));
+                        INFORMATION_PROPOSE_URI));
         assertEquals(A2ATErrorCodes.NEGOTIATION_LLM_INFRASTRUCTURE_ERROR, failure.getCode());
         assertEquals(
                 1,
@@ -141,19 +141,19 @@ class A2ATClientNegotiationEnvConfigTest {
                 new NegotiationProposeData(
                         new NegotiationContext(UUID, 1, 5, NegotiationPerformative.PROPOSE),
                         new InformationProposeContent(List.of(new NegotiationItem("Region", "Songshan Lake")), null)),
-                INFORMATION_PROPOSE);
+                INFORMATION_PROPOSE_URI);
 
         assertTrue(result.promptText().contains("## Information Negotiation"), "the default language must be en-US");
         assertTrue(result.promptText().contains("Required Information Items"));
         assertEquals(7, negotiationPrompts(client).size(), "the built-in resources must be used by default");
-        assertTrue(client.getPrompt(INFORMATION_PROPOSE).isPresent());
+        assertTrue(client.getPrompt(INFORMATION_PROPOSE_URI).isPresent());
 
         assertThrows(
                 NegotiationGenerationException.class,
                 () -> client.generateNegotiationProposePromptFromText(
                         "Provide the ran-energy-saving region.",
                         new NegotiationContext(UUID, 1, 5, NegotiationPerformative.PROPOSE),
-                        INFORMATION_PROPOSE));
+                        INFORMATION_PROPOSE_URI));
         assertEquals(
                 2,
                 retryEventCount(),

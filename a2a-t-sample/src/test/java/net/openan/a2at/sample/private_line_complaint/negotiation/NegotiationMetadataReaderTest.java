@@ -20,7 +20,7 @@ class NegotiationMetadataReaderTest {
                 ExtensionUriConstants.NEGOTIATION_T_EXTENSION_URI,
                 "prompt",
                 MetadataContent.TEMPLATE_URI_METADATA_KEY,
-                NegotiationSampleFlow.PROPOSE_TEMPLATE_URI.uri());
+                NegotiationSampleFlow.PROPOSE_TEMPLATE_URI);
 
         assertEquals(
                 "prompt",
@@ -33,7 +33,7 @@ class NegotiationMetadataReaderTest {
                 ExtensionUriConstants.NEGOTIATION_T_EXTENSION_URI,
                 "prompt",
                 MetadataContent.TEMPLATE_URI_METADATA_KEY,
-                NegotiationSampleFlow.PROPOSE_TEMPLATE_URI.uri(),
+                NegotiationSampleFlow.PROPOSE_TEMPLATE_URI,
                 MetadataContent.NEGOTIATION_CONTEXT_METADATA_KEY,
                 Map.of("id", "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", "round", 1, "maxRounds", 5, "performative", "PROPOSE"));
 
@@ -91,7 +91,7 @@ class NegotiationMetadataReaderTest {
                 () -> NegotiationMetadataReader.readPrompt(
                         Map.of(
                                 MetadataContent.TEMPLATE_URI_METADATA_KEY,
-                                NegotiationSampleFlow.PROPOSE_TEMPLATE_URI.uri()),
+                                NegotiationSampleFlow.PROPOSE_TEMPLATE_URI),
                         NegotiationSampleFlow.PROPOSE_TEMPLATE_URI));
         assertThrows(
                 IllegalArgumentException.class,
@@ -100,7 +100,7 @@ class NegotiationMetadataReaderTest {
                                 ExtensionUriConstants.NEGOTIATION_T_EXTENSION_URI,
                                 "prompt",
                                 MetadataContent.TEMPLATE_URI_METADATA_KEY,
-                                NegotiationSampleFlow.ENDING_TEMPLATE_URI.uri()),
+                                NegotiationSampleFlow.ENDING_TEMPLATE_URI),
                         NegotiationSampleFlow.PROPOSE_TEMPLATE_URI));
         assertThrows(IllegalArgumentException.class, () -> NegotiationMetadataReader.requireExtension("Task-T/v1"));
     }

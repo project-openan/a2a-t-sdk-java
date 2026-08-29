@@ -32,13 +32,10 @@ public final class NegotiationMessage {
      * @return A2A metadata map
      */
     public static Map<String, Object> buildMetadata(
-            String extensionUri,
-            String promptText,
-            net.openan.a2at.sdk.core.model.TemplateUri templateUri,
-            Map<String, Object> contextMap) {
+            String extensionUri, String promptText, String templateUri, Map<String, Object> contextMap) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put(extensionUri, promptText);
-        metadata.put(DemoConstants.TEMPLATE_URI_KEY, templateUri.uri());
+        metadata.put(DemoConstants.TEMPLATE_URI_KEY, templateUri);
         if (contextMap != null && !contextMap.isEmpty()) {
             metadata.put(DemoConstants.NEGOTIATION_CONTEXT_KEY, toJson(contextMap));
         }

@@ -80,7 +80,7 @@ public final class TaskTDemoMain {
         Path envPath = resolveEnvPath(args);
         String caseSelection = resolveCaseSelection(args);
         println("Task-T 准确率验证样例，env: " + envPath.toAbsolutePath() + (Files.exists(envPath) ? "" : "  (不存在，请先配置)"));
-        println("模板: " + StandardTemplates.PRIVATE_LINE_COMPLAINT.uri());
+        println("模板: " + StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
         println("用例: " + caseLabel(caseSelection));
         println();
 
@@ -146,7 +146,7 @@ public final class TaskTDemoMain {
             println();
             try {
                 MetadataContent metadata =
-                        client.generateTaskPromptFromText(sample.text(), StandardTemplates.PRIVATE_LINE_COMPLAINT);
+                        client.generateTaskPromptFromText(sample.text(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
                 printGeneratedMetadata(metadata);
                 TaskTAccuracyEvaluator.SampleScore score = validateAndScore(server, sample, metadata, "用例一");
                 scores.add(score);
@@ -174,7 +174,7 @@ public final class TaskTDemoMain {
             println();
             try {
                 MetadataContent metadata = client.generateTaskPromptFromDataWithSchema(
-                        sample.data(), sample.semanticsSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT);
+                        sample.data(), sample.semanticsSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
                 printGeneratedMetadata(metadata);
                 TaskTAccuracyEvaluator.SampleScore score = validateAndScore(server, sample, metadata, "用例二");
                 scores.add(score);
@@ -217,14 +217,14 @@ public final class TaskTDemoMain {
                     println();
                     println("[生成] generateTaskPromptFromDataWithSchema:");
                     metadata = client.generateTaskPromptFromDataWithSchema(
-                            sample.data(), sample.semanticsSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT);
+                            sample.data(), sample.semanticsSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
                 } else {
                     println("[输入] 自然语言文本 (缺少关键槽位):");
                     println(sample.text());
                     println();
                     println("[生成] generateTaskPromptFromText:");
                     metadata =
-                            client.generateTaskPromptFromText(sample.text(), StandardTemplates.PRIVATE_LINE_COMPLAINT);
+                            client.generateTaskPromptFromText(sample.text(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
                 }
                 System.out.println("  templateUri : " + metadata.templateUri());
                 System.out.println("  promptText : " + metadata.promptText());
@@ -233,7 +233,7 @@ public final class TaskTDemoMain {
                 Map<String, Object> extracted = server.validateTaskPromptAndDataFilling(
                                 metadata.promptText(),
                                 sample.validationSchema(),
-                                StandardTemplates.PRIVATE_LINE_COMPLAINT)
+                                StandardTemplates.PRIVATE_LINE_COMPLAINT_URI)
                         .data();
                 unexpectedlyPassed++;
                 println("[意外通过] 应被拒绝却校验通过，提取参数:");
@@ -266,7 +266,7 @@ public final class TaskTDemoMain {
             A2ATServer server, TaskTSample sample, MetadataContent metadata, String caseLabel) {
         try {
             Map<String, Object> extracted = server.validateTaskPromptAndDataFilling(
-                            metadata.promptText(), sample.validationSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT)
+                            metadata.promptText(), sample.validationSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI)
                     .data();
             println("[服务端] " + caseLabel + " validateTaskPromptAndDataFilling 通过，提取参数:");
             println(pretty(extracted));

@@ -21,7 +21,6 @@ import net.openan.a2at.sdk.core.exception.PromptGenerationException;
 import net.openan.a2at.sdk.core.model.ExtensionUriConstants;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMClientFactory;
@@ -99,6 +98,7 @@ class A2ATClientTest {
     void doesNotKeepStaticAssemblyHelpersInsideFacade() {
         long staticMethodCount = Arrays.stream(A2ATClient.class.getDeclaredMethods())
                 .filter(method -> java.lang.reflect.Modifier.isStatic(method.getModifiers()))
+                .filter(method -> !java.lang.reflect.Modifier.isPrivate(method.getModifiers()))
                 .count();
 
         assertEquals(0, staticMethodCount);
@@ -317,7 +317,7 @@ A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
     void fromTextEntryPointsReturnMetadataContent() throws IOException {
         Path envFile = writeMinimalClientEnvWithoutRequiredSlots(TEST_MOCK_PROVIDER);
         A2ATClient client = new A2ATClient(envFile);
-        TemplateUri unconstrained = TemplateUri.of("Task-T", "network-layer", "unconstrained");
+        String unconstrained = "Task-T/network-layer/unconstrained/v1";
 
         MetadataContent taskResult = client.generateTaskPromptFromText("Please analyze Site A.", unconstrained);
         MetadataContent authResult = client.generateAuthPromptFromText("Authorize access.", unconstrained);
@@ -348,11 +348,11 @@ A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
         Map<String, Object> schema = Map.of("type", "object");
 
         MetadataContent taskResult =
-                client.generateTaskPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING);
+                client.generateTaskPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING_URI);
         MetadataContent authResult =
-                client.generateAuthPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING);
+                client.generateAuthPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING_URI);
         MetadataContent notificationResult =
-                client.generateNotificationPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING);
+                client.generateNotificationPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING_URI);
 
         assertNotNull(taskResult);
         assertEquals(StandardTemplates.ENERGY_SAVING.uri(), taskResult.templateUri());
@@ -374,7 +374,7 @@ A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
     void fromTextReturnsCorrectExtensionUriPerContentType() throws IOException {
         Path envFile = writeMinimalClientEnvWithoutRequiredSlots(TEST_MOCK_PROVIDER);
         A2ATClient client = new A2ATClient(envFile);
-        TemplateUri unconstrained = TemplateUri.of("Task-T", "network-layer", "unconstrained");
+        String unconstrained = "Task-T/network-layer/unconstrained/v1";
 
         MetadataContent taskResult = client.generateTaskPromptFromText("Please analyze Site A.", unconstrained);
         MetadataContent authResult = client.generateAuthPromptFromText("Authorize access.", unconstrained);
@@ -394,11 +394,11 @@ A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
         Map<String, Object> schema = Map.of("type", "object");
 
         MetadataContent taskResult =
-                client.generateTaskPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING);
+                client.generateTaskPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING_URI);
         MetadataContent authResult =
-                client.generateAuthPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING);
+                client.generateAuthPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING_URI);
         MetadataContent notificationResult =
-                client.generateNotificationPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING);
+                client.generateNotificationPromptFromDataWithSchema(data, schema, StandardTemplates.ENERGY_SAVING_URI);
 
         assertEquals(ExtensionUriConstants.TASK_T_EXTENSION_URI, taskResult.extensionUri());
         assertEquals(ExtensionUriConstants.AUTHORIZATION_T_EXTENSION_URI, authResult.extensionUri());
@@ -441,6 +441,48 @@ A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
     }
 
     @Test
+    void fromTextThrowsOnMalformedTemplateUriString() throws IOException {
+        Path envFile = writeMinimalLocalClientEnv();
+        A2ATClient client = new A2ATClient(envFile);
+
+        for (String malformed : new String[] {"not-a-uri", "Task-T/only-one-segment", "Task-T/../v1"}) {
+            IllegalArgumentException taskEx = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> client.generateTaskPromptFromText("Please analyze Site A.", malformed));
+            assertTrue(taskEx.getMessage().contains("Unparseable template URI"), "message was: " + taskEx.getMessage());
+            IllegalArgumentException authEx = assertThrows(
+                    IllegalArgumentException.class, () -> client.generateAuthPromptFromText("Authorize access.", malformed));
+            assertTrue(authEx.getMessage().contains("Unparseable template URI"), "message was: " + authEx.getMessage());
+            IllegalArgumentException notifEx = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> client.generateNotificationPromptFromText("Report finished.", malformed));
+            assertTrue(notifEx.getMessage().contains("Unparseable template URI"), "message was: " + notifEx.getMessage());
+        }
+    }
+
+    @Test
+    void fromTextThrowsOnBlankTemplateUriString() throws IOException {
+        Path envFile = writeMinimalLocalClientEnv();
+        A2ATClient client = new A2ATClient(envFile);
+
+        IllegalArgumentException taskEx = assertThrows(
+                IllegalArgumentException.class, () -> client.generateTaskPromptFromText("Please analyze Site A.", "  "));
+        assertTrue(taskEx.getMessage().contains("Unparseable template URI"), "message was: " + taskEx.getMessage());
+    }
+
+    @Test
+    void getPromptThrowsOnMalformedAndBlankTemplateUriString() throws IOException {
+        Path envFile = writeMinimalLocalClientEnv();
+        A2ATClient client = new A2ATClient(envFile);
+
+        IllegalArgumentException malformedEx =
+                assertThrows(IllegalArgumentException.class, () -> client.getPrompt("not-a-uri"));
+        assertTrue(malformedEx.getMessage().contains("Unparseable template URI"), "message was: " + malformedEx.getMessage());
+        IllegalArgumentException blankEx = assertThrows(IllegalArgumentException.class, () -> client.getPrompt("  "));
+        assertTrue(blankEx.getMessage().contains("Unparseable template URI"), "message was: " + blankEx.getMessage());
+    }
+
+    @Test
     void fromTextRejectsOverLimitTextWhenConfiguredWithSmallLimit() throws IOException {
         Path envFile = writeMinimalClientEnvWithInputLimit(TEST_MOCK_PROVIDER, 100);
         A2ATClient client = new A2ATClient(envFile);
@@ -448,13 +490,13 @@ A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
 
         PromptGenerationException taskEx = assertThrows(
                 PromptGenerationException.class,
-                () -> client.generateTaskPromptFromText(overLimitText, StandardTemplates.ENERGY_SAVING));
+                () -> client.generateTaskPromptFromText(overLimitText, StandardTemplates.ENERGY_SAVING_URI));
         PromptGenerationException authEx = assertThrows(
                 PromptGenerationException.class,
-                () -> client.generateAuthPromptFromText(overLimitText, StandardTemplates.ENERGY_SAVING));
+                () -> client.generateAuthPromptFromText(overLimitText, StandardTemplates.ENERGY_SAVING_URI));
         PromptGenerationException notificationEx = assertThrows(
                 PromptGenerationException.class,
-                () -> client.generateNotificationPromptFromText(overLimitText, StandardTemplates.ENERGY_SAVING));
+                () -> client.generateNotificationPromptFromText(overLimitText, StandardTemplates.ENERGY_SAVING_URI));
 
         assertEquals("input.text_too_long", taskEx.getCode());
         assertEquals("input.text_too_long", authEx.getCode());

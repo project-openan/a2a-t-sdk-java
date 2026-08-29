@@ -44,22 +44,24 @@ A2A-T SDK 对外仅提供两个入口：客户端入口 `A2ATClient`（提示词
 | message | String | 人类可读的错误说明，由 SDK 按错误码的消息模板渲染，语言跟随 `A2AT_LANGUAGE`                                                                         |
 | facts | Map&lt;String, String&gt; | 渲染消息所依据的结构化事实值（如 `section_label`、`index`、`field_label`），可为 null                                                          |
 
-- **TemplateUri：** 模板 URI 值类型，推荐用 `net.openan.a2at.sdk.core.model.StandardTemplates` 常量构造；来自外部的字符串用 `TemplateUri.parse(String)` 解析，返回 `Optional<TemplateUri>` 且不抛异常，当前支持的TemplateUri常量如下：
+- **模板 URI：** `A2ATClient` 与 `A2ATServer` 门面上所有指定模板的方法均以 `String templateUri`（如 `Task-T/network-layer/private-line-complaint/v1`）声明模板选择，推荐直接传 `net.openan.a2at.sdk.core.model.StandardTemplates` 的 String 常量（常量名以 `_URI` 结尾，每个都有去掉后缀的同名 `TemplateUri` 类型化孪生常量）；来自外部的字符串直接传入即可。类型 `TemplateUri` 仍用于底层服务层（如 `NegotiationContentService`），可用 `TemplateUri.parse(String)` 解析，返回 `Optional<TemplateUri>` 且不抛异常。当前支持的模板 URI 常量（String 形态）如下：
 
 | 常量名称 | 含义 | TemplateUri |
 | ---- | ---- | ---- |
-| StandardTemplates.ENERGY_SAVING | Task-T 节能任务模板 | Task-T/network-layer/ran-energy-saving/v1 |
-| StandardTemplates.PRIVATE_LINE_COMPLAINT | Task-T 专线投诉任务模板 | Task-T/network-layer/private-line-complaint/v1 |
-| StandardTemplates.SUBSCRIBE_INCIDENT | Notification-T 事件订阅通知模板 | Notification-T/network-layer/subscribe-incident/v1 |
-| StandardTemplates.SERVICE_RECOVERY | Notification-T 业务抢通通知模板 | Notification-T/network-layer/service-recovery/v1 |
-| StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT | Authorization-T 授权策略管理模板 | Authorization-T/authorization-policy-management/v1 |
-| StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE | Negotiation-T 信息协商意图发起模板 | Negotiation-T/information-negotiation/propose/v1 |
-| StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT | Negotiation-T 信息协商接受/拒绝模板 | Negotiation-T/information-negotiation/accept-reject/v1 |
-| StandardTemplates.TARGET_NEGOTIATION_PROPOSE | Negotiation-T 目标协商意图发起模板 | Negotiation-T/target-negotiation/propose/v1 |
-| StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT | Negotiation-T 目标协商接受/拒绝模板 | Negotiation-T/target-negotiation/accept-reject/v1 |
-| StandardTemplates.FEASIBILITY_NEGOTIATION_PROPOSE | Negotiation-T 可行性协商意图发起模板 | Negotiation-T/feasibility-negotiation/propose/v1 |
-| StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT | Negotiation-T 可行性协商接受/拒绝模板 | Negotiation-T/feasibility-negotiation/accept-reject/v1 |
-| StandardTemplates.NEGOTIATION_ABORT | Negotiation-T 协商中止通用模板 | Negotiation-T/common/abort/v1 |
+| StandardTemplates.ENERGY_SAVING_URI | Task-T 节能任务模板 | Task-T/network-layer/ran-energy-saving/v1 |
+| StandardTemplates.PRIVATE_LINE_COMPLAINT_URI | Task-T 专线投诉任务模板 | Task-T/network-layer/private-line-complaint/v1 |
+| StandardTemplates.SUBSCRIBE_INCIDENT_URI | Notification-T 事件订阅通知模板 | Notification-T/network-layer/subscribe-incident/v1 |
+| StandardTemplates.SERVICE_RECOVERY_URI | Notification-T 业务抢通通知模板 | Notification-T/network-layer/service-recovery/v1 |
+| StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI | Authorization-T 授权策略管理模板 | Authorization-T/authorization-policy-management/v1 |
+| StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI | Negotiation-T 信息协商意图发起模板 | Negotiation-T/information-negotiation/propose/v1 |
+| StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI | Negotiation-T 信息协商接受/拒绝模板 | Negotiation-T/information-negotiation/accept-reject/v1 |
+| StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI | Negotiation-T 目标协商意图发起模板 | Negotiation-T/target-negotiation/propose/v1 |
+| StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI | Negotiation-T 目标协商接受/拒绝模板 | Negotiation-T/target-negotiation/accept-reject/v1 |
+| StandardTemplates.FEASIBILITY_NEGOTIATION_PROPOSE_URI | Negotiation-T 可行性协商意图发起模板 | Negotiation-T/feasibility-negotiation/propose/v1 |
+| StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT_URI | Negotiation-T 可行性协商接受/拒绝模板 | Negotiation-T/feasibility-negotiation/accept-reject/v1 |
+| StandardTemplates.NEGOTIATION_ABORT_URI | Negotiation-T 协商中止通用模板 | Negotiation-T/common/abort/v1 |
+
+- **门面模板 URI 失败策略（`A2ATClient` 与 `A2ATServer` 均适用）：** 门面上所有带 `templateUri` 参数的方法（含 `getPrompt`）均接收原始 URI 字符串。templateUri 为 null 抛 `NullPointerException`；为空白或非法 URI（少于三段，或某一段不是简单段）抛 `IllegalArgumentException`，消息为 `Unparseable template URI: <输入>`。此前服务端任务/通知/授权校验三件套传入 null 类型化模板 URI 时抛 `ContentValidationException`（错误码 `negotiation.invalid_input`）；String 化后这类编程错误统一为标准 JDK 异常，不在 `A2ATError` 树内。
 
 
 ## 1.2 约束和限制
@@ -75,7 +77,7 @@ A2A-T SDK 对外仅提供两个入口：客户端入口 `A2ATClient`（提示词
 
 ```java
 public MetadataContent generateNegotiationProposePromptFromText(
-        String text, NegotiationContext context, TemplateUri templateUri)
+        String text, NegotiationContext context, String templateUri)
 ```
 
 **典型场景**：服务端Agent收到参数不全的Task-T任务报文后，用自然语言向客户端Agent发起"补充缺失信息"的协商请求；也适用于客户端Agent向服务端发起目标澄清或可行性评估请求。
@@ -88,7 +90,7 @@ public MetadataContent generateNegotiationProposePromptFromText(
 | ---- | ---- | ---- | ---- |
 | text | String | 是 | 描述协商发起内容的自然语言文本（如请求补充的缺失信息清单）；输入长度受配置项 `A2AT_INPUT_TEXT_MAX_CHARS` 限制，默认值为 16384 |
 | context | NegotiationContext | 是 | 协商会话上下文，不经 LLM 直接注入生成消息的 `negotiationContext` metadata |
-| templateUri | TemplateUri | 是 | propose 模板，如 `StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE` |
+| templateUri | String | 是 | propose 模板，如 `StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI` |
 
 **请求样例**
 
@@ -108,7 +110,7 @@ NegotiationContext ctx = new NegotiationContext(
 MetadataContent propose = client.generateNegotiationProposePromptFromText(
         "请提供以下缺失信息：投诉分类：专线中断或专线质差。两个参数均为必选，缺少无法启动诊断。",
         ctx,
-        StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE);
+        StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI);
 
 // 生成的metadata随A2A消息传输
 Map<String, Object> metadata = propose.buildMetadataContent();
@@ -148,7 +150,7 @@ Map<String, Object> metadata = propose.buildMetadataContent();
 
 - `negotiation.field_missing`（缺少必填字段）
 
-入参为 null 抛 `NullPointerException`，templateUri 的 phase 段不是 `propose` 抛 `IllegalArgumentException`。
+入参为 null 抛 `NullPointerException`，templateUri 为空白或非法（见 1.1 门面失败策略）、或 phase 段不是 `propose` 抛 `IllegalArgumentException`。
 
 **响应样例**
 
@@ -169,7 +171,7 @@ promptText  :
 
 ```java
 public MetadataContent generateNegotiationAcceptPromptFromText(
-        String text, NegotiationContext context, TemplateUri templateUri)
+        String text, NegotiationContext context, String templateUri)
 ```
 
 **典型场景**：协商响应方（通常是客户端Agent）收到对端的信息协商请求后，用自然语言补充/交付所请求的信息并生成接受报文回传，如补齐接入端口名称与投诉分类后确认启动诊断。
@@ -182,7 +184,7 @@ public MetadataContent generateNegotiationAcceptPromptFromText(
 | ---- | ---- | ---- | ---- |
 | text | String | 是 | 描述接受内容的自然语言文本（如补充交付的信息清单）；输入长度受配置项 `A2AT_INPUT_TEXT_MAX_CHARS` 限制，默认值为 16384 |
 | context | NegotiationContext | 是 | 协商会话上下文 |
-| templateUri | TemplateUri | 是 | accept-reject 模板，如 `StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT` |
+| templateUri | String | 是 | accept-reject 模板，如 `StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI` |
 
 **请求样例**
 
@@ -191,7 +193,7 @@ MetadataContent accept = client.generateNegotiationAcceptPromptFromText(
         "同意补充以下信息：1. 接入端口名称：P533-珠江旧城-PTN3900-23-TPA1EG24-1；"
                 + "2. 投诉分类：专线质差。信息已完整，可以启动诊断。",
         ctx,
-        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **输出说明**
@@ -232,7 +234,7 @@ Accept
 
 ```java
 public MetadataContent generateNegotiationRejectPromptFromText(
-        String text, NegotiationContext context, TemplateUri templateUri)
+        String text, NegotiationContext context, String templateUri)
 ```
 
 **典型场景**：协商响应方（通常是客户端Agent）无法满足对端的协商请求时，用自然语言生成拒绝报文回传并结束本轮协商，如因站点清单不可用无法提供接入端口名称。
@@ -247,7 +249,7 @@ public MetadataContent generateNegotiationRejectPromptFromText(
 MetadataContent reject = client.generateNegotiationRejectPromptFromText(
         "拒绝补充信息：接入端口名称因站点清单不可用而无法提供，本次协商结束。",
         ctx,
-        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **输出说明**
@@ -287,7 +289,7 @@ Reject
 
 ```java
 public MetadataContent generateNegotiationProposePromptFromData(
-        NegotiationProposeData data, TemplateUri templateUri)
+        NegotiationProposeData data, String templateUri)
 ```
 
 **典型场景**：与 fromText 相同的发起场景，但输入为业务系统构造的结构化数据（如服务端Agent根据 `validateTaskPromptAndDataFilling` 检出的缺失槽位清单自动生成协商请求条目），适合对报文内容有确定性要求、不希望引入 LLM 抽取不确定性的场景。
@@ -299,7 +301,7 @@ public MetadataContent generateNegotiationProposePromptFromData(
 | 参数 | 类型 | 必填 | 说明 |
 | ---- | ---- | ---- | ---- |
 | data | `NegotiationProposeData(context, content)` | 是 | 协商上下文 + 类型化发起内容；内容类型按协商类型选择 |
-| templateUri | TemplateUri | 是 | propose 模板 |
+| templateUri | String | 是 | propose 模板 |
 
 三种协商类型的发起内容：
 
@@ -331,7 +333,7 @@ MetadataContent propose = client.generateNegotiationProposePromptFromData(
                                 new NegotiationItem("投诉分类", "举例：专线质差"),
                                 new NegotiationItem("专线业务标识", null)),
                         "OR")),
-        StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE);
+        StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI);
 ```
 
 **输出说明**
@@ -344,9 +346,9 @@ MetadataContent propose = client.generateNegotiationProposePromptFromData(
 
 - `negotiation.content_invalid`（类型化内容字段无效，如必填 items 为空、必填描述为空白）
 
-- `negotiation.field_missing`（渲染缺少必填字段）
+- `template.render_failed`（模板渲染失败）
 
-另有两类编程错误（`A2ATError` 树外，标准 JDK 异常）：入参或其 context 为 null 抛 `NullPointerException`；内容类型与模板协商类型不符、phase 段不是 `propose` 抛 `IllegalArgumentException`。
+另有两类编程错误（`A2ATError` 树外，标准 JDK 异常）：入参或其 context 为 null 抛 `NullPointerException`；templateUri 为空白或非法（见 1.1 门面失败策略）、内容类型与模板协商类型不符、phase 段不是 `propose` 抛 `IllegalArgumentException`。
 
 **响应样例**
 
@@ -370,7 +372,7 @@ promptText  :
 
 ```java
 public MetadataContent generateNegotiationAcceptPromptFromData(
-        NegotiationEndingData data, TemplateUri templateUri)
+        NegotiationEndingData data, String templateUri)
 ```
 
 **典型场景**：协商响应方（通常是客户端Agent）按对端请求的槽位清单程序化补参后，以结构化条目生成接受报文回传。
@@ -382,7 +384,7 @@ public MetadataContent generateNegotiationAcceptPromptFromData(
 | 参数 | 类型 | 必填 | 说明 |
 | ---- | ---- | ---- | ---- |
 | data | `NegotiationEndingData(context, content)` | 是 | 协商上下文 + 类型化接受内容（结论为 `ACCEPT`） |
-| templateUri | TemplateUri | 是 | accept-reject 模板 |
+| templateUri | String | 是 | accept-reject 模板 |
 
 三种协商类型的接受内容：`InformationEndingContent(ACCEPT, items)`（交付的信息项清单）、`TargetEndingContent(ACCEPT, confirmedIntent, null)`（最终确认的意图）、`FeasibilityEndingContent(ACCEPT, feasibilitySummary)`（可行性评估结论摘要）。
 
@@ -401,7 +403,7 @@ MetadataContent accept = client.generateNegotiationAcceptPromptFromData(
                         List.of(
                                 new NegotiationItem("接入端口名称", "P533-珠江旧城-PTN3900-23-TPA1EG24-1"),
                                 new NegotiationItem("投诉分类", "专线质差")))),
-        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **输出说明**
@@ -414,9 +416,9 @@ MetadataContent accept = client.generateNegotiationAcceptPromptFromData(
 
 - `negotiation.content_invalid`（类型化内容字段无效，如必填 items 为空、必填描述为空白）
 
-- `negotiation.field_missing`（渲染缺少必填字段）
+- `template.render_failed`（模板渲染失败）
 
-编程错误：入参或其 context 为 null 抛 `NullPointerException`；内容类型不符或 phase 段不是 `accept-reject` 抛 `IllegalArgumentException`。`conclusion` 不是 `ACCEPT` 以 `negotiation.conclusion_mismatch` 业务错误拒绝。
+编程错误：入参或其 context 为 null 抛 `NullPointerException`；templateUri 为空白或非法（见 1.1 门面失败策略）、内容类型不符或 phase 段不是 `accept-reject` 抛 `IllegalArgumentException`；`conclusion` 不是 `ACCEPT` 以 `negotiation.conclusion_mismatch` 业务错误拒绝。
 
 **响应样例**
 
@@ -438,7 +440,7 @@ Accept
 
 ```java
 public MetadataContent generateNegotiationRejectPromptFromData(
-        NegotiationEndingData data, TemplateUri templateUri)
+        NegotiationEndingData data, String templateUri)
 ```
 
 **典型场景**：协商响应方程序化判定无法满足对端请求后，以结构化条目（无法提供的项及原因）生成拒绝报文回传。
@@ -456,7 +458,7 @@ MetadataContent reject = client.generateNegotiationRejectPromptFromData(
                 new InformationEndingContent(
                         NegotiationConclusion.REJECT,
                         List.of(new NegotiationItem("接入端口名称", "无法提供，工作台侧端口资源台账暂不可查")))),
-        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **输出说明**
@@ -469,9 +471,9 @@ MetadataContent reject = client.generateNegotiationRejectPromptFromData(
 
 - `negotiation.content_invalid`（类型化内容字段无效，如必填 items 为空、必填描述为空白）
 
-- `negotiation.field_missing`（渲染缺少必填字段）
+- `template.render_failed`（模板渲染失败）
 
-编程错误：入参或其 context 为 null 抛 `NullPointerException`；内容类型不符或 phase 段不是 `accept-reject` 抛 `IllegalArgumentException`。`conclusion` 不是 `REJECT` 以 `negotiation.conclusion_mismatch` 业务错误拒绝。
+编程错误：入参或其 context 为 null 抛 `NullPointerException`；templateUri 为空白或非法（见 1.1 门面失败策略）、内容类型不符或 phase 段不是 `accept-reject` 抛 `IllegalArgumentException`；`conclusion` 不是 `REJECT` 以 `negotiation.conclusion_mismatch` 业务错误拒绝。
 
 **响应样例**
 
@@ -492,7 +494,7 @@ Reject
 
 ```java
 public FilledParamData validateProposePromptAndDataFilling(
-        String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri)
 ```
 
 **典型场景**：发起方（服务端Agent）发送协商请求前的出站自检；或接收方（客户端Agent）校验收到的协商请求并提取需补充的槽位清单，驱动后续补参。
@@ -506,7 +508,7 @@ public FilledParamData validateProposePromptAndDataFilling(
 | prompt | String | 是 | 待校验的协商发起报文文本（`MetadataContent.promptText()`）；输入长度受配置项 `A2AT_INPUT_TEXT_MAX_CHARS` 限制，默认值为 16384 |
 | context | NegotiationContext | 是 | 随报文传输的协商上下文；为 null 时报 `negotiation.invalid_input` |
 | schema | Map&lt;String, Object&gt; | 是 | 调用方提供的参数 JSON Schema，声明要提取的参数 |
-| templateUri | TemplateUri | 是 | propose 模板 |
+| templateUri | String | 是 | propose 模板 |
 
 **请求样例**
 
@@ -529,7 +531,7 @@ Map<String, Object> schema = Map.of(
 
 // proposePrompt 为对端发来的协商发起报文文本
 FilledParamData requested = client.validateProposePromptAndDataFilling(
-        proposePrompt, ctx, schema, StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE);
+        proposePrompt, ctx, schema, StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI);
 
 // 过滤掉上下文参数（id/round/maxRounds）后即为需补充的槽位清单
 requested.data().keySet().removeAll(List.of("id", "round", "maxRounds"));
@@ -555,9 +557,7 @@ requested.data().keySet().removeAll(List.of("id", "round", "maxRounds"));
 
 - `negotiation.invalid_input`（报文不是协商消息或 context 为 null）
 
-- `negotiation.invalid_context_id`（context 的 id 不是合法 UUID）
-
-- `negotiation.round_exceeded`（context 轮次超过配置上限）
+- `negotiation.rule_violation`（协商上下文违反规则；`getErrors()` 中的嵌套槽位错误码标识具体规则，如 `negotiation.invalid_context_id`、`negotiation.round_exceeded`）
 
 - `negotiation.semantic_rejected`（语义校验拒绝；`getErrors()` 中的逐槽位明细使用封闭的 `negotiation.*` 码集，如 `negotiation.conclusion_content_mismatch`、`negotiation.missing_result_content`、`negotiation.field_inconsistency`）
 
@@ -565,7 +565,7 @@ requested.data().keySet().removeAll(List.of("id", "round", "maxRounds"));
 
 - `template.not_found`（校验提示词资源缺失）
 
-编程错误：prompt 或 schema 为 null 抛 `NullPointerException`，prompt 为空白或 phase 段不匹配抛 `IllegalArgumentException`。
+编程错误：prompt / schema / templateUri 为 null 抛 `NullPointerException`，prompt 为空白、templateUri 为空白或非法（见 1.1 门面失败策略）、phase 段不匹配抛 `IllegalArgumentException`。
 
 **响应样例**
 
@@ -586,7 +586,7 @@ requested.data() =
 
 ```java
 public FilledParamData validateAcceptPromptAndDataFilling(
-        String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri)
 ```
 
 **典型场景**：发起方（服务端Agent）校验对端回传的接受报文，提取交付的参数值并与期望补齐值核对，确认无误后继续任务执行。
@@ -604,7 +604,7 @@ A2ATServer server = new A2ATServer(Path.of("server.env"));
 
 // acceptPrompt 为客户端回传的接受报文文本，acceptContext 为其协商上下文
 FilledParamData acceptParams = server.validateAcceptPromptAndDataFilling(
-        acceptPrompt, acceptContext, schema, StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        acceptPrompt, acceptContext, schema, StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **输出说明**
@@ -615,7 +615,7 @@ FilledParamData acceptParams = server.validateAcceptPromptAndDataFilling(
 
 - `negotiation.invalid_input`（报文不是 accept 协商消息或 context 为 null）
 
-- `negotiation.invalid_context_id` / `negotiation.round_exceeded`（协商上下文违反结构规则）
+- `negotiation.rule_violation`（协商上下文违反规则；`getErrors()` 中的嵌套槽位错误码标识具体规则，如 `negotiation.invalid_context_id`、`negotiation.round_exceeded`）
 
 - `negotiation.semantic_rejected`（结论不是 Accept 或内容不满足 accept 阶段约束）
 
@@ -623,7 +623,7 @@ FilledParamData acceptParams = server.validateAcceptPromptAndDataFilling(
 
 - `template.not_found`（校验提示词资源缺失）
 
-编程错误：prompt 或 schema 为 null 抛 `NullPointerException`，prompt 为空白或 phase 段不是 `accept-reject` 抛 `IllegalArgumentException`。
+编程错误：prompt / schema / templateUri 为 null 抛 `NullPointerException`，prompt 为空白、templateUri 为空白或非法（见 1.1 门面失败策略）、phase 段不是 `accept-reject` 抛 `IllegalArgumentException`。
 
 **响应样例**
 
@@ -644,7 +644,7 @@ acceptParams.data() =
 
 ```java
 public FilledParamData validateRejectPromptAndDataFilling(
-        String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri)
 ```
 
 **典型场景**：发起方（服务端Agent）校验对端回传的拒绝报文，提取拒绝原因，据此终止任务或转入人工处理。
@@ -657,7 +657,7 @@ public FilledParamData validateRejectPromptAndDataFilling(
 
 ```java
 FilledParamData rejectParams = server.validateRejectPromptAndDataFilling(
-        rejectPrompt, ctx, schema, StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT);
+        rejectPrompt, ctx, schema, StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI);
 ```
 
 **输出说明**
@@ -668,7 +668,7 @@ FilledParamData rejectParams = server.validateRejectPromptAndDataFilling(
 
 - `negotiation.invalid_input`（报文不是 reject 协商消息或 context 为 null）
 
-- `negotiation.invalid_context_id` / `negotiation.round_exceeded`（协商上下文违反结构规则）
+- `negotiation.rule_violation`（协商上下文违反规则；`getErrors()` 中的嵌套槽位错误码标识具体规则，如 `negotiation.invalid_context_id`、`negotiation.round_exceeded`）
 
 - `negotiation.semantic_rejected`（结论不是 Reject 或内容不满足 reject 阶段约束）
 
@@ -676,7 +676,7 @@ FilledParamData rejectParams = server.validateRejectPromptAndDataFilling(
 
 - `template.not_found`（校验提示词资源缺失）
 
-编程错误：prompt 或 schema 为 null 抛 `NullPointerException`，prompt 为空白或 phase 段不是 `accept-reject` 抛 `IllegalArgumentException`。
+编程错误：prompt / schema / templateUri 为 null 抛 `NullPointerException`，prompt 为空白、templateUri 为空白或非法（见 1.1 门面失败策略）、phase 段不是 `accept-reject` 抛 `IllegalArgumentException`。
 
 **响应样例**
 
@@ -695,7 +695,7 @@ rejectParams.data() =
 **API定义**
 
 ```java
-public MetadataContent generateTaskPromptFromText(String text, TemplateUri templateUri)
+public MetadataContent generateTaskPromptFromText(String text, String templateUri)
 ```
 
 **典型场景**：客户端Agent将用户的自然语言任务描述（如专线投诉诊断诉求）转换为指定场景的Task-T协议报文，适合已确定目标模板、需跳过场景识别的场景。
@@ -707,7 +707,7 @@ public MetadataContent generateTaskPromptFromText(String text, TemplateUri templ
 | 参数 | 类型 | 必填 | 说明 |
 | ---- | ---- | ---- | ---- |
 | text | String | 是 | 自然语言任务描述；输入长度受配置项 `A2AT_INPUT_TEXT_MAX_CHARS` 限制，默认值为 16384 |
-| templateUri | TemplateUri | 是 | Task-T 模板，如 `StandardTemplates.PRIVATE_LINE_COMPLAINT`（`Task-T/network-layer/private-line-complaint/v1`） |
+| templateUri | String | 是 | Task-T 模板，如 `StandardTemplates.PRIVATE_LINE_COMPLAINT_URI`（`Task-T/network-layer/private-line-complaint/v1`） |
 
 **请求样例**
 
@@ -723,7 +723,7 @@ MetadataContent metadata = client.generateTaskPromptFromText(
         "帮我创建专线投诉诊断任务，P781-珠江新城-PTN7900-23-TPA1EG24-17 这个端口，"
                 + "客户报的是专线质差，从2026年5月11号早上8点半开始，深圳访问广州的核心系统非常慢，"
                 + "时延从12ms飙到320ms，柜面和手机银行老是报连接超时，OSS流水号是event-id-20260511-09013。",
-        StandardTemplates.PRIVATE_LINE_COMPLAINT);
+        StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
 ```
 
 **输出说明**
@@ -766,7 +766,7 @@ MetadataContent metadata = client.generateTaskPromptFromText(
 
 - `input.text_too_long`（输入超过 `A2AT_INPUT_TEXT_MAX_CHARS`）
 
-编程错误：text 或 templateUri 为 null 抛 `NullPointerException`。
+编程错误：text 或 templateUri 为 null 抛 `NullPointerException`；templateUri 为空白或非法（见 1.1 门面失败策略）抛 `IllegalArgumentException`。
 
 **响应样例**
 
@@ -806,7 +806,7 @@ promptText  :
 
 ```java
 public MetadataContent generateTaskPromptFromDataWithSchema(
-        Map<String, Object> data, Map<String, Object> schema, TemplateUri templateUri)
+        Map<String, Object> data, Map<String, Object> schema, String templateUri)
 ```
 
 **典型场景**：客户端Agent将上游系统的结构化任务参数（字段名可与模板槽位不同，由Schema描述字段语义）转换为Task-T协议报文，适合任务参数已结构化持有的场景。
@@ -819,7 +819,7 @@ public MetadataContent generateTaskPromptFromDataWithSchema(
 | ---- | ---- | ---- | ---- |
 | data | Map&lt;String, Object&gt; | 是 | 结构化业务字段输入，key 为业务字段名，value 为字段值 |
 | schema | Map&lt;String, Object&gt; | 是（非空） | 字段语义 JSON Schema，描述各字段含义与约束 |
-| templateUri | TemplateUri | 是 | Task-T 模板 |
+| templateUri | String | 是 | Task-T 模板 |
 
 **请求样例**
 
@@ -849,14 +849,14 @@ Map<String, Object> semanticsSchema = Map.of(
         "required", List.of("portName", "complaintScenario"));
 
 MetadataContent metadata = client.generateTaskPromptFromDataWithSchema(
-        data, semanticsSchema, StandardTemplates.PRIVATE_LINE_COMPLAINT);
+        data, semanticsSchema, StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
 ```
 
 **输出说明**
 
 成功时返回 `MetadataContent`（结构同 [1.3.10](#1310-generatetaskpromptfromtext)）。
 
-失败时抛 `PromptGenerationException`（结构同 1.3.10）。编程错误：入参为 null 抛 `NullPointerException`，schema 为空 Map 抛 `IllegalArgumentException`。
+失败时抛 `PromptGenerationException`（结构同 1.3.10）。编程错误：入参为 null 抛 `NullPointerException`，templateUri 为空白或非法（见 1.1 门面失败策略）或 schema 为空 Map 抛 `IllegalArgumentException`。
 
 **响应样例**（与 1.3.10 同模板，槽位值来自结构化输入，`faultDetail` 为示例截断值）
 
@@ -896,7 +896,7 @@ promptText  :
 
 ```java
 public FilledParamData validateTaskPromptAndDataFilling(
-        String prompt, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, Map<String, Object> schema, String templateUri)
 ```
 
 **典型场景**：服务端Agent收到Task-T报文后、进入业务执行前的参数校验与提取入口；也是协商流程中"缺槽检测"的判定点——required参数缺失时由调用方决定是否发起协商补参。
@@ -909,7 +909,7 @@ public FilledParamData validateTaskPromptAndDataFilling(
 | ---- | ---- | ---- | ---- |
 | prompt | String | 是（非空） | 待校验的任务提示词报文文本（`MetadataContent.promptText()`）；输入长度受配置项 `A2AT_INPUT_TEXT_MAX_CHARS` 限制，默认值为 16384 |
 | schema | Map&lt;String, Object&gt; | 是 | 调用方提供的参数 JSON Schema，声明要提取/校验的参数及 required 约束 |
-| templateUri | TemplateUri | 是 | Task-T 模板（前缀段必须为 `Task-T`） |
+| templateUri | String | 是 | Task-T 模板（前缀段必须为 `Task-T`） |
 
 **请求样例**
 
@@ -936,7 +936,7 @@ Map<String, Object> validationSchema = Map.of(
 
 Map<String, Object> extracted = server
         .validateTaskPromptAndDataFilling(
-                metadata.promptText(), validationSchema, StandardTemplates.PRIVATE_LINE_COMPLAINT)
+                metadata.promptText(), validationSchema, StandardTemplates.PRIVATE_LINE_COMPLAINT_URI)
         .data();
 ```
 
@@ -967,7 +967,7 @@ Map<String, Object> extracted = server
 
 - `input.text_too_long`（提示词超过 `A2AT_INPUT_TEXT_MAX_CHARS`）
 
-编程错误：prompt / schema / templateUri 为 null 抛 `NullPointerException`，prompt 为空白抛 `IllegalArgumentException`。
+编程错误：prompt / schema / templateUri 为 null 抛 `NullPointerException`，prompt 为空白或 templateUri 为空白/非法（见 1.1 门面失败策略）抛 `IllegalArgumentException`。
 
 **响应样例**
 
@@ -994,7 +994,7 @@ ContentValidationException: [negotiation.semantic_rejected] ...
 **API定义**
 
 ```java
-public MetadataContent generateNotificationPromptFromText(String text, TemplateUri templateUri)
+public MetadataContent generateNotificationPromptFromText(String text, String templateUri)
 ```
 
 **典型场景**：客户端Agent将自然语言订阅需求（如业务抢通事件订阅）转换为指定场景的Notification-T订阅报文。
@@ -1006,7 +1006,7 @@ public MetadataContent generateNotificationPromptFromText(String text, TemplateU
 | 参数 | 类型 | 必填 | 说明 |
 | ---- | ---- | ---- | ---- |
 | text | String | 是 | 自然语言订阅描述（通知主题、订阅条件、上报通知数据格式等）；输入长度受配置项 `A2AT_INPUT_TEXT_MAX_CHARS` 限制，默认值为 16384 |
-| templateUri | TemplateUri | 是 | Notification-T 模板，如 `StandardTemplates.SUBSCRIBE_INCIDENT`、`StandardTemplates.SERVICE_RECOVERY` |
+| templateUri | String | 是 | Notification-T 模板，如 `StandardTemplates.SUBSCRIBE_INCIDENT_URI`、`StandardTemplates.SERVICE_RECOVERY_URI` |
 
 **请求样例**
 
@@ -1015,10 +1015,9 @@ import java.nio.file.Path;
 import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 
 A2ATClient client = new A2ATClient(Path.of("client.env"));
-TemplateUri templateUri = TemplateUri.parse("Notification-T/network-layer/service-recovery/v1").orElseThrow();
+String templateUri = StandardTemplates.SERVICE_RECOVERY_URI;
 
 MetadataContent result = client.generateNotificationPromptFromText(
         "我想订阅一下业务抢通事件。上报通知数据格式如下："
@@ -1032,7 +1031,7 @@ MetadataContent result = client.generateNotificationPromptFromText(
 
 成功时返回 `MetadataContent`（结构同 [1.3.10](#1310-generatetaskpromptfromtext)，`extensionUri` 为 `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Notification-T/v1`）。
 
-失败时抛 `PromptGenerationException`（结构同 1.3.10）。编程错误：text 或 templateUri 为 null 抛 `NullPointerException`。
+失败时抛 `PromptGenerationException`（结构同 1.3.10）。编程错误：text 或 templateUri 为 null 抛 `NullPointerException`；templateUri 为空白或非法（见 1.1 门面失败策略）抛 `IllegalArgumentException`。
 
 **响应样例**（按模板渲染，实际文本随 LLM 槽位提取结果变化；本例输入未指定订阅条件，对应槽位留空）
 
@@ -1071,7 +1070,7 @@ promptText  :
 
 ```java
 public MetadataContent generateNotificationPromptFromDataWithSchema(
-        Map<String, Object> data, Map<String, Object> schema, TemplateUri templateUri)
+        Map<String, Object> data, Map<String, Object> schema, String templateUri)
 ```
 
 **典型场景**：客户端Agent将上游系统/界面提交的结构化订阅参数转换为Notification-T订阅报文，适合订阅参数已结构化持有的场景。
@@ -1084,7 +1083,7 @@ public MetadataContent generateNotificationPromptFromDataWithSchema(
 | ---- | ---- | ---- | ---- |
 | data | Map&lt;String, Object&gt; | 是 | 结构化订阅输入（如订阅条件、上报数据格式字段列表） |
 | schema | Map&lt;String, Object&gt; | 是（非空） | 字段语义 JSON Schema |
-| templateUri | TemplateUri | 是 | Notification-T 模板 |
+| templateUri | String | 是 | Notification-T 模板 |
 
 **请求样例**
 
@@ -1125,7 +1124,7 @@ MetadataContent result = client.generateNotificationPromptFromDataWithSchema(
 
 成功时返回 `MetadataContent`（结构同 [1.3.10](#1310-generatetaskpromptfromtext)，`extensionUri` 为 `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Notification-T/v1`）。
 
-失败时抛 `PromptGenerationException`（结构同 1.3.10）。编程错误：入参为 null 抛 `NullPointerException`，schema 为空 Map 抛 `IllegalArgumentException`。
+失败时抛 `PromptGenerationException`（结构同 1.3.10）。编程错误：入参为 null 抛 `NullPointerException`，templateUri 为空白或非法（见 1.1 门面失败策略）或 schema 为空 Map 抛 `IllegalArgumentException`。
 
 **响应样例**（与 1.3.13 同模板，槽位值来自结构化输入：`订阅条件` 填充 `condition`，`上报通知数据格式` 按 `reportFormat` 列表渲染，字段排列样式示意）
 
@@ -1165,7 +1164,7 @@ promptText  :
 
 ```java
 public FilledParamData validateNotificationPromptAndDataFilling(
-        String prompt, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, Map<String, Object> schema, String templateUri)
 ```
 
 **典型场景**：服务端Agent收到Notification-T订阅报文后校验合规性并提取订阅参数（主题/条件/上报格式），据此建立订阅关系。
@@ -1178,7 +1177,7 @@ public FilledParamData validateNotificationPromptAndDataFilling(
 | ---- | ---- | ---- | ---- |
 | prompt | String | 是（非空） | 待校验的通知订阅提示词报文文本；输入长度受配置项 `A2AT_INPUT_TEXT_MAX_CHARS` 限制，默认值为 16384 |
 | schema | Map&lt;String, Object&gt; | 是 | 调用方提供的参数 JSON Schema |
-| templateUri | TemplateUri | 是 | Notification-T 模板（前缀段必须为 `Notification-T`） |
+| templateUri | String | 是 | Notification-T 模板（前缀段必须为 `Notification-T`） |
 
 **请求样例**
 
@@ -1216,7 +1215,7 @@ FilledParamData result = server.validateNotificationPromptAndDataFilling(
 
 - `input.text_too_long`（提示词超过 `A2AT_INPUT_TEXT_MAX_CHARS`）
 
-编程错误：prompt / schema / templateUri 为 null 抛 `NullPointerException`，prompt 为空白抛 `IllegalArgumentException`。
+编程错误：prompt / schema / templateUri 为 null 抛 `NullPointerException`，prompt 为空白或 templateUri 为空白/非法（见 1.1 门面失败策略）抛 `IllegalArgumentException`。
 
 **响应样例**
 
@@ -1234,7 +1233,7 @@ result.data() =
 **API定义**
 
 ```java
-public MetadataContent generateAuthPromptFromText(String text, TemplateUri templateUri)
+public MetadataContent generateAuthPromptFromText(String text, String templateUri)
 ```
 
 **典型场景**：客户端Agent将自然语言授权诉求（新增/修改/删除/查询动网操作授权策略）转换为Authorization-T报文。
@@ -1246,7 +1245,7 @@ public MetadataContent generateAuthPromptFromText(String text, TemplateUri templ
 | 参数 | 类型 | 必填 | 说明 |
 | ---- | ---- | ---- | ---- |
 | text | String | 是 | 自然语言授权描述（操作类型 + 动网操作的授权策略内容）；输入长度受配置项 `A2AT_INPUT_TEXT_MAX_CHARS` 限制，默认值为 16384 |
-| templateUri | TemplateUri | 是 | Authorization-T 模板：`StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT`（`Authorization-T/authorization-policy-management/v1`） |
+| templateUri | String | 是 | Authorization-T 模板：`StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI`（`Authorization-T/authorization-policy-management/v1`） |
 
 **请求样例**
 
@@ -1260,14 +1259,14 @@ A2ATClient client = new A2ATClient(Path.of("client.env"));
 
 MetadataContent result = client.generateAuthPromptFromText(
         "加个校园专网的授权，处置用业务抢通，做个隧道调优，有效期先不填后面补",
-        StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT);
+        StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI);
 ```
 
 **输出说明**
 
 成功时返回 `MetadataContent`（结构同 [1.3.10](#1310-generatetaskpromptfromtext)，`extensionUri` 为 `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Authorization-T/v1`）。
 
-失败时抛 `PromptGenerationException`（结构同 1.3.10），如操作类型不在"新增/修改/删除/查询授权策略"范围内时以 `slot.constraint_violated` 拒绝。编程错误：text 或 templateUri 为 null 抛 `NullPointerException`。
+失败时抛 `PromptGenerationException`（结构同 1.3.10），如操作类型不在"新增/修改/删除/查询授权策略"范围内时以 `slot.constraint_violated` 拒绝。编程错误：text 或 templateUri 为 null 抛 `NullPointerException`；templateUri 为空白或非法（见 1.1 门面失败策略）抛 `IllegalArgumentException`。
 
 **响应样例**
 
@@ -1296,7 +1295,7 @@ promptText  :
 
 ```java
 public MetadataContent generateAuthPromptFromDataWithSchema(
-        Map<String, Object> data, Map<String, Object> schema, TemplateUri templateUri)
+        Map<String, Object> data, Map<String, Object> schema, String templateUri)
 ```
 
 **典型场景**：客户端Agent将授权管理界面/系统按字段提交的结构化授权策略数据转换为Authorization-T报文。
@@ -1309,7 +1308,7 @@ public MetadataContent generateAuthPromptFromDataWithSchema(
 | ---- | ---- | ---- | ---- |
 | data | Map&lt;String, Object&gt; | 是 | 结构化授权输入（操作类型、策略数量、策略详情列表等） |
 | schema | Map&lt;String, Object&gt; | 是（非空） | 字段语义 JSON Schema |
-| templateUri | TemplateUri | 是 | Authorization-T 模板 |
+| templateUri | String | 是 | Authorization-T 模板 |
 
 **请求样例**
 
@@ -1345,14 +1344,14 @@ Map<String, Object> schema = Map.of(
                                         "有效期", Map.of("type", "string"))))));
 
 MetadataContent result = client.generateAuthPromptFromDataWithSchema(
-        data, schema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT);
+        data, schema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI);
 ```
 
 **输出说明**
 
 成功时返回 `MetadataContent`（结构同 [1.3.10](#1310-generatetaskpromptfromtext)，`extensionUri` 为 `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Authorization-T/v1`）。
 
-失败时抛 `PromptGenerationException`（结构同 1.3.10）。编程错误：入参为 null 抛 `NullPointerException`，schema 为空 Map 抛 `IllegalArgumentException`。
+失败时抛 `PromptGenerationException`（结构同 1.3.10）。编程错误：入参为 null 抛 `NullPointerException`，templateUri 为空白或非法（见 1.1 门面失败策略）或 schema 为空 Map 抛 `IllegalArgumentException`。
 
 **响应样例**
 
@@ -1381,7 +1380,7 @@ promptText  :
 
 ```java
 public FilledParamData validateAuthPromptAndDataFilling(
-        String prompt, Map<String, Object> schema, TemplateUri templateUri)
+        String prompt, Map<String, Object> schema, String templateUri)
 ```
 
 **典型场景**：服务端Agent收到Authorization-T报文后校验合规性并提取操作类型与策略列表，据此执行授权策略管理动作。
@@ -1394,7 +1393,7 @@ public FilledParamData validateAuthPromptAndDataFilling(
 | ---- | ---- | ---- | ---- |
 | prompt | String | 是（非空） | 待校验的授权提示词报文文本；输入长度受配置项 `A2AT_INPUT_TEXT_MAX_CHARS` 限制，默认值为 16384 |
 | schema | Map&lt;String, Object&gt; | 是 | 调用方提供的参数 JSON Schema（含 `操作类型`、`策略列表` 等） |
-| templateUri | TemplateUri | 是 | Authorization-T 模板（前缀段必须为 `Authorization-T`） |
+| templateUri | String | 是 | Authorization-T 模板（前缀段必须为 `Authorization-T`） |
 
 **请求样例**
 
@@ -1409,7 +1408,7 @@ Map<String, Object> paramSchema = MAPPER.readValue(
 //（数组，条目含 策略标识/业务场景/处置类型/操作名称/有效期）
 
 FilledParamData result = server.validateAuthPromptAndDataFilling(
-        metadata.promptText(), paramSchema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT);
+        metadata.promptText(), paramSchema, StandardTemplates.AUTHORIZATION_POLICY_MANAGEMENT_URI);
 ```
 
 **输出说明**
@@ -1426,7 +1425,7 @@ FilledParamData result = server.validateAuthPromptAndDataFilling(
 
 - `input.text_too_long`（提示词超过 `A2AT_INPUT_TEXT_MAX_CHARS`）
 
-编程错误：prompt / schema / templateUri 为 null 抛 `NullPointerException`，prompt 为空白抛 `IllegalArgumentException`。
+编程错误：prompt / schema / templateUri 为 null 抛 `NullPointerException`，prompt 为空白或 templateUri 为空白/非法（见 1.1 门面失败策略）抛 `IllegalArgumentException`。
 
 **响应样例**
 

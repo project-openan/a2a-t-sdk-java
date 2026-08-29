@@ -14,7 +14,6 @@ import net.openan.a2at.sample.authz_policy.AuthzScenarioRunner.ScenarioResult;
 import net.openan.a2at.sdk.core.exception.A2ATError;
 import net.openan.a2at.sdk.core.exception.ErrorCatalog;
 import net.openan.a2at.sdk.core.model.SlotValidationError;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 
 /**
  * Concurrent scenario executor that runs multiple {@link AuthzScenario} instances in parallel using a fixed thread
@@ -73,7 +72,7 @@ public final class AuthzScenarioExecutor {
     public List<ScenarioOutcome> executeAll(
             List<AuthzScenario> scenarios,
             Map<String, Object> paramSchema,
-            TemplateUri templateUri,
+            String templateUri,
             int workers,
             ProgressListener onCompleted) {
         return executeAll(scenarios, paramSchema, templateUri, workers, onCompleted, null);
@@ -97,7 +96,7 @@ public final class AuthzScenarioExecutor {
     public List<ScenarioOutcome> executeAll(
             List<AuthzScenario> scenarios,
             Map<String, Object> paramSchema,
-            TemplateUri templateUri,
+            String templateUri,
             int workers,
             ProgressListener onCompleted,
             AuthzReasoningCapture capture) {

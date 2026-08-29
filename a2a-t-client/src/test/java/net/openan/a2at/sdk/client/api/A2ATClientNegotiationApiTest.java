@@ -2,6 +2,7 @@ package net.openan.a2at.sdk.client.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -53,7 +54,7 @@ class A2ATClientNegotiationApiTest {
                 new NegotiationProposeData(
                         new NegotiationContext(UUID, 1, 5, NegotiationPerformative.PROPOSE),
                         new InformationProposeContent(List.of(new NegotiationItem("节能区域", "松山湖")), null)),
-                INFORMATION_PROPOSE);
+                INFORMATION_PROPOSE_URI);
 
         assertEquals(INFORMATION_PROPOSE_URI, result.templateUri());
         assertFalse(result.promptText().isBlank());
@@ -73,7 +74,7 @@ class A2ATClientNegotiationApiTest {
                 new NegotiationProposeData(
                         new NegotiationContext(UUID, 1, 5, NegotiationPerformative.PROPOSE),
                         new InformationProposeContent(List.of(new NegotiationItem("Region", "Songshan Lake")), null)),
-                INFORMATION_PROPOSE);
+                INFORMATION_PROPOSE_URI);
 
         assertEquals(INFORMATION_PROPOSE_URI, result.templateUri());
         assertFalse(result.promptText().isBlank());
@@ -95,7 +96,7 @@ class A2ATClientNegotiationApiTest {
                 new NegotiationAbortData(
                         new NegotiationContext(UUID, 5, 5, NegotiationPerformative.ABORT),
                         new NegotiationAbortContent("达到协商轮次上限，本次协商确认结束。")),
-                StandardTemplates.NEGOTIATION_ABORT);
+                StandardTemplates.NEGOTIATION_ABORT_URI);
 
         assertEquals(StandardTemplates.NEGOTIATION_ABORT.uri(), result.templateUri());
         assertTrue(result.promptText().contains("## 协商结果\nAbort"));
@@ -113,7 +114,7 @@ class A2ATClientNegotiationApiTest {
                         new NegotiationContext(UUID, 3, 5, NegotiationPerformative.ABORT),
                         new NegotiationAbortContent(
                                 "Reached the negotiation round limit. This negotiation is confirmed and ended.")),
-                StandardTemplates.NEGOTIATION_ABORT);
+                StandardTemplates.NEGOTIATION_ABORT_URI);
 
         assertEquals(StandardTemplates.NEGOTIATION_ABORT.uri(), result.templateUri());
         assertTrue(result.promptText().contains("## Negotiation Result\nAbort"));
@@ -126,7 +127,7 @@ class A2ATClientNegotiationApiTest {
         A2ATClient client = new A2ATClient(writeEnv("zh-CN"));
 
         PromptTemplate template =
-                client.getPrompt(StandardTemplates.NEGOTIATION_ABORT).orElseThrow();
+                client.getPrompt(StandardTemplates.NEGOTIATION_ABORT_URI).orElseThrow();
         assertEquals(StandardTemplates.NEGOTIATION_ABORT, template.templateUri());
         assertFalse(template.content().isBlank());
     }
@@ -135,15 +136,41 @@ class A2ATClientNegotiationApiTest {
     void queriesSingleNegotiationTemplateWithoutThrowing() throws IOException {
         A2ATClient client = new A2ATClient(writeEnv("zh-CN"));
 
-        assertTrue(client.getPrompt(INFORMATION_PROPOSE).isPresent());
-        assertTrue(client.getPrompt(StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT)
+        assertTrue(client.getPrompt(INFORMATION_PROPOSE_URI).isPresent());
+        assertTrue(client.getPrompt(StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT_URI)
                 .isPresent());
-        assertFalse(
-                client.getPrompt(TemplateUri.of("Negotiation-T", List.of("information-negotiation", "propose"), "v9"))
-                        .isPresent());
-        PromptTemplate template = client.getPrompt(INFORMATION_PROPOSE).orElseThrow();
+        assertFalse(client.getPrompt("Negotiation-T/information-negotiation/propose/v9").isPresent());
+        PromptTemplate template = client.getPrompt(INFORMATION_PROPOSE_URI).orElseThrow();
         assertEquals(INFORMATION_PROPOSE, template.templateUri());
         assertFalse(template.content().isBlank());
+    }
+
+    @Test
+    void generateNegotiationPromptFromDataThrowsOnMalformedTemplateUriString() throws IOException {
+        A2ATClient client = new A2ATClient(writeEnv("zh-CN"));
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> client.generateNegotiationProposePromptFromData(
+                        new NegotiationProposeData(
+                                new NegotiationContext(UUID, 1, 5, NegotiationPerformative.PROPOSE),
+                                new InformationProposeContent(List.of(new NegotiationItem("节能区域", "松山湖")), null)),
+                        "Task-T/only-one-segment"));
+        assertTrue(ex.getMessage().contains("Unparseable template URI"), "message was: " + ex.getMessage());
+    }
+
+    @Test
+    void validateNegotiationPromptThrowsOnBlankTemplateUriString() throws IOException {
+        A2ATClient client = new A2ATClient(writeEnv("zh-CN"));
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> client.validateProposePromptAndDataFilling(
+                        "rendered negotiation message",
+                        new NegotiationContext(UUID, 1, 5, NegotiationPerformative.PROPOSE),
+                        Map.of("type", "object"),
+                        "  "));
+        assertTrue(ex.getMessage().contains("Unparseable template URI"), "message was: " + ex.getMessage());
     }
 
     private static List<PromptTemplate> negotiationPrompts(A2ATClient client) {

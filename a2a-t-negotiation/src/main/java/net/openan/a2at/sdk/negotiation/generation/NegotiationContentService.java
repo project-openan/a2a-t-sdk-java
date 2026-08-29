@@ -72,8 +72,8 @@ public final class NegotiationContentService {
      *     field is blank or empty, or {@code negotiation.invalid_input} when the content combines a non-blank confirm
      *     request with conditional sections (target: the three clarification lists; feasibility: either conditional
      *     list or the alternative action)
-     * @throws NegotiationGenerationException with the code {@code template.not_found} or
-     *     {@code negotiation.field_missing} when loading or rendering the template fails
+     * @throws NegotiationGenerationException with the code {@code template.not_found} when loading the template fails,
+     *     or the code {@code template.render_failed} when rendering the template fails
      */
     public MetadataContent generateProposeFromData(
             @NonNull NegotiationProposeData data, @NonNull TemplateUri templateUri) {
@@ -91,8 +91,8 @@ public final class NegotiationContentService {
      * @throws NegotiationGenerationException with the code {@code negotiation.conclusion_mismatch} when the content
      *     conclusion is not {@code Accept}, or {@code negotiation.content_invalid} when a required content field is
      *     blank or empty
-     * @throws NegotiationGenerationException with the code {@code template.not_found} or
-     *     {@code negotiation.field_missing} when loading or rendering the template fails
+     * @throws NegotiationGenerationException with the code {@code template.not_found} when loading the template fails,
+     *     or the code {@code template.render_failed} when rendering the template fails
      */
     public MetadataContent generateAcceptFromData(
             @NonNull NegotiationEndingData data, @NonNull TemplateUri templateUri) {
@@ -110,8 +110,8 @@ public final class NegotiationContentService {
      * @throws NegotiationGenerationException with the code {@code negotiation.conclusion_mismatch} when the content
      *     conclusion is not {@code Reject}, or {@code negotiation.content_invalid} when a required content field is
      *     blank or empty
-     * @throws NegotiationGenerationException with the code {@code template.not_found} or
-     *     {@code negotiation.field_missing} when loading or rendering the template fails
+     * @throws NegotiationGenerationException with the code {@code template.not_found} when loading the template fails,
+     *     or the code {@code template.render_failed} when rendering the template fails
      */
     public MetadataContent generateRejectFromData(
             @NonNull NegotiationEndingData data, @NonNull TemplateUri templateUri) {
@@ -128,8 +128,8 @@ public final class NegotiationContentService {
      * @throws IllegalArgumentException if the template URI does not address the common abort template
      * @throws NegotiationGenerationException with the code {@code negotiation.content_invalid} when the termination
      *     reason is blank
-     * @throws NegotiationGenerationException with the code {@code template.not_found} or
-     *     {@code negotiation.field_missing} when loading or rendering the template fails
+     * @throws NegotiationGenerationException with the code {@code template.not_found} when loading the template fails,
+     *     or the code {@code template.render_failed} when rendering the template fails
      */
     public MetadataContent generateAbortFromData(@NonNull NegotiationAbortData data, @NonNull TemplateUri templateUri) {
         return orchestrator.generateAbortFromData(data, templateUri);
@@ -147,7 +147,8 @@ public final class NegotiationContentService {
      * @throws IllegalArgumentException if the template URI contradicts the method
      * @throws NegotiationGenerationException with the code {@code template.not_found},
      *     {@code negotiation.content_extract_failed} or {@code llm.invocation_failed} or {@code llm.response_invalid}
-     *     when loading or extracting fails, {@code negotiation.field_missing} when the extracted content misses a
+     *     when loading or extracting fails, {@code template.render_failed} when rendering the template fails,
+     *     {@code negotiation.field_missing} when the extracted content misses a
      *     required field, or {@code negotiation.invalid_input} when the text is blank, the extracted content
      *     contradicts the performative or the extracted confirm request is combined with conditional sections or the
      *     wrong feasibility action, or {@code input.text_too_long} when the text exceeds the configured maximum length
@@ -169,7 +170,8 @@ public final class NegotiationContentService {
      * @throws IllegalArgumentException if the template URI contradicts the method
      * @throws NegotiationGenerationException with the code {@code template.not_found},
      *     {@code negotiation.content_extract_failed} or {@code llm.invocation_failed} or {@code llm.response_invalid}
-     *     when loading or extracting fails, {@code negotiation.field_missing} when the extracted content misses a
+     *     when loading or extracting fails, {@code template.render_failed} when rendering the template fails,
+     *     {@code negotiation.field_missing} when the extracted content misses a
      *     required field, or {@code negotiation.invalid_input} when the text is blank,
      *     {@code negotiation.conclusion_mismatch} when the extracted conclusion is not {@code Accept}, or
      *     {@code input.text_too_long} when the text exceeds the configured maximum length
@@ -191,7 +193,8 @@ public final class NegotiationContentService {
      * @throws IllegalArgumentException if the template URI contradicts the method
      * @throws NegotiationGenerationException with the code {@code template.not_found},
      *     {@code negotiation.content_extract_failed} or {@code llm.invocation_failed} or {@code llm.response_invalid}
-     *     when loading or extracting fails, {@code negotiation.field_missing} when the extracted content misses a
+     *     when loading or extracting fails, {@code template.render_failed} when rendering the template fails,
+     *     {@code negotiation.field_missing} when the extracted content misses a
      *     required field, or {@code negotiation.invalid_input} when the text is blank,
      *     {@code negotiation.conclusion_mismatch} when the extracted conclusion is not {@code Reject}, or
      *     {@code input.text_too_long} when the text exceeds the configured maximum length
@@ -213,7 +216,8 @@ public final class NegotiationContentService {
      * @throws IllegalArgumentException if the template URI does not address the common abort template
      * @throws NegotiationGenerationException with the code {@code template.not_found},
      *     {@code negotiation.content_extract_failed} or {@code llm.invocation_failed} or {@code llm.response_invalid}
-     *     when loading or extracting fails, {@code negotiation.field_missing} when the extracted content misses the
+     *     when loading or extracting fails, {@code template.render_failed} when rendering the template fails,
+     *     {@code negotiation.field_missing} when the extracted content misses the
      *     termination reason, or {@code negotiation.invalid_input} when the text is blank, or
      *     {@code input.text_too_long} when the text exceeds the configured maximum length
      */

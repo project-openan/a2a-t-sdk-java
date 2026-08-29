@@ -295,7 +295,7 @@ class TaskTSingleSampleTest {
         System.out.println();
 
         MetadataContent metadata = client.generateTaskPromptFromText(
-                sample.text(), StandardTemplates.PRIVATE_LINE_COMPLAINT);
+                sample.text(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
         printMetadata(metadata);
 
         Map<String, Object> extracted = validate(server, sample, metadata);
@@ -322,7 +322,7 @@ class TaskTSingleSampleTest {
         System.out.println();
 
         MetadataContent metadata = client.generateTaskPromptFromDataWithSchema(
-                sample.data(), sample.semanticsSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT);
+                sample.data(), sample.semanticsSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
         printMetadata(metadata);
 
         Map<String, Object> extracted = validate(server, sample, metadata);
@@ -359,10 +359,10 @@ class TaskTSingleSampleTest {
         try {
             if (isData) {
                 metadata = client.generateTaskPromptFromDataWithSchema(
-                        sample.data(), sample.semanticsSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT);
+                        sample.data(), sample.semanticsSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
             } else {
                 metadata = client.generateTaskPromptFromText(
-                        sample.text(), StandardTemplates.PRIVATE_LINE_COMPLAINT);
+                        sample.text(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
             }
         } catch (PromptGenerationException e) {
             // 客户端前置校验拒绝：缺少必填槽位，在调用 LLM 之前就被拦截
@@ -373,7 +373,7 @@ class TaskTSingleSampleTest {
 
         try {
             Map<String, Object> extracted = server.validateTaskPromptAndDataFilling(
-                            metadata.promptText(), sample.validationSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT)
+                            metadata.promptText(), sample.validationSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI)
                     .data();
             System.out.println("[意外通过] 应被拒绝却校验通过，提取参数: " + extracted);
             // 拒绝样本应被拒绝，意外通过视为失败
@@ -394,7 +394,7 @@ class TaskTSingleSampleTest {
 
     private static Map<String, Object> validate(A2ATServer server, TaskTSample sample, MetadataContent metadata) {
         return server.validateTaskPromptAndDataFilling(
-                        metadata.promptText(), sample.validationSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT)
+                        metadata.promptText(), sample.validationSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI)
                 .data();
     }
 

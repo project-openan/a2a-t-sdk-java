@@ -13,7 +13,6 @@ import net.openan.a2at.sdk.core.exception.PromptGenerationException;
 import net.openan.a2at.sdk.core.model.FilledParamData;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.SlotValidationError;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.core.validation.ContentValidationException;
 
 /**
@@ -41,7 +40,7 @@ public final class AuthzScenarioRunner {
         this.validator = validator;
     }
 
-    public ScenarioOutcome run(AuthzScenario scenario, Map<String, Object> paramSchema, TemplateUri templateUri) {
+    public ScenarioOutcome run(AuthzScenario scenario, Map<String, Object> paramSchema, String templateUri) {
         MetadataContent metadata;
         try {
             metadata = generator.generate(scenario);

@@ -1,7 +1,6 @@
 package net.openan.a2at.sample.negotiation.shared;
 
 import net.openan.a2at.sdk.core.model.StandardTemplates;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 
 /**
  * Extension URIs and metadata keys used by the negotiation end-to-end demo.
@@ -24,13 +23,13 @@ public final class DemoConstants {
             "https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/NL/v1";
 
     /** Task-T template URI for the SPN private-line-complaint diagnosis scenario. */
-    public static final TemplateUri TASK_TEMPLATE = StandardTemplates.PRIVATE_LINE_COMPLAINT;
+    public static final String TASK_TEMPLATE = StandardTemplates.PRIVATE_LINE_COMPLAINT_URI;
 
     /** Negotiation-T information propose template (request missing information). */
-    public static final TemplateUri NEGOTIATION_PROPOSE = StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE;
+    public static final String NEGOTIATION_PROPOSE = StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI;
 
     /** Negotiation-T information accept-reject template (accept after params filled). */
-    public static final TemplateUri NEGOTIATION_ACCEPT = StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT;
+    public static final String NEGOTIATION_ACCEPT = StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI;
 
     /** Metadata key carrying the JSON-serialised negotiation context map. */
     public static final String NEGOTIATION_CONTEXT_KEY = "negotiation_context";

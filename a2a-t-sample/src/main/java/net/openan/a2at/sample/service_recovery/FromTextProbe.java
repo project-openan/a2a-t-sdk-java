@@ -4,7 +4,6 @@ import java.nio.file.Path;
 import java.util.Map;
 import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.MetadataContent;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 
 /**
  * One-shot diagnostic entry: runs {@code generateNotificationPromptFromText} alone with the
@@ -58,8 +57,7 @@ public final class FromTextProbe {
         System.out.println();
 
         A2ATClient client = new A2ATClient(envPath);
-        TemplateUri templateUri = TemplateUri.parse(ServiceRecoverySampleInputs.TEMPLATE_URI)
-                .orElseThrow(() -> new IllegalArgumentException("Malformed template URI"));
+        String templateUri = ServiceRecoverySampleInputs.TEMPLATE_URI;
 
         System.out.println("=== [probe] calling generateNotificationPromptFromText ===");
         long start = System.currentTimeMillis();

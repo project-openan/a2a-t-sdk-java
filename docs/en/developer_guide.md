@@ -1657,16 +1657,16 @@ For example, when the local file is `<local resource root>/templates/Task-T/netw
 
 ```java
 import net.openan.a2at.sdk.core.model.MetadataContent;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 
-// Construction: parse the raw URI string
-TemplateUri templateUri = TemplateUri.parse("Task-T/network-layer/site-inspection/v1").orElseThrow();
-
+// The facade takes the raw URI string directly
 MetadataContent metadata = client.generateTaskPromptFromText(
-        "Please perform an on-site inspection of station xx, focusing on alarms and performance metrics", templateUri);
+        "Please perform an on-site inspection of station xx, focusing on alarms and performance metrics",
+        "Task-T/network-layer/site-inspection/v1");
 ```
 
-To override a built-in template (e.g. `StandardTemplates.PRIVATE_LINE_COMPLAINT`), place `template.md` and `slot.json` at the same relative path under the local root directory and keep using the original constant in the code. Note that in `local_file` mode business templates are read only from the local root directory without classpath fallback; when the file for a `templateUri` is missing, the API throws `PromptGenerationException` with the error code `template.not_found`.
+Facade failure policy for `templateUri`: a null template URI throws `NullPointerException`; a blank or malformed URI (fewer than three segments, or a segment that is not simple) throws `IllegalArgumentException` with the message `Unparseable template URI: <input>`.
+
+To override a built-in template (e.g. `StandardTemplates.PRIVATE_LINE_COMPLAINT_URI`), place `template.md` and `slot.json` at the same relative path under the local root directory and keep using the original constant in the code. Note that in `local_file` mode business templates are read only from the local root directory without classpath fallback; when the file for a `templateUri` is missing, the API throws `PromptGenerationException` with the error code `template.not_found`.
 
 #### Step4 Verification and troubleshooting
 

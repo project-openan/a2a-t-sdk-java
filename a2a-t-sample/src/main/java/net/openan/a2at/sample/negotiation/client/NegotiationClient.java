@@ -146,7 +146,7 @@ public final class NegotiationClient {
         Map<String, Object> mergedMetadata = new LinkedHashMap<>();
         mergedMetadata.put(DemoConstants.TASK_T_URI, taskFilled.promptText());
         mergedMetadata.put(DemoConstants.NEGOTIATION_T_URI, acceptPrompt.promptText());
-        mergedMetadata.put(DemoConstants.TEMPLATE_URI_KEY, DemoConstants.TASK_TEMPLATE.uri());
+        mergedMetadata.put(DemoConstants.TEMPLATE_URI_KEY, DemoConstants.TASK_TEMPLATE);
         mergedMetadata.put(DemoConstants.NEGOTIATION_CONTEXT_KEY, NegotiationMessage.toJson(negotiationContext));
 
         EventKind reply2 = sendRaw(agentCard, mergedMetadata, taskFilled.promptText(), negotiationContext);
@@ -166,8 +166,8 @@ public final class NegotiationClient {
     /** Sends one extension's prompt as an A2A message and returns the raw reply event. */
     private EventKind send(
             AgentCard agentCard, String extensionUri, MetadataContent content, Map<String, Object> contextMap) {
-        Map<String, Object> metadata = NegotiationMessage.buildMetadata(
-                extensionUri, content.promptText(), parseTemplateUri(content.templateUri()), contextMap);
+        Map<String, Object> metadata =
+                NegotiationMessage.buildMetadata(extensionUri, content.promptText(), content.templateUri(), contextMap);
         return sendRaw(agentCard, metadata, content.promptText(), contextMap);
     }
 
@@ -287,12 +287,6 @@ public final class NegotiationClient {
             }
             throw new IllegalStateException("a2a-java reply carried neither a task nor an agent message");
         }
-    }
-
-    /** Parses a rendered template URI string back into a {@code TemplateUri} for metadata building. */
-    private static net.openan.a2at.sdk.core.model.TemplateUri parseTemplateUri(String templateUri) {
-        return net.openan.a2at.sdk.core.model.TemplateUri.parse(templateUri)
-                .orElseThrow(() -> new IllegalArgumentException("Unparseable template URI: " + templateUri));
     }
 
     private static Message extractReplyMessage(EventKind reply) {

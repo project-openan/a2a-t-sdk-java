@@ -3,7 +3,6 @@ package net.openan.a2at.sample.negotiation.shared;
 import java.util.List;
 import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.MetadataContent;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.negotiation.content.InformationEndingContent;
 import net.openan.a2at.sdk.negotiation.content.InformationProposeContent;
 import net.openan.a2at.sdk.negotiation.content.NegotiationConclusion;
@@ -29,7 +28,7 @@ public final class FromDataStrategy implements NegotiationStrategy {
             NegotiationContext ctx,
             List<NegotiationItem> missingItems,
             String relationship,
-            TemplateUri templateUri) {
+            String templateUri) {
         return server.generateNegotiationProposePromptFromData(
                 new NegotiationProposeData(ctx, new InformationProposeContent(missingItems, relationship)),
                 templateUri);
@@ -37,7 +36,7 @@ public final class FromDataStrategy implements NegotiationStrategy {
 
     @Override
     public MetadataContent generateAccept(
-            A2ATClient facade, NegotiationContext ctx, List<NegotiationItem> filledItems, TemplateUri templateUri) {
+            A2ATClient facade, NegotiationContext ctx, List<NegotiationItem> filledItems, String templateUri) {
         return facade.generateNegotiationAcceptPromptFromData(
                 new NegotiationEndingData(ctx, new InformationEndingContent(NegotiationConclusion.ACCEPT, filledItems)),
                 templateUri);
@@ -45,7 +44,7 @@ public final class FromDataStrategy implements NegotiationStrategy {
 
     @Override
     public MetadataContent generateAcceptServer(
-            A2ATServer server, NegotiationContext ctx, List<NegotiationItem> filledItems, TemplateUri templateUri) {
+            A2ATServer server, NegotiationContext ctx, List<NegotiationItem> filledItems, String templateUri) {
         return server.generateNegotiationAcceptPromptFromData(
                 new NegotiationEndingData(ctx, new InformationEndingContent(NegotiationConclusion.ACCEPT, filledItems)),
                 templateUri);

@@ -6,7 +6,6 @@ import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.FilledParamData;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
-import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
 import net.openan.a2at.sdk.core.model.NegotiationPerformative;
 import net.openan.a2at.sdk.server.A2ATServer;
@@ -15,9 +14,9 @@ import net.openan.a2at.sample.negotiation.shared.InformationNegotiationSchemas;
 /** Runs the six Negotiation-T APIs used by the private-line complaint sample. */
 public final class NegotiationSampleFlow {
 
-    public static final TemplateUri PROPOSE_TEMPLATE_URI = StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE;
+    public static final String PROPOSE_TEMPLATE_URI = StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI;
 
-    public static final TemplateUri ENDING_TEMPLATE_URI = StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT;
+    public static final String ENDING_TEMPLATE_URI = StandardTemplates.INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI;
 
     private NegotiationSampleFlow() {
     }
