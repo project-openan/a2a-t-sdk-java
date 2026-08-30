@@ -13,23 +13,21 @@ import net.openan.a2at.sdk.llm.LLMResponse;
 /**
  * Deterministic LLM client used by the sample when no real API key is available.
  *
- * <p>Unlike a call-order replay, this client classifies every structured call by its request
- * signature and returns the matching canned response, so the sample flow stays deterministic no
- * matter how many LLM steps run or in which order. The service-recovery flow makes exactly four
- * LLM calls (two slot extractions on the client, two content validations on the server):
+ * <p>Unlike a call-order replay, this client classifies every structured call by its request signature and returns the
+ * matching canned response, so the sample flow stays deterministic no matter how many LLM steps run or in which order.
+ * The service-recovery flow makes exactly four LLM calls (two slot extractions on the client, two content validations
+ * on the server):
  *
  * <ul>
- * <li>slot extraction — the JSON schema carries a {@code slotNames} key;
- * <li>content validation — the schema requires {@code semantic_verdict}.
+ *   <li>slot extraction — the JSON schema carries a {@code slotNames} key;
+ *   <li>content validation — the schema requires {@code semantic_verdict}.
  * </ul>
  *
- * <p>Any other structured call fails loudly instead of returning an unrelated canned response —
- * scenario recognition and task-prompt compliance validation never happen in this sample (the
- * template URI is fixed and the server only calls
- * {@code validateAndFillingNotificationData}). The canned responses are loaded from
- * {@code mock_responses} JSON resources on the classpath and mirror what a real LLM returned for
- * the bundled service-recovery resources, so the end-to-end sample flow runs without any external
- * LLM service.
+ * <p>Any other structured call fails loudly instead of returning an unrelated canned response — scenario recognition
+ * and task-prompt compliance validation never happen in this sample (the template URI is fixed and the server only
+ * calls {@code validateAndFillingNotificationData}). The canned responses are loaded from {@code mock_responses} JSON
+ * resources on the classpath and mirror what a real LLM returned for the bundled service-recovery resources, so the
+ * end-to-end sample flow runs without any external LLM service.
  *
  * @since 2026-08
  */
@@ -60,18 +58,14 @@ public final class SampleMockLLMClient implements LLMClient {
      * @param language locale identifier used to select the response files
      */
     public static synchronized void configure(String resourceRoot, String language) {
-        SampleMockLLMClient.resourceRoot = resourceRoot == null || resourceRoot.isBlank()
-                ? DEFAULT_RESOURCE_ROOT
-                : resourceRoot;
+        SampleMockLLMClient.resourceRoot =
+                resourceRoot == null || resourceRoot.isBlank() ? DEFAULT_RESOURCE_ROOT : resourceRoot;
         SampleMockLLMClient.language = language == null || language.isBlank() ? DEFAULT_LANGUAGE : language.trim();
     }
 
     @Override
     public LLMResponse structured(
-            List<Map<String, String>> messages,
-            Map<String, Object> jsonSchema,
-            Double temperature,
-            Integer maxTokens) {
+            List<Map<String, String>> messages, Map<String, Object> jsonSchema, Double temperature, Integer maxTokens) {
         String resource = responseResource(jsonSchema);
         return new LLMResponse(
                 loadResource(resource),
@@ -93,7 +87,8 @@ public final class SampleMockLLMClient implements LLMClient {
 
     private static String loadResource(String resourcePath) {
         String path = resourceRoot + "/" + language + "/" + resourcePath;
-        try (InputStream inputStream = SampleMockLLMClient.class.getClassLoader().getResourceAsStream(path)) {
+        try (InputStream inputStream =
+                SampleMockLLMClient.class.getClassLoader().getResourceAsStream(path)) {
             if (inputStream == null) {
                 throw new ValueErrorException("Mock LLM response resource not found: " + path);
             }

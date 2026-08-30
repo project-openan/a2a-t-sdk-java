@@ -57,11 +57,7 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
         try {
             HttpServer server = HttpServer.create(new InetSocketAddress(host, port), 0);
             ExecutorService executorService = new ThreadPoolExecutor(
-                    SERVER_THREAD_COUNT,
-                    SERVER_THREAD_COUNT,
-                    0L,
-                    TimeUnit.MILLISECONDS,
-                    new LinkedBlockingQueue<>());
+                    SERVER_THREAD_COUNT, SERVER_THREAD_COUNT, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
             server.setExecutor(executorService);
 
             RestHandler restHandler = new RestHandler(
@@ -259,7 +255,9 @@ public final class EmbeddedA2AHttpServer implements AutoCloseable {
                     try {
                         String payload = JsonFormat.printer().print(toStreamResponse(item));
                         String encoded = formatSseFrame(sequence.incrementAndGet(), payload);
-                        LOGGER.trace("[server] sse-write: {}", encoded.replace("\r", "\\r").replace("\n", "\\n"));
+                        LOGGER.trace(
+                                "[server] sse-write: {}",
+                                encoded.replace("\r", "\\r").replace("\n", "\\n"));
                         outputStream.write(encoded.getBytes(StandardCharsets.UTF_8));
                         outputStream.flush();
                         LOGGER.trace("[server] sse-write-flushed");

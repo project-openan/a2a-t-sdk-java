@@ -17,9 +17,8 @@ import java.util.stream.Stream;
 /**
  * Unified launcher for every sample in this module.
  *
- * <p>One command runs any sample end to end — start the server, wait until its HTTP endpoint is up,
- * run the client, then stop the server. The server output is captured to a temp log file; the client
- * output streams to the console.
+ * <p>One command runs any sample end to end — start the server, wait until its HTTP endpoint is up, run the client,
+ * then stop the server. The server output is captured to a temp log file; the client output streams to the console.
  *
  * <p>Usage from the repository root:
  *
@@ -27,13 +26,11 @@ import java.util.stream.Stream;
  * java -cp @a2a-t-sample/target/sample.args net.openan.a2at.sample.SampleRunner <sample>
  * </pre>
  *
- * <p>Each sample is discovered by convention from {@code src/main/resources/sample/} — a directory
- * containing both {@code client/} and {@code server/} subdirectories is a runnable sample. The
- * corresponding main classes are resolved as
- * {@code net.openan.a2at.sample.<java_package>.client.ClientSampleMain} and
- * {@code ...server.ServerSampleMain}, where {@code <java_package>} is the directory name with
- * dashes replaced by underscores. Adding a new sample needs no registration: drop the package and
- * the resource directory, and the runner picks it up.
+ * <p>Each sample is discovered by convention from {@code src/main/resources/sample/} — a directory containing both
+ * {@code client/} and {@code server/} subdirectories is a runnable sample. The corresponding main classes are resolved
+ * as {@code net.openan.a2at.sample.<java_package>.client.ClientSampleMain} and {@code ...server.ServerSampleMain},
+ * where {@code <java_package>} is the directory name with dashes replaced by underscores. Adding a new sample needs no
+ * registration: drop the package and the resource directory, and the runner picks it up.
  *
  * <p>Environment variables: {@code A2AT_SAMPLE_MAX_ARTIFACTS} (passed through to the client) and
  * {@code A2AT_SAMPLE_LIST} (set to any value to only list samples).
@@ -48,8 +45,7 @@ public final class SampleRunner {
 
     private static final long SERVER_STARTUP_TIMEOUT_SECONDS = 120;
 
-    private SampleRunner() {
-    }
+    private SampleRunner() {}
 
     /**
      * Runner entry point.
@@ -63,7 +59,8 @@ public final class SampleRunner {
             System.exit(2);
         }
         if (args.length == 0 || "list".equalsIgnoreCase(args[0]) || System.getenv("A2AT_SAMPLE_LIST") != null) {
-            System.out.println("Available samples (run with: java @a2a-t-sample/target/sample.args net.openan.a2at.sample.SampleRunner <name>):");
+            System.out.println(
+                    "Available samples (run with: java @a2a-t-sample/target/sample.args net.openan.a2at.sample.SampleRunner <name>):");
             samples.forEach(name -> System.out.println("  - " + name));
             return;
         }
@@ -82,8 +79,16 @@ public final class SampleRunner {
         String javaPackage = "net.openan.a2at.sample." + sample.replace('-', '_');
         String serverMain = javaPackage + ".server.ServerSampleMain";
         String clientMain = javaPackage + ".client.ClientSampleMain";
-        String serverEnv = SAMPLES_ROOT.resolve(sample).resolve("server").resolve("server.env").toString();
-        String clientEnv = SAMPLES_ROOT.resolve(sample).resolve("client").resolve("client.env").toString();
+        String serverEnv = SAMPLES_ROOT
+                .resolve(sample)
+                .resolve("server")
+                .resolve("server.env")
+                .toString();
+        String clientEnv = SAMPLES_ROOT
+                .resolve(sample)
+                .resolve("client")
+                .resolve("client.env")
+                .toString();
         if (!Files.exists(Path.of(serverEnv)) || !Files.exists(Path.of(clientEnv))) {
             System.err.println("Sample '" + sample + "' is missing its env files:");
             System.err.println("  " + serverEnv);
@@ -104,22 +109,26 @@ public final class SampleRunner {
 
         Path serverLog = Path.of("a2a-t-sample", "target", "sample-logs").resolve(sample + "-server.log");
         Files.createDirectories(serverLog.getParent());
-        System.out.println("[runner] starting server for sample '" + sample + "' (log: " + serverLog.toAbsolutePath()
-                + ")");
+        System.out.println(
+                "[runner] starting server for sample '" + sample + "' (log: " + serverLog.toAbsolutePath() + ")");
         Process server = new ProcessBuilder(javaCommand(classpath, serverMain, serverEnv))
                 .redirectErrorStream(true)
                 .start();
         // Kill the spawned processes when this runner is interrupted (Ctrl+C), so no orphaned
         // server keeps running and locking jars under target/.
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            server.destroyForcibly();
-            System.out.println("[runner] shutdown: server stopped");
-        }, "sample-runner-shutdown"));
+        Runtime.getRuntime()
+                .addShutdownHook(new Thread(
+                        () -> {
+                            server.destroyForcibly();
+                            System.out.println("[runner] shutdown: server stopped");
+                        },
+                        "sample-runner-shutdown"));
         Thread serverLogPumper = new Thread(() -> pumpServerLog(server, serverLog), "sample-runner-server-log");
         serverLogPumper.setDaemon(true);
         serverLogPumper.start();
         if (!waitForServer(serverPort, SERVER_STARTUP_TIMEOUT_SECONDS)) {
-            System.err.println("[runner] server did not start within " + SERVER_STARTUP_TIMEOUT_SECONDS + "s; server log tail:");
+            System.err.println(
+                    "[runner] server did not start within " + SERVER_STARTUP_TIMEOUT_SECONDS + "s; server log tail:");
             tailLog(serverLog, 30);
             server.destroyForcibly();
             return 2;
@@ -130,10 +139,13 @@ public final class SampleRunner {
         Process client = new ProcessBuilder(javaCommand(classpath, clientMain, clientEnv))
                 .redirectErrorStream(true)
                 .start();
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            client.destroyForcibly();
-            System.out.println("[runner] shutdown: client stopped");
-        }, "sample-runner-shutdown-client"));
+        Runtime.getRuntime()
+                .addShutdownHook(new Thread(
+                        () -> {
+                            client.destroyForcibly();
+                            System.out.println("[runner] shutdown: client stopped");
+                        },
+                        "sample-runner-shutdown-client"));
         Thread clientLogPumper = new Thread(() -> pumpLog(client, clientLog, "[client] "), "sample-runner-client-log");
         clientLogPumper.setDaemon(true);
         clientLogPumper.start();
@@ -149,9 +161,7 @@ public final class SampleRunner {
         return clientExit;
     }
 
-    /**
-     * Pumps the server process output to the console (prefixed) and to the log file concurrently.
-     */
+    /** Pumps the server process output to the console (prefixed) and to the log file concurrently. */
     private static void pumpServerLog(Process server, Path serverLog) {
         pumpLog(server, serverLog, "[server] ");
     }
@@ -159,9 +169,9 @@ public final class SampleRunner {
     /**
      * Pumps one child process output to the console (prefixed) and to the log file concurrently.
      *
-     * <p>Both the reader and the log file use UTF-8; the child JVMs are launched with
-     * {@code stdout.encoding=UTF-8} so their console streams emit UTF-8 bytes even on Windows
-     * where the default console encoding is the ANSI code page (GBK).
+     * <p>Both the reader and the log file use UTF-8; the child JVMs are launched with {@code stdout.encoding=UTF-8} so
+     * their console streams emit UTF-8 bytes even on Windows where the default console encoding is the ANSI code page
+     * (GBK).
      */
     private static void pumpLog(Process process, Path logFile, String consolePrefix) {
         try (BufferedReader reader =
@@ -217,8 +227,7 @@ public final class SampleRunner {
         }
         try (Stream<Path> dirs = Files.list(SAMPLES_ROOT)) {
             return dirs.filter(Files::isDirectory)
-                    .filter(dir -> Files.isDirectory(dir.resolve("client"))
-                            && Files.isDirectory(dir.resolve("server")))
+                    .filter(dir -> Files.isDirectory(dir.resolve("client")) && Files.isDirectory(dir.resolve("server")))
                     .map(dir -> dir.getFileName().toString().toLowerCase(Locale.ROOT))
                     .sorted(Comparator.naturalOrder())
                     .toList();
@@ -238,7 +247,8 @@ public final class SampleRunner {
             String line = rawLine.trim();
             if (line.startsWith("A2AT_SAMPLE_PORT=")) {
                 try {
-                    return Integer.parseInt(line.substring("A2AT_SAMPLE_PORT=".length()).trim());
+                    return Integer.parseInt(
+                            line.substring("A2AT_SAMPLE_PORT=".length()).trim());
                 } catch (NumberFormatException ignored) {
                     // fall through to default
                 }
@@ -249,8 +259,8 @@ public final class SampleRunner {
 
     private static boolean isPortOpen(int port) {
         try {
-            HttpURLConnection connection =
-                    (HttpURLConnection) URI.create("http://127.0.0.1:" + port + "/").toURL().openConnection();
+            HttpURLConnection connection = (HttpURLConnection)
+                    URI.create("http://127.0.0.1:" + port + "/").toURL().openConnection();
             connection.setConnectTimeout(1000);
             connection.setReadTimeout(1000);
             connection.setRequestMethod("GET");
@@ -266,8 +276,8 @@ public final class SampleRunner {
         long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
         while (System.currentTimeMillis() < deadline) {
             try {
-                HttpURLConnection connection =
-                        (HttpURLConnection) URI.create("http://127.0.0.1:" + port + "/").toURL().openConnection();
+                HttpURLConnection connection = (HttpURLConnection)
+                        URI.create("http://127.0.0.1:" + port + "/").toURL().openConnection();
                 connection.setConnectTimeout(1000);
                 connection.setReadTimeout(1000);
                 connection.setRequestMethod("GET");
@@ -286,9 +296,15 @@ public final class SampleRunner {
 
     private static String javaExecutable() {
         String javaHome = System.getProperty("java.home");
-        return Path.of(javaHome, "bin", System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win")
-                ? "java.exe"
-                : "java").toString();
+        return Path.of(
+                        javaHome,
+                        "bin",
+                        System.getProperty("os.name", "")
+                                        .toLowerCase(Locale.ROOT)
+                                        .contains("win")
+                                ? "java.exe"
+                                : "java")
+                .toString();
     }
 
     private static void tailLog(Path log, int lineCount) {

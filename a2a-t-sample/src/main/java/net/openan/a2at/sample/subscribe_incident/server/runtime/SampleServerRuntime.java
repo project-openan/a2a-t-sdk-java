@@ -21,5 +21,3 @@ public interface SampleServerRuntime {
 
     Map<String, Object> registerAgentCard(Map<String, Object> registrationPayload, Path envPath);
 }
-
-

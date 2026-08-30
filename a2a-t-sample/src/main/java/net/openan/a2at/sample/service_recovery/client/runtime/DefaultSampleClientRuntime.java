@@ -72,8 +72,7 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
     }
 
     @Override
-    public void close() {
-    }
+    public void close() {}
 
     @Override
     public Iterable<ClientEvent> sendMessage(
@@ -125,8 +124,8 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
                         .build();
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() >= 400) {
-                    throw new ValueErrorException(
-                            "AgentCard query by name failed: status=" + response.statusCode() + " body=" + response.body());
+                    throw new ValueErrorException("AgentCard query by name failed: status=" + response.statusCode()
+                            + " body=" + response.body());
                 }
                 Map<String, Object> payload = parseObject(response.body());
                 Object agentCards = payload.get("agentCards");
@@ -152,11 +151,10 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
                         .build();
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() >= 400) {
-                    throw new ValueErrorException(
-                            "AgentCard query from server root failed: status="
-                                    + response.statusCode()
-                                    + " body="
-                                    + response.body());
+                    throw new ValueErrorException("AgentCard query from server root failed: status="
+                            + response.statusCode()
+                            + " body="
+                            + response.body());
                 }
                 return parseObject(response.body());
             } catch (IOException exception) {
@@ -227,7 +225,8 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
 
     private static Map<String, String> parseEnvFile(Path envPath) {
         try {
-            List<String> lines = java.nio.file.Files.exists(envPath) ? java.nio.file.Files.readAllLines(envPath) : List.of();
+            List<String> lines =
+                    java.nio.file.Files.exists(envPath) ? java.nio.file.Files.readAllLines(envPath) : List.of();
             Map<String, String> values = new LinkedHashMap<>();
             for (String line : lines) {
                 String trimmed = line.trim();
@@ -235,7 +234,9 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
                     continue;
                 }
                 int separatorIndex = trimmed.indexOf('=');
-                values.put(trimmed.substring(0, separatorIndex).trim(), trimmed.substring(separatorIndex + 1).trim());
+                values.put(
+                        trimmed.substring(0, separatorIndex).trim(),
+                        trimmed.substring(separatorIndex + 1).trim());
             }
             return values;
         } catch (IOException exception) {
@@ -244,9 +245,6 @@ public final class DefaultSampleClientRuntime implements SampleClientRuntime, A2
     }
 
     private static Map<String, Object> parseObject(String text) throws IOException {
-        return OBJECT_MAPPER.readValue(text, new TypeReference<Map<String, Object>>() {
-        });
+        return OBJECT_MAPPER.readValue(text, new TypeReference<Map<String, Object>>() {});
     }
 }
-
-

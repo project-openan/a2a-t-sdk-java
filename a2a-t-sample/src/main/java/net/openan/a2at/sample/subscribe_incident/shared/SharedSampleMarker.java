@@ -7,7 +7,5 @@ package net.openan.a2at.sample.subscribe_incident.shared;
  */
 public final class SharedSampleMarker {
 
-    private SharedSampleMarker() {
-    }
+    private SharedSampleMarker() {}
 }
-

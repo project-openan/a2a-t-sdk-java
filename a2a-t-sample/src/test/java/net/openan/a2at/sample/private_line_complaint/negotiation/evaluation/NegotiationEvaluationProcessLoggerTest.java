@@ -30,7 +30,10 @@ class NegotiationEvaluationProcessLoggerTest {
         List<String> lines = Files.readAllLines(log);
         assertEquals(2, lines.size());
         assertFalse(lines.stream().anyMatch(String::isBlank));
-        assertEquals("generate", OBJECT_MAPPER.readTree(lines.get(0)).get("stage").asText());
-        assertEquals("validate_and_fill", OBJECT_MAPPER.readTree(lines.get(1)).get("stage").asText());
+        assertEquals(
+                "generate", OBJECT_MAPPER.readTree(lines.get(0)).get("stage").asText());
+        assertEquals(
+                "validate_and_fill",
+                OBJECT_MAPPER.readTree(lines.get(1)).get("stage").asText());
     }
 }

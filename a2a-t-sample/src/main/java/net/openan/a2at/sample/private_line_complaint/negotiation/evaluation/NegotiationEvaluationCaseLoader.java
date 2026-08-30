@@ -6,8 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -16,27 +16,24 @@ public final class NegotiationEvaluationCaseLoader {
 
     public static final String RESOURCE_PATH = "sample/private-line-complaint-negotiation/evaluation/cases.json";
     /**
-     * A representative 20-case set for routine smoke validation. It includes every generation and
-     * validation/filling phase, and spans common, short, contextual, mixed-language, noisy, and
-     * business-oriented expressions.
+     * A representative 20-case set for routine smoke validation. It includes every generation and validation/filling
+     * phase, and spans common, short, contextual, mixed-language, noisy, and business-oriented expressions.
      */
     public static final List<String> SMOKE_CASE_IDS = List.of(
-            "P01", "P05", "P11", "P14", "P16", "P21", "P27",
-            "A01", "A05", "A11", "A16", "A21", "A28", "A33",
-            "R01", "R05", "R11", "R16", "R21", "R27");
+            "P01", "P05", "P11", "P14", "P16", "P21", "P27", "A01", "A05", "A11", "A16", "A21", "A28", "A33", "R01",
+            "R05", "R11", "R16", "R21", "R27");
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private NegotiationEvaluationCaseLoader() {
-    }
+    private NegotiationEvaluationCaseLoader() {}
 
     public static List<NegotiationEvaluationCase> load() {
-        try (InputStream input = NegotiationEvaluationCaseLoader.class.getClassLoader().getResourceAsStream(RESOURCE_PATH)) {
+        try (InputStream input =
+                NegotiationEvaluationCaseLoader.class.getClassLoader().getResourceAsStream(RESOURCE_PATH)) {
             if (input == null) {
                 throw new IllegalStateException("Negotiation evaluation corpus not found: " + RESOURCE_PATH);
             }
-            List<NegotiationEvaluationCase> cases = OBJECT_MAPPER.readValue(input, new TypeReference<>() {
-            });
+            List<NegotiationEvaluationCase> cases = OBJECT_MAPPER.readValue(input, new TypeReference<>() {});
             if (cases.size() != 100) {
                 throw new IllegalStateException("Negotiation evaluation corpus must contain exactly 100 cases");
             }
@@ -60,9 +57,8 @@ public final class NegotiationEvaluationCaseLoader {
         if (requested.size() != caseIds.size()) {
             throw new IllegalArgumentException("Duplicate negotiation evaluation case IDs are not allowed: " + caseIds);
         }
-        var casesById = load().stream().collect(java.util.stream.Collectors.toMap(
-                NegotiationEvaluationCase::id,
-                testCase -> testCase));
+        var casesById = load().stream()
+                .collect(java.util.stream.Collectors.toMap(NegotiationEvaluationCase::id, testCase -> testCase));
         Set<String> unknown = new LinkedHashSet<>(requested);
         unknown.removeAll(casesById.keySet());
         if (!unknown.isEmpty()) {
@@ -77,11 +73,10 @@ public final class NegotiationEvaluationCaseLoader {
     }
 
     /**
-     * Assembles every labelled input into a complete propose-to-decision flow. A propose-labelled
-     * input drives the first generation step and is paired with a deterministic ending case; an
-     * accept/reject-labelled input drives the ending step and is paired with a deterministic
-     * propose case. This preserves the original 100 IDs while exercising two matching API pairs
-     * in every run.
+     * Assembles every labelled input into a complete propose-to-decision flow. A propose-labelled input drives the
+     * first generation step and is paired with a deterministic ending case; an accept/reject-labelled input drives the
+     * ending step and is paired with a deterministic propose case. This preserves the original 100 IDs while exercising
+     * two matching API pairs in every run.
      */
     public static List<NegotiationEvaluationFlowCase> loadFlows() {
         List<NegotiationEvaluationCase> cases = load();
@@ -97,8 +92,8 @@ public final class NegotiationEvaluationCaseLoader {
         if (caseIds.isEmpty()) {
             throw new IllegalArgumentException("At least one evaluation case ID is required");
         }
-        Map<String, NegotiationEvaluationFlowCase> flowsById = loadFlows().stream().collect(Collectors.toMap(
-                NegotiationEvaluationFlowCase::id, Function.identity()));
+        Map<String, NegotiationEvaluationFlowCase> flowsById =
+                loadFlows().stream().collect(Collectors.toMap(NegotiationEvaluationFlowCase::id, Function.identity()));
         Set<String> requested = new LinkedHashSet<>(caseIds);
         if (requested.size() != caseIds.size()) {
             throw new IllegalArgumentException("Duplicate negotiation evaluation case IDs are not allowed: " + caseIds);
@@ -125,11 +120,9 @@ public final class NegotiationEvaluationCaseLoader {
             List<NegotiationEvaluationCase> proposeCases,
             List<NegotiationEvaluationCase> acceptCases,
             List<NegotiationEvaluationCase> rejectCases) {
-        NegotiationEvaluationCase propose = "propose".equals(source.phase())
-                ? source
-                : proposeCases.get(index % proposeCases.size());
-        boolean accept = "accept".equals(source.phase())
-                || ("propose".equals(source.phase()) && index % 2 == 0);
+        NegotiationEvaluationCase propose =
+                "propose".equals(source.phase()) ? source : proposeCases.get(index % proposeCases.size());
+        boolean accept = "accept".equals(source.phase()) || ("propose".equals(source.phase()) && index % 2 == 0);
         NegotiationEvaluationCase ending = "propose".equals(source.phase())
                 ? (accept ? acceptCases : rejectCases).get(index % (accept ? acceptCases.size() : rejectCases.size()))
                 : source;

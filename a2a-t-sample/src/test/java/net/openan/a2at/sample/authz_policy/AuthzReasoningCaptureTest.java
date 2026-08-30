@@ -25,8 +25,7 @@ import org.junit.jupiter.api.Test;
 
 class AuthzReasoningCaptureTest {
 
-    private static final String SLOT_EXTRACTION_SYSTEM =
-            "/prompt_resources/prompts/slot_extraction/zh-CN/system.md";
+    private static final String SLOT_EXTRACTION_SYSTEM = "/prompt_resources/prompts/slot_extraction/zh-CN/system.md";
     private static final String CONTENT_VALIDATION_SYSTEM =
             "/prompt_resources/prompts/content_validation/zh-CN/system.md";
 

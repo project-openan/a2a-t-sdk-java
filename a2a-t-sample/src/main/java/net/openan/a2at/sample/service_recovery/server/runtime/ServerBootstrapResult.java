@@ -8,11 +8,4 @@ import java.util.Map;
  * @since 2026-05
  */
 public record ServerBootstrapResult(
-        String host,
-        int port,
-        Object app,
-        AutoCloseable serverHandle,
-        Map<String, Object> registrationResult) {
-}
-
-
+        String host, int port, Object app, AutoCloseable serverHandle, Map<String, Object> registrationResult) {}

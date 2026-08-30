@@ -6,10 +6,11 @@ import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 
 /**
- * One-shot diagnostic entry: runs {@code generateNotificationPromptFromText} alone with the
- * realistic natural-language input and prints every intermediate artifact.
+ * One-shot diagnostic entry: runs {@code generateNotificationPromptFromText} alone with the realistic natural-language
+ * input and prints every intermediate artifact.
  *
  * <p>Run from the repository root:
+ *
  * <pre>
  * java @a2a-t-sample/target/sample.args \
  *   net.openan.a2at.sample.service_recovery.FromTextProbe \
@@ -20,8 +21,7 @@ import net.openan.a2at.sdk.core.model.MetadataContent;
  */
 public final class FromTextProbe {
 
-    private FromTextProbe() {
-    }
+    private FromTextProbe() {}
 
     /**
      * Probe entry point.
@@ -31,8 +31,8 @@ public final class FromTextProbe {
     public static void main(String[] args) throws Exception {
         // Route all probe output to a UTF-8 file so the console codepage cannot garble it.
         java.io.PrintStream out = new java.io.PrintStream(
-                java.nio.file.Files.newOutputStream(java.nio.file.Path.of(
-                        "a2a-t-sample", "target", "sample-logs", "from-text-probe-output.txt")),
+                java.nio.file.Files.newOutputStream(
+                        java.nio.file.Path.of("a2a-t-sample", "target", "sample-logs", "from-text-probe-output.txt")),
                 true,
                 java.nio.charset.StandardCharsets.UTF_8);
         System.setOut(out);
@@ -47,7 +47,14 @@ public final class FromTextProbe {
 
         Path envPath = args.length > 0
                 ? Path.of(args[0])
-                : Path.of("a2a-t-sample", "src", "main", "resources", "sample", "service-recovery", "client",
+                : Path.of(
+                        "a2a-t-sample",
+                        "src",
+                        "main",
+                        "resources",
+                        "sample",
+                        "service-recovery",
+                        "client",
                         "client.env");
 
         String input = ServiceRecoverySampleInputs.naturalLanguageInput();
@@ -72,7 +79,8 @@ public final class FromTextProbe {
             System.out.println("--- promptText ---");
             System.out.println(content.promptText());
             System.out.println("--- metadata map ---");
-            for (Map.Entry<String, Object> entry : content.buildMetadataContent().entrySet()) {
+            for (Map.Entry<String, Object> entry :
+                    content.buildMetadataContent().entrySet()) {
                 System.out.println("  " + entry.getKey() + " = " + summarize(String.valueOf(entry.getValue())));
             }
         } catch (RuntimeException error) {

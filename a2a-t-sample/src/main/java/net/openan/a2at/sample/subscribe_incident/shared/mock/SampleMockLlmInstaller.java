@@ -14,12 +14,11 @@ import net.openan.a2at.sdk.llm.LLMClientFactory;
 /**
  * Installs a mock LLM mode for the sample when no real LLM API key is available.
  *
- * <p>When {@code A2AT_LLM_API_KEY} is missing, blank, or a placeholder template such as
- * {@code ${your_api_key}}, the sample installs {@link SampleMockLLMClient} as the provider used by
- * the SDK and rewrites the environment file with a non-empty placeholder key. The mock client
- * returns canned structured responses loaded from the specified classpath resource root, so the
- * end-to-end sample flow runs deterministically on CI environments that have no LLM API key. When a
- * real API key is present, the original environment file is used unchanged and no mock is installed.
+ * <p>When {@code A2AT_LLM_API_KEY} is missing, blank, or a placeholder template such as {@code ${your_api_key}}, the
+ * sample installs {@link SampleMockLLMClient} as the provider used by the SDK and rewrites the environment file with a
+ * non-empty placeholder key. The mock client returns canned structured responses loaded from the specified classpath
+ * resource root, so the end-to-end sample flow runs deterministically on CI environments that have no LLM API key. When
+ * a real API key is present, the original environment file is used unchanged and no mock is installed.
  *
  * @since 2026-08
  */
@@ -50,11 +49,10 @@ public final class SampleMockLlmInstaller {
     /**
      * Returns whether the sample should fall back to the mock LLM provider.
      *
-     * <p>The mock fallback is needed when no usable real LLM configuration is present: a missing,
-     * blank, or placeholder {@code A2AT_LLM_API_KEY}, or a missing/blank {@code A2AT_LLM_MODEL} or
-* {@code A2AT_LLM_BASE_URL}. When the environment file lacks any of these, the SDK's
- * {@code LLMClientConfig.from(LlmConfig)} would fail at startup with an {@code LLMConfigError},
- * so the mock is installed instead.
+     * <p>The mock fallback is needed when no usable real LLM configuration is present: a missing, blank, or placeholder
+     * {@code A2AT_LLM_API_KEY}, or a missing/blank {@code A2AT_LLM_MODEL} or {@code A2AT_LLM_BASE_URL}. When the
+     * environment file lacks any of these, the SDK's {@code LLMClientConfig.from(LlmConfig)} would fail at startup with
+     * an {@code LLMConfigError}, so the mock is installed instead.
      *
      * @param envPath sample environment file path
      * @return {@code true} when no usable real LLM configuration is present
@@ -73,13 +71,12 @@ public final class SampleMockLlmInstaller {
     /**
      * Installs the logging-aware LLM client wrapper as the {@code openai} provider.
      *
-     * <p>This method must be called once at startup, before any {@code A2ATClient} or
-     * {@code A2ATServer} is constructed, so that every LLM-structured call is logged. The wrapper
-     * delegates to the real {@code OpenAIClient} when {@code mockEnabled} is false, or to
-     * {@link SampleMockLLMClient} when it is true.
+     * <p>This method must be called once at startup, before any {@code A2ATClient} or {@code A2ATServer} is
+     * constructed, so that every LLM-structured call is logged. The wrapper delegates to the real {@code OpenAIClient}
+     * when {@code mockEnabled} is false, or to {@link SampleMockLLMClient} when it is true.
      *
      * @param mockEnabled whether the delegate should be the mock client
-     * @param roleLabel   log role label (for example {@code client} or {@code server})
+     * @param roleLabel log role label (for example {@code client} or {@code server})
      */
     public static synchronized void installLlmLogger(boolean mockEnabled, String roleLabel) {
         if (mockInstalled) {
@@ -109,8 +106,8 @@ public final class SampleMockLlmInstaller {
     }
 
     /**
-     * Resolves the environment file path that should be used for the current run, using the default
-     * mock resource root {@code sample/subscribe-incident/mock_responses}.
+     * Resolves the environment file path that should be used for the current run, using the default mock resource root
+     * {@code sample/subscribe-incident/mock_responses}.
      *
      * @param envPath sample environment file path
      * @return the environment file path to use for this run
@@ -123,12 +120,12 @@ public final class SampleMockLlmInstaller {
     /**
      * Resolves the environment file path that should be used for the current run.
      *
-     * <p>When a mock fallback is needed, the mock client is configured with the supplied classpath
-     * resource root (and the language read from the env file), then a temporary environment file is
-     * written next to the original file (so relative prompt-resource paths keep resolving correctly)
-     * with a non-empty placeholder API key. Otherwise the original path is returned unchanged.
+     * <p>When a mock fallback is needed, the mock client is configured with the supplied classpath resource root (and
+     * the language read from the env file), then a temporary environment file is written next to the original file (so
+     * relative prompt-resource paths keep resolving correctly) with a non-empty placeholder API key. Otherwise the
+     * original path is returned unchanged.
      *
-     * @param envPath          sample environment file path
+     * @param envPath sample environment file path
      * @param mockResourceRoot classpath root for mock LLM response JSON files
      * @return the environment file path to use for this run
      */
@@ -182,7 +179,10 @@ public final class SampleMockLlmInstaller {
             StringBuilder content = new StringBuilder();
             content.append("# Mock LLM environment for sample runs without a real API key.\n");
             for (Map.Entry<String, String> entry : values.entrySet()) {
-                content.append(entry.getKey()).append('=').append(entry.getValue()).append('\n');
+                content.append(entry.getKey())
+                        .append('=')
+                        .append(entry.getValue())
+                        .append('\n');
             }
             Files.writeString(tempFile, content.toString(), StandardCharsets.UTF_8);
             return tempFile;

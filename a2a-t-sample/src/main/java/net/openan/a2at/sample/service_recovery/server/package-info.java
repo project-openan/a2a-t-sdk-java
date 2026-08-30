@@ -4,4 +4,3 @@
  * @since 2026-05
  */
 package net.openan.a2at.sample.service_recovery.server;
-

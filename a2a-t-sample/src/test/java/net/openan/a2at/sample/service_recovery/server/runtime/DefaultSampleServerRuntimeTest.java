@@ -43,8 +43,7 @@ class DefaultSampleServerRuntimeTest {
         Path envPath = createEnvFile("A2AT_SAMPLE_PORT=not-a-number\n");
 
         ValueErrorException exception = assertThrows(
-                ValueErrorException.class,
-                () -> new DefaultSampleServerRuntime(envPath, message -> {}).resolveBind());
+                ValueErrorException.class, () -> new DefaultSampleServerRuntime(envPath, message -> {}).resolveBind());
 
         assertTrue(exception.getMessage().contains("not-a-number"));
     }

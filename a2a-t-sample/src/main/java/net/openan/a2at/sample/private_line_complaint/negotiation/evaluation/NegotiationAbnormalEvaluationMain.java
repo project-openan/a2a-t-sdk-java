@@ -30,6 +30,7 @@ import net.openan.a2at.sdk.core.model.PromptTemplate;
 import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMResponse;
+import net.openan.a2at.sdk.llm.LLMRuntimeError;
 import net.openan.a2at.sdk.negotiation.generation.NegotiationGenerationOrchestrator;
 import net.openan.a2at.sdk.negotiation.generation.NegotiationGenerationOrchestratorBuilder;
 import net.openan.a2at.sdk.negotiation.resources.NegotiationReference;
@@ -46,8 +47,7 @@ public final class NegotiationAbnormalEvaluationMain {
             "negotiation.semantic_rejected",
             "negotiation.field_missing",
             "negotiation.invalid_input",
-            "negotiation.invalid_context_id",
-            "negotiation.round_exceeded",
+            "negotiation.rule_violation",
             "llm.invocation_failed",
             "llm.response_invalid");
 
@@ -520,7 +520,7 @@ public final class NegotiationAbnormalEvaluationMain {
                 Double temperature,
                 Integer maxTokens) {
             if ("throw".equals(payload)) {
-                throw new IllegalStateException("scripted LLM infrastructure failure");
+                throw new LLMRuntimeError("scripted LLM infrastructure failure");
             }
             return new LLMResponse(
                     payload, "sample-scripted-model", Map.of("prompt_tokens", 1, "completion_tokens", 1), Map.of());

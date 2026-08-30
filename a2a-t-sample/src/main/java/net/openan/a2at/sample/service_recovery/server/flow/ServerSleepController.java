@@ -10,5 +10,3 @@ public interface ServerSleepController {
 
     void sleepSeconds(long delaySeconds);
 }
-
-

@@ -7,7 +7,5 @@ package net.openan.a2at.sample.subscribe_incident.server;
  */
 public final class ServerSampleMarker {
 
-    private ServerSampleMarker() {
-    }
+    private ServerSampleMarker() {}
 }
-

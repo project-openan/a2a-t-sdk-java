@@ -19,11 +19,9 @@ import net.openan.a2at.sample.subscribe_incident.shared.scenario.SampleScenarioL
  */
 public final class ClientSampleMain {
 
-    private static final String MOCK_RESOURCE_ROOT =
-            "sample/subscribe-incident/mock_responses";
+    private static final String MOCK_RESOURCE_ROOT = "sample/subscribe-incident/mock_responses";
 
-    private ClientSampleMain() {
-    }
+    private ClientSampleMain() {}
 
     public static Path resolveEnvPath(String[] args) {
         return args.length > 0 ? Path.of(args[0]) : DefaultSampleClientRuntime.resolveDefaultEnvPath();
@@ -34,9 +32,7 @@ public final class ClientSampleMain {
     }
 
     public static List<Map<String, Object>> runMain(
-            Path envPath,
-            SampleClientRuntimeFactory runtimeFactory,
-            Consumer<String> logSink) {
+            Path envPath, SampleClientRuntimeFactory runtimeFactory, Consumer<String> logSink) {
         boolean mockNeeded = SampleMockLlmInstaller.isMockNeeded(envPath);
         SampleMockLlmInstaller.installLlmLogger(mockNeeded, "client");
         Path resolvedEnvPath = SampleMockLlmInstaller.resolveEnvPath(envPath, MOCK_RESOURCE_ROOT);
@@ -48,7 +44,8 @@ public final class ClientSampleMain {
             if (!(runtime instanceof A2AJavaClientRuntime a2aRuntime)) {
                 throw new IllegalStateException("Sample client runtime must implement A2AJavaClientRuntime");
             }
-            Map<String, Object> scenarioPayload = SampleScenarioLoader.loadClasspathScenario("sample/subscribe-incident/client/scenario.json");
+            Map<String, Object> scenarioPayload =
+                    SampleScenarioLoader.loadClasspathScenario("sample/subscribe-incident/client/scenario.json");
             return ClientSampleFlow.runClientFlow(
                     scenarioPayload,
                     runtime.registryClient(),
@@ -111,4 +108,3 @@ public final class ClientSampleMain {
         }
     }
 }
-

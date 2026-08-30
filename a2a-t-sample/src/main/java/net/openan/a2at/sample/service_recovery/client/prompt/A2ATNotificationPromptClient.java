@@ -7,8 +7,8 @@ import net.openan.a2at.sdk.core.model.MetadataContent;
 /**
  * {@link SamplePromptClient} adapter delegating to the real {@link A2ATClient} facade.
  *
- * <p>Both generation entry points share one facade instance, proving the two Notification-T
- * generation APIs can run sequentially over the same client configuration.
+ * <p>Both generation entry points share one facade instance, proving the two Notification-T generation APIs can run
+ * sequentially over the same client configuration.
  *
  * @since 2026-08
  */

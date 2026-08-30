@@ -12,10 +12,10 @@ import net.openan.a2at.sdk.llm.providers.OpenAIClient;
 /**
  * Logging-aware LLM client wrapper used by the sample.
  *
- * <p>Wraps either the real {@link OpenAIClient} or the {@link SampleMockLLMClient} and logs the
- * full request (messages, JSON schema, temperature, max tokens) and response (content, model,
- * usage) for every structured call, mirroring the Python sample's {@code llm_logger}. In mock mode
- * an extra {@code llm-mock} stage line marks that the canned response was used.
+ * <p>Wraps either the real {@link OpenAIClient} or the {@link SampleMockLLMClient} and logs the full request (messages,
+ * JSON schema, temperature, max tokens) and response (content, model, usage) for every structured call, mirroring the
+ * Python sample's {@code llm_logger}. In mock mode an extra {@code llm-mock} stage line marks that the canned response
+ * was used.
  *
  * @since 2026-08
  */
@@ -61,18 +61,19 @@ public final class SampleLoggingLLMClient implements LLMClient {
 
     @Override
     public LLMResponse structured(
-            List<Map<String, String>> messages,
-            Map<String, Object> jsonSchema,
-            Double temperature,
-            Integer maxTokens) {
+            List<Map<String, String>> messages, Map<String, Object> jsonSchema, Double temperature, Integer maxTokens) {
         logSink.accept(SampleLoggingFormatter.formatPayloadLog(
                 role,
                 "llm-request",
                 Map.of(
-                        "messages", messages,
-                        "json_schema", jsonSchema,
-                        "temperature", temperature == null ? "null" : temperature,
-                        "max_tokens", maxTokens == null ? "null" : maxTokens)));
+                        "messages",
+                        messages,
+                        "json_schema",
+                        jsonSchema,
+                        "temperature",
+                        temperature == null ? "null" : temperature,
+                        "max_tokens",
+                        maxTokens == null ? "null" : maxTokens)));
         LLMResponse response = delegate.structured(messages, jsonSchema, temperature, maxTokens);
         if (mockMode) {
             logSink.accept(SampleLoggingFormatter.formatStageLog(role, "llm-mock", "using canned mock LLM response"));

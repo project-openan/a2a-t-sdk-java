@@ -11,10 +11,10 @@ import net.openan.a2at.sample.negotiation.shared.NegotiationStrategy;
 import net.openan.a2at.sample.negotiation.shared.ScenarioData;
 import net.openan.a2at.sdk.core.model.FilledParamData;
 import net.openan.a2at.sdk.core.model.MetadataContent;
-import net.openan.a2at.sdk.core.model.SlotValidationError;
-import net.openan.a2at.sdk.core.validation.ContentValidationException;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
 import net.openan.a2at.sdk.core.model.NegotiationPerformative;
+import net.openan.a2at.sdk.core.model.SlotValidationError;
+import net.openan.a2at.sdk.core.validation.ContentValidationException;
 import net.openan.a2at.sdk.negotiation.content.NegotiationItem;
 import net.openan.a2at.sdk.server.A2ATServer;
 import org.a2aproject.sdk.server.agentexecution.AgentExecutor;
@@ -120,13 +120,15 @@ public final class NegotiationAgentExecutor implements AgentExecutor {
         Map<String, Object> replyContext = negotiationContext;
 
         // dynamically generate the Negotiation-T information-propose prompt via the strategy
-        String relationship = missingItems.size() > 1
-                ? ScenarioData.negotiationPhrasing().get("propose_relationship")
-                : null;
+        String relationship =
+                missingItems.size() > 1 ? ScenarioData.negotiationPhrasing().get("propose_relationship") : null;
         MetadataContent negotiationPrompt = strategy.generatePropose(
                 server,
                 new NegotiationContext(
-                        UUID.randomUUID().toString(), 1, NegotiationContext.DEFAULT_MAX_ROUNDS, NegotiationPerformative.PROPOSE),
+                        UUID.randomUUID().toString(),
+                        1,
+                        NegotiationContext.DEFAULT_MAX_ROUNDS,
+                        NegotiationPerformative.PROPOSE),
                 missingItems,
                 relationship,
                 DemoConstants.NEGOTIATION_PROPOSE);
@@ -151,7 +153,10 @@ public final class NegotiationAgentExecutor implements AgentExecutor {
         MetadataContent acceptPrompt = strategy.generateAcceptServer(
                 server,
                 new NegotiationContext(
-                        UUID.randomUUID().toString(), 1, NegotiationContext.DEFAULT_MAX_ROUNDS, NegotiationPerformative.ACCEPT),
+                        UUID.randomUUID().toString(),
+                        1,
+                        NegotiationContext.DEFAULT_MAX_ROUNDS,
+                        NegotiationPerformative.ACCEPT),
                 filledItems,
                 DemoConstants.NEGOTIATION_ACCEPT);
         emit("[server] negotiation accept rendered");

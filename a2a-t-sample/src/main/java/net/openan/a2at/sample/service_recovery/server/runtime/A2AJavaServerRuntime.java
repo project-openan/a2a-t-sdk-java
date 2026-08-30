@@ -9,5 +9,3 @@ public interface A2AJavaServerRuntime {
 
     Object createRestApplication(String host, int port);
 }
-
-

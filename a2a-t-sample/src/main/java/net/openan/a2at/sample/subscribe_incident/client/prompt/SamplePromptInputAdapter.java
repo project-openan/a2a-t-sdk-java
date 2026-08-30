@@ -18,16 +18,16 @@ public final class SamplePromptInputAdapter {
 
     private static final String SLOT_REPORT_FORMAT = "上报通知数据格式";
 
-    private SamplePromptInputAdapter() {
-    }
+    private SamplePromptInputAdapter() {}
 
     public static Map<String, Object> adapt(Map<String, Object> scenarioPayload) {
         Map<String, Object> adapted = new LinkedHashMap<>(scenarioPayload);
         adapted.put(SLOT_TOPIC, stringOrDefault(scenarioPayload.get(SLOT_TOPIC), "Incident"));
-        adapted.put(SLOT_CONDITION, stringOrDefault(scenarioPayload.get(SLOT_CONDITION), buildConditionText(scenarioPayload)));
-        adapted.put(SLOT_REPORT_FORMAT, stringOrDefault(
-                scenarioPayload.get(SLOT_REPORT_FORMAT),
-                "通过DataPart上报Incident数据"));
+        adapted.put(
+                SLOT_CONDITION,
+                stringOrDefault(scenarioPayload.get(SLOT_CONDITION), buildConditionText(scenarioPayload)));
+        adapted.put(
+                SLOT_REPORT_FORMAT, stringOrDefault(scenarioPayload.get(SLOT_REPORT_FORMAT), "通过DataPart上报Incident数据"));
         return adapted;
     }
 

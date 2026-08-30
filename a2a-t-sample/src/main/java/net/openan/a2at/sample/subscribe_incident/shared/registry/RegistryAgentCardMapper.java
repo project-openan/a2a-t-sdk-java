@@ -2,8 +2,8 @@ package net.openan.a2at.sample.subscribe_incident.shared.registry;
 
 import java.util.List;
 import java.util.Map;
-import org.a2aproject.sdk.spec.AgentCard;
 import org.a2aproject.sdk.spec.AgentCapabilities;
+import org.a2aproject.sdk.spec.AgentCard;
 import org.a2aproject.sdk.spec.AgentExtension;
 import org.a2aproject.sdk.spec.AgentInterface;
 import org.a2aproject.sdk.spec.AgentProvider;
@@ -16,8 +16,7 @@ import org.a2aproject.sdk.spec.AgentSkill;
  */
 public final class RegistryAgentCardMapper {
 
-    private RegistryAgentCardMapper() {
-    }
+    private RegistryAgentCardMapper() {}
 
     public static AgentCard toA2AJavaAgentCard(Map<String, Object> registryAgentCard) {
         @SuppressWarnings("unchecked")
@@ -25,16 +24,21 @@ public final class RegistryAgentCardMapper {
         @SuppressWarnings("unchecked")
         Map<String, Object> capabilities = (Map<String, Object>) registryAgentCard.get("capabilities");
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> extensionMaps = (List<Map<String, Object>>) capabilities.getOrDefault("extensions", List.of());
+        List<Map<String, Object>> extensionMaps =
+                (List<Map<String, Object>>) capabilities.getOrDefault("extensions", List.of());
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> skillMaps = (List<Map<String, Object>>) registryAgentCard.getOrDefault("skills", List.of());
+        List<Map<String, Object>> skillMaps =
+                (List<Map<String, Object>>) registryAgentCard.getOrDefault("skills", List.of());
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> interfaceMaps =
                 (List<Map<String, Object>>) registryAgentCard.getOrDefault("supportedInterfaces", List.of());
         return new AgentCard(
                 stringValue(registryAgentCard.get("name")),
                 stringValue(registryAgentCard.get("description")),
-                provider == null ? null : new AgentProvider(stringValue(provider.get("organization")), stringValue(provider.get("url"))),
+                provider == null
+                        ? null
+                        : new AgentProvider(
+                                stringValue(provider.get("organization")), stringValue(provider.get("url"))),
                 stringValue(registryAgentCard.get("version")),
                 null,
                 new AgentCapabilities(
@@ -85,30 +89,35 @@ public final class RegistryAgentCardMapper {
                 "version", agentCard.version(),
                 "defaultInputModes", agentCard.defaultInputModes(),
                 "defaultOutputModes", agentCard.defaultOutputModes(),
-                "provider", Map.of(
-                        "organization", agentCard.provider().organization(),
-                        "url", agentCard.provider().url()),
-                "skills", agentCard.skills().stream()
-                        .map(skill -> Map.of(
-                                "id", skill.id(),
-                                "name", skill.name(),
-                                "description", skill.description(),
-                                "tags", skill.tags()))
-                        .toList(),
-                "capabilities", Map.of(
-                        "streaming", agentCard.capabilities().streaming(),
-                        "pushNotifications", agentCard.capabilities().pushNotifications(),
-                        "extensions", agentCard.capabilities().extensions().stream()
-                                .map(extension -> Map.of(
-                                        "uri", extension.uri(),
-                                        "description", extension.description()))
-                                .toList()),
-                "supportedInterfaces", agentCard.supportedInterfaces().stream()
-                        .map(agentInterface -> Map.of(
-                                "protocolBinding", agentInterface.protocolBinding(),
-                                "protocolVersion", agentInterface.protocolVersion(),
-                                "url", agentInterface.url()))
-                        .toList());
+                "provider",
+                        Map.of(
+                                "organization", agentCard.provider().organization(),
+                                "url", agentCard.provider().url()),
+                "skills",
+                        agentCard.skills().stream()
+                                .map(skill -> Map.of(
+                                        "id", skill.id(),
+                                        "name", skill.name(),
+                                        "description", skill.description(),
+                                        "tags", skill.tags()))
+                                .toList(),
+                "capabilities",
+                        Map.of(
+                                "streaming", agentCard.capabilities().streaming(),
+                                "pushNotifications", agentCard.capabilities().pushNotifications(),
+                                "extensions",
+                                        agentCard.capabilities().extensions().stream()
+                                                .map(extension -> Map.of(
+                                                        "uri", extension.uri(),
+                                                        "description", extension.description()))
+                                                .toList()),
+                "supportedInterfaces",
+                        agentCard.supportedInterfaces().stream()
+                                .map(agentInterface -> Map.of(
+                                        "protocolBinding", agentInterface.protocolBinding(),
+                                        "protocolVersion", agentInterface.protocolVersion(),
+                                        "url", agentInterface.url()))
+                                .toList());
     }
 
     private static List<String> stringList(Object value) {
@@ -122,5 +131,3 @@ public final class RegistryAgentCardMapper {
         return value == null ? "" : String.valueOf(value);
     }
 }
-
-

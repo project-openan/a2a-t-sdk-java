@@ -19,16 +19,14 @@ import org.a2aproject.sdk.spec.Part;
 /**
  * Mock recurring service-recovery-event reporting flow for the server sample.
  *
- * <p>Each received subscription request is validated with the server SDK's
- * {@code validateAndFillingNotificationData} API (extracting the subscription parameters), then the
- * task reports mock service recovery events as artifacts. After
- * {@link ServiceRecoverySampleInputs#NOTIFICATION_REPORT_COUNT} reports the task reaches its
- * terminal {@code TASK_STATE_COMPLETED} state, so every subscription task — and with it every
- * client stream — ends on its own instead of reporting forever.
+ * <p>Each received subscription request is validated with the server SDK's {@code validateAndFillingNotificationData}
+ * API (extracting the subscription parameters), then the task reports mock service recovery events as artifacts. After
+ * {@link ServiceRecoverySampleInputs#NOTIFICATION_REPORT_COUNT} reports the task reaches its terminal
+ * {@code TASK_STATE_COMPLETED} state, so every subscription task — and with it every client stream — ends on its own
+ * instead of reporting forever.
  *
- * <p>Console logging is trimmed to the essentials: the validation API output (the filled
- * parameters) and the task status transitions. The validation LLM request and response are logged
- * by the shared LLM wrapper.
+ * <p>Console logging is trimmed to the essentials: the validation API output (the filled parameters) and the task
+ * status transitions. The validation LLM request and response are logged by the shared LLM wrapper.
  *
  * @since 2026-08
  */
@@ -47,8 +45,7 @@ public final class ServerSampleFlow {
     private static final String COMPLETE_MESSAGE =
             "Service recovery notification reporting finished, subscription task completed";
 
-    private ServerSampleFlow() {
-    }
+    private ServerSampleFlow() {}
 
     /**
      * Executes the server-side flow for one subscription request.
@@ -90,14 +87,15 @@ public final class ServerSampleFlow {
                     "Notification validation failed: " + error.getCode() + ": " + error.getMessage()));
             return;
         } catch (RuntimeException error) {
-            emit(logSink, "!! validation failed unexpectedly: "
-                    + error.getClass().getName() + ": " + error.getMessage());
+            emit(
+                    logSink,
+                    "!! validation failed unexpectedly: " + error.getClass().getName() + ": " + error.getMessage());
             agentEmitter.submit(buildStatusMessage(contextId, taskId, SUBMITTED_MESSAGE));
             agentEmitter.reject(buildStatusMessage(
                     contextId,
                     taskId,
-                    "Notification validation failed unexpectedly: " + error.getClass().getName() + ": "
-                            + error.getMessage()));
+                    "Notification validation failed unexpectedly: "
+                            + error.getClass().getName() + ": " + error.getMessage()));
             return;
         }
 
@@ -106,7 +104,8 @@ public final class ServerSampleFlow {
         emit(logSink, ">> subscription accepted, reporting service recovery events");
 
         try {
-            for (int reportIndex = 1; reportIndex <= ServiceRecoverySampleInputs.NOTIFICATION_REPORT_COUNT;
+            for (int reportIndex = 1;
+                    reportIndex <= ServiceRecoverySampleInputs.NOTIFICATION_REPORT_COUNT;
                     reportIndex++) {
                 String artifactId = UUID.randomUUID().toString();
                 agentEmitter.addArtifact(
@@ -116,15 +115,19 @@ public final class ServerSampleFlow {
                         Map.of("artifactId", artifactId),
                         false,
                         true);
-                emit(logSink, "- artifact " + reportIndex + "/" + ServiceRecoverySampleInputs.NOTIFICATION_REPORT_COUNT
-                        + " emitted (" + artifactId + ")");
+                emit(
+                        logSink,
+                        "- artifact " + reportIndex + "/" + ServiceRecoverySampleInputs.NOTIFICATION_REPORT_COUNT
+                                + " emitted (" + artifactId + ")");
                 if (reportIndex < ServiceRecoverySampleInputs.NOTIFICATION_REPORT_COUNT) {
                     sleepController.sleepSeconds(ServiceRecoverySampleInputs.NOTIFICATION_REPORT_INTERVAL_SECONDS);
                 }
             }
             agentEmitter.complete(buildStatusMessage(contextId, taskId, COMPLETE_MESSAGE));
-            emit(logSink, "<< subscription task completed after "
-                    + ServiceRecoverySampleInputs.NOTIFICATION_REPORT_COUNT + " reports");
+            emit(
+                    logSink,
+                    "<< subscription task completed after " + ServiceRecoverySampleInputs.NOTIFICATION_REPORT_COUNT
+                            + " reports");
         } catch (ServerFlowInterruptedException exception) {
             throw exception;
         } catch (RuntimeException exception) {

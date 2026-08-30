@@ -12,8 +12,7 @@ final class NegotiationBusinessAbnormalEvaluationCaseLoader {
     private static final String RESOURCE =
             "/sample/private-line-complaint-negotiation/evaluation/business-abnormal-cases.json";
 
-    private NegotiationBusinessAbnormalEvaluationCaseLoader() {
-    }
+    private NegotiationBusinessAbnormalEvaluationCaseLoader() {}
 
     static List<NegotiationBusinessAbnormalEvaluationCase> load() {
         ObjectMapper mapper = new ObjectMapper();

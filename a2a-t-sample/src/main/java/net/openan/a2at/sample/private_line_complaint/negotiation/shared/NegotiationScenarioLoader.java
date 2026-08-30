@@ -13,16 +13,15 @@ public final class NegotiationScenarioLoader {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private NegotiationScenarioLoader() {
-    }
+    private NegotiationScenarioLoader() {}
 
     public static NegotiationScenario load() {
-        try (InputStream input = NegotiationScenarioLoader.class.getClassLoader().getResourceAsStream(RESOURCE_PATH)) {
+        try (InputStream input =
+                NegotiationScenarioLoader.class.getClassLoader().getResourceAsStream(RESOURCE_PATH)) {
             if (input == null) {
                 throw new IllegalStateException("Negotiation scenario resource not found: " + RESOURCE_PATH);
             }
-            Map<String, String> values = OBJECT_MAPPER.readValue(input, new TypeReference<>() {
-            });
+            Map<String, String> values = OBJECT_MAPPER.readValue(input, new TypeReference<>() {});
             return new NegotiationScenario(
                     require(values, "scenario"),
                     require(values, "propose_text"),

@@ -43,12 +43,7 @@ public final class ServerSampleAgentExecutor implements AgentExecutor {
     @Override
     public void execute(RequestContext requestContext, AgentEmitter agentEmitter) throws A2AError {
         ServerSampleFlow.executeServerFlow(
-                requestContext,
-                promptValidator,
-                agentEmitter,
-                sleepController,
-                recoveryEventArtifactData,
-                logSink);
+                requestContext, promptValidator, agentEmitter, sleepController, recoveryEventArtifactData, logSink);
     }
 
     @Override

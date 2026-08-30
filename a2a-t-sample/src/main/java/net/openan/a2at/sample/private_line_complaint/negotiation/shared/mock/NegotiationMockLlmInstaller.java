@@ -7,8 +7,7 @@ public final class NegotiationMockLlmInstaller {
 
     public static final String PROVIDER = "negotiation-sample-mock";
 
-    private NegotiationMockLlmInstaller() {
-    }
+    private NegotiationMockLlmInstaller() {}
 
     public static synchronized void install() {
         if (!LLMClientFactory.availableProviders().contains(PROVIDER)) {

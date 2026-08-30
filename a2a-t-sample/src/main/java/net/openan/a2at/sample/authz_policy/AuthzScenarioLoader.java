@@ -15,9 +15,8 @@ import net.openan.a2at.sample.authz_policy.AuthzScenario.ServerExpected;
  * Loads and validates demo scenarios from a JSON resource file.
  *
  * <p>The JSON file must contain a top-level {@code scenarios} array. Each scenario entry carries a staged
- * {@code expected} object: {@code expected.client} with {@code outcome} (generation failure) or
- * {@code promptText} (successful generation), and {@code expected.server} with {@code outcome},
- * {@code slot_errors} and {@code params}.
+ * {@code expected} object: {@code expected.client} with {@code outcome} (generation failure) or {@code promptText}
+ * (successful generation), and {@code expected.server} with {@code outcome}, {@code slot_errors} and {@code params}.
  *
  * @since 2026-08
  */
@@ -47,9 +46,8 @@ public final class AuthzScenarioLoader {
             throw new IllegalStateException("'scenarios' must be an array in: " + resourcePath);
         }
 
-        List<AuthzScenario> scenarios = rawList.stream()
-                .map(item -> parseScenario(item, resourcePath))
-                .toList();
+        List<AuthzScenario> scenarios =
+                rawList.stream().map(item -> parseScenario(item, resourcePath)).toList();
 
         for (AuthzScenario scenario : scenarios) {
             try {
@@ -96,13 +94,10 @@ public final class AuthzScenarioLoader {
         Object serverObj = expectedRaw.get("server");
         if (serverObj instanceof Map<?, ?> serverRaw) {
             @SuppressWarnings("unchecked")
-            Map<String, Object> params = serverRaw.get("params") instanceof Map<?, ?> paramsRaw
-                    ? (Map<String, Object>) paramsRaw
-                    : null;
+            Map<String, Object> params =
+                    serverRaw.get("params") instanceof Map<?, ?> paramsRaw ? (Map<String, Object>) paramsRaw : null;
             server = new ServerExpected(
-                    asNullableString(serverRaw.get("outcome")),
-                    parseSlotErrors(serverRaw.get("slot_errors")),
-                    params);
+                    asNullableString(serverRaw.get("outcome")), parseSlotErrors(serverRaw.get("slot_errors")), params);
         }
         Object validateSchemaObj = raw.get("validate_schema");
         Map<String, Object> validateSchema = null;

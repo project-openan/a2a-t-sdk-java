@@ -21,5 +21,3 @@ public final class AgentEndpointCache {
         return current;
     }
 }
-
-

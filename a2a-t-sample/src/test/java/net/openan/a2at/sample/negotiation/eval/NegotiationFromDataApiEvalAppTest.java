@@ -16,9 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import org.junit.jupiter.api.Test;
-
 import net.openan.a2at.sample.negotiation.shared.InformationNegotiationSchemas;
+import org.junit.jupiter.api.Test;
 
 class NegotiationFromDataApiEvalAppTest {
 
@@ -28,7 +27,8 @@ class NegotiationFromDataApiEvalAppTest {
 
     @Test
     void should_DelegateToTheSharedInformationNegotiationSchemas() {
-        assertEquals(InformationNegotiationSchemas.propose(), NegotiationFromDataApiEvalApp.extractionSchema("propose"));
+        assertEquals(
+                InformationNegotiationSchemas.propose(), NegotiationFromDataApiEvalApp.extractionSchema("propose"));
         assertEquals(InformationNegotiationSchemas.accept(), NegotiationFromDataApiEvalApp.extractionSchema("accept"));
         assertEquals(InformationNegotiationSchemas.reject(), NegotiationFromDataApiEvalApp.extractionSchema("reject"));
         assertThrows(IllegalArgumentException.class, () -> NegotiationFromDataApiEvalApp.extractionSchema("unknown"));
@@ -71,7 +71,8 @@ class NegotiationFromDataApiEvalAppTest {
             assertTrue(REQUIRED_FIELDS.containsAll(items.keySet()));
             assertTrue(disjoint(items.keySet(), OPTIONAL_FIELDS));
             if ("reject".equals(api)) {
-                items.values().forEach(reason -> assertTrue(String.valueOf(reason).contains("无法提供")));
+                items.values()
+                        .forEach(reason -> assertTrue(String.valueOf(reason).contains("无法提供")));
             }
         }
     }
@@ -81,7 +82,8 @@ class NegotiationFromDataApiEvalAppTest {
         Map<String, Object> scenario = resource("sample/negotiation/scenario.json");
         Map<String, Object> taskSchema = map(scenario.get("task_schema"));
         assertEquals(List.of("任务对象", "任务上下文"), taskSchema.get("required"));
-        String missingContext = String.valueOf(map(scenario.get("missing_params")).get("任务上下文"));
+        String missingContext =
+                String.valueOf(map(scenario.get("missing_params")).get("任务上下文"));
         String filledContext = String.valueOf(map(scenario.get("filled_params")).get("任务上下文"));
         assertFalse(missingContext.contains("投诉分类"));
         assertFalse(missingContext.contains("OSS侧事件流水号"));
@@ -98,9 +100,8 @@ class NegotiationFromDataApiEvalAppTest {
     }
 
     private static Map<String, Object> resource(String resource) throws IOException {
-        try (InputStream input = NegotiationFromDataApiEvalAppTest.class
-                .getClassLoader()
-                .getResourceAsStream(resource)) {
+        try (InputStream input =
+                NegotiationFromDataApiEvalAppTest.class.getClassLoader().getResourceAsStream(resource)) {
             assertNotNull(input, resource);
             return MAPPER.readValue(input, new TypeReference<>() {});
         }

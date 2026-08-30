@@ -13,8 +13,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Two match modes exist: {@link TaskTAccuracyEvaluator.MatchMode#EXACT} applies to structured identifier fields
  * (access port, scenario, time, serial) where a truncated or partially matching value must NOT score a hit; and
- * {@link TaskTAccuracyEvaluator.MatchMode#CONTAINS} applies to the free-text complaint detail where the extracted
- * value and the expected keyword are allowed to contain each other after normalization.
+ * {@link TaskTAccuracyEvaluator.MatchMode#CONTAINS} applies to the free-text complaint detail where the extracted value
+ * and the expected keyword are allowed to contain each other after normalization.
  *
  * <p>The match mode is now determined by the slot name rather than passed explicitly. Use
  * {@link TaskTPrivateLineComplaintSamples#SERVER_PORT} for EXACT mode tests and
@@ -46,7 +46,8 @@ class TaskTAccuracyEvaluatorTest {
     @Test
     void exact_shouldNotHit_WhenExtractedContainsExpectedButIsLonger() {
         // "connect timeout..." is not equal to the expected serial — trailing content must not pass as equal
-        assertFalse(TaskTAccuracyEvaluator.matches("event-id-20260511-09013-ext", "event-id-20260511-09013", EXACT_SLOT));
+        assertFalse(
+                TaskTAccuracyEvaluator.matches("event-id-20260511-09013-ext", "event-id-20260511-09013", EXACT_SLOT));
     }
 
     @Test
@@ -151,26 +152,36 @@ class TaskTAccuracyEvaluatorTest {
         List<TaskTAccuracyEvaluator.FieldScore> fields = TaskTAccuracyEvaluator.scoreFields(sample, extracted);
 
         assertEquals(4, fields.size());
-        assertFalse(field(fields, TaskTPrivateLineComplaintSamples.SERVER_PORT).matched(), "truncated port prefix must not hit");
-        assertTrue(field(fields, TaskTPrivateLineComplaintSamples.SERVER_SCENARIO).matched(), "exact scenario must hit");
+        assertFalse(
+                field(fields, TaskTPrivateLineComplaintSamples.SERVER_PORT).matched(),
+                "truncated port prefix must not hit");
+        assertTrue(
+                field(fields, TaskTPrivateLineComplaintSamples.SERVER_SCENARIO).matched(), "exact scenario must hit");
         assertTrue(field(fields, TaskTPrivateLineComplaintSamples.SERVER_TICKET).matched(), "exact serial must hit");
-        assertTrue(field(fields, TaskTPrivateLineComplaintSamples.SERVER_DETAIL).matched(), "detail containing the keyword must hit");
+        assertTrue(
+                field(fields, TaskTPrivateLineComplaintSamples.SERVER_DETAIL).matched(),
+                "detail containing the keyword must hit");
     }
 
-    private static TaskTAccuracyEvaluator.FieldScore field(List<TaskTAccuracyEvaluator.FieldScore> fields, String slot) {
+    private static TaskTAccuracyEvaluator.FieldScore field(
+            List<TaskTAccuracyEvaluator.FieldScore> fields, String slot) {
         return fields.stream().filter(f -> f.slot().equals(slot)).findFirst().orElseThrow();
     }
 
     @Test
     void sampleScore_shouldPass_OnlyWhenEveryFieldHit() {
         Map<String, String> expected = Map.of(
-                TaskTPrivateLineComplaintSamples.SERVER_PORT, PORT,
-                TaskTPrivateLineComplaintSamples.SERVER_DETAIL, "丢包");
+                TaskTPrivateLineComplaintSamples.SERVER_PORT,
+                PORT,
+                TaskTPrivateLineComplaintSamples.SERVER_DETAIL,
+                "丢包");
         TaskTSample sample = new TaskTSample("hit-all", "text", null, null, expected, Map.of());
 
         Map<String, Object> fullExtraction = Map.of(
-                TaskTPrivateLineComplaintSamples.SERVER_PORT, PORT,
-                TaskTPrivateLineComplaintSamples.SERVER_DETAIL, "故障现象：丢包率最高15%。");
+                TaskTPrivateLineComplaintSamples.SERVER_PORT,
+                PORT,
+                TaskTPrivateLineComplaintSamples.SERVER_DETAIL,
+                "故障现象：丢包率最高15%。");
         TaskTAccuracyEvaluator.SampleScore pass = new TaskTAccuracyEvaluator.SampleScore(
                 sample.name(), true, TaskTAccuracyEvaluator.scoreFields(sample, fullExtraction));
         assertTrue(pass.passed());

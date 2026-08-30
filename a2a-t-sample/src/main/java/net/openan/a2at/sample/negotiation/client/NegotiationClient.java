@@ -137,7 +137,10 @@ public final class NegotiationClient {
         MetadataContent acceptPrompt = strategy.generateAccept(
                 client,
                 new NegotiationContext(
-                        UUID.randomUUID().toString(), 1, NegotiationContext.DEFAULT_MAX_ROUNDS, NegotiationPerformative.ACCEPT),
+                        UUID.randomUUID().toString(),
+                        1,
+                        NegotiationContext.DEFAULT_MAX_ROUNDS,
+                        NegotiationPerformative.ACCEPT),
                 itemsFromFilledParams(),
                 DemoConstants.NEGOTIATION_ACCEPT);
         emit("[client] Negotiation-T accept rendered");

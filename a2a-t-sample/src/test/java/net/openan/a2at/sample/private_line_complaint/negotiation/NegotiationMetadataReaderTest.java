@@ -23,8 +23,7 @@ class NegotiationMetadataReaderTest {
                 NegotiationSampleFlow.PROPOSE_TEMPLATE_URI);
 
         assertEquals(
-                "prompt",
-                NegotiationMetadataReader.readPrompt(metadata, NegotiationSampleFlow.PROPOSE_TEMPLATE_URI));
+                "prompt", NegotiationMetadataReader.readPrompt(metadata, NegotiationSampleFlow.PROPOSE_TEMPLATE_URI));
     }
 
     @Test
@@ -35,7 +34,15 @@ class NegotiationMetadataReaderTest {
                 MetadataContent.TEMPLATE_URI_METADATA_KEY,
                 NegotiationSampleFlow.PROPOSE_TEMPLATE_URI,
                 MetadataContent.NEGOTIATION_CONTEXT_METADATA_KEY,
-                Map.of("id", "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", "round", 1, "maxRounds", 5, "performative", "PROPOSE"));
+                Map.of(
+                        "id",
+                        "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+                        "round",
+                        1,
+                        "maxRounds",
+                        5,
+                        "performative",
+                        "PROPOSE"));
 
         assertEquals(
                 new NegotiationContext("3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 1, 5, NegotiationPerformative.PROPOSE),
@@ -53,10 +60,14 @@ class NegotiationMetadataReaderTest {
         Map<String, Object> metadata = Map.of(
                 MetadataContent.NEGOTIATION_CONTEXT_METADATA_KEY,
                 Map.of(
-                        "id", "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
-                        "round", 1,
-                        "maxRounds", 5,
-                        "performative", "PROPOSE"));
+                        "id",
+                        "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+                        "round",
+                        1,
+                        "maxRounds",
+                        5,
+                        "performative",
+                        "PROPOSE"));
 
         assertEquals(
                 new NegotiationContext("3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 1, 5, NegotiationPerformative.PROPOSE),
@@ -69,19 +80,24 @@ class NegotiationMetadataReaderTest {
                 MetadataContent.NEGOTIATION_CONTEXT_METADATA_KEY,
                 Map.of("id", "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", "round", 1, "maxRounds", 5));
 
-        assertThrows(
-                IllegalArgumentException.class, () -> NegotiationMetadataReader.readContext(metadata));
+        assertThrows(IllegalArgumentException.class, () -> NegotiationMetadataReader.readContext(metadata));
     }
 
     @Test
     void rejectsAnUnknownPerformativeOfTheNegotiationContext() {
         Map<String, Object> metadata = Map.of(
                 MetadataContent.NEGOTIATION_CONTEXT_METADATA_KEY,
-                Map.of("id", "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", "round", 1, "maxRounds", 5, "performative", "propose"));
+                Map.of(
+                        "id",
+                        "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+                        "round",
+                        1,
+                        "maxRounds",
+                        5,
+                        "performative",
+                        "propose"));
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> NegotiationMetadataReader.readContext(metadata));
+        assertThrows(IllegalArgumentException.class, () -> NegotiationMetadataReader.readContext(metadata));
     }
 
     @Test
@@ -89,9 +105,7 @@ class NegotiationMetadataReaderTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> NegotiationMetadataReader.readPrompt(
-                        Map.of(
-                                MetadataContent.TEMPLATE_URI_METADATA_KEY,
-                                NegotiationSampleFlow.PROPOSE_TEMPLATE_URI),
+                        Map.of(MetadataContent.TEMPLATE_URI_METADATA_KEY, NegotiationSampleFlow.PROPOSE_TEMPLATE_URI),
                         NegotiationSampleFlow.PROPOSE_TEMPLATE_URI));
         assertThrows(
                 IllegalArgumentException.class,

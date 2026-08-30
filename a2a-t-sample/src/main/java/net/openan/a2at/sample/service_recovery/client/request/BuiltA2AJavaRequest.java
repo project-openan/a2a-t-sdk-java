@@ -8,7 +8,4 @@ import org.a2aproject.sdk.spec.MessageSendParams;
  *
  * @since 2026-05
  */
-public record BuiltA2AJavaRequest(MessageSendParams request, ClientCallContext callContext) {
-}
-
-
+public record BuiltA2AJavaRequest(MessageSendParams request, ClientCallContext callContext) {}

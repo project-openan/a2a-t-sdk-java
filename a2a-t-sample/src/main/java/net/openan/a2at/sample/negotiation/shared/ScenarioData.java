@@ -12,8 +12,8 @@ import java.util.Map;
  *
  * <p>The Java code of the sample contains only generic assembly rules (how to iterate slots, how to merge metadata);
  * every scenario-specific value lives in the JSON file: the Task-T slot schema, the missing/filled parameter maps
- * driving the 4-message flow and the negotiation phrasing templates. Changing the scenario means editing the JSON —
- * no Java recompilation — and the whole flow, from slot extraction to the diagnosis text, adapts to the new inputs.
+ * driving the 4-message flow and the negotiation phrasing templates. Changing the scenario means editing the JSON — no
+ * Java recompilation — and the whole flow, from slot extraction to the diagnosis text, adapts to the new inputs.
  *
  * @since 2026-08
  */

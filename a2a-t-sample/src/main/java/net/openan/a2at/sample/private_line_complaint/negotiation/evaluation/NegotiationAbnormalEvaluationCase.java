@@ -9,13 +9,8 @@ public record NegotiationAbnormalEvaluationCase(
         String input,
         String template,
         String performative,
-        @JsonProperty("expected_exception")
-        String expectedException,
-        @JsonProperty("expected_code")
-        String expectedCode,
-        @JsonProperty("context_mode")
-        String contextMode,
-        @JsonProperty("schema_mode")
-        String schemaMode,
-        String description) {
-}
+        @JsonProperty("expected_exception") String expectedException,
+        @JsonProperty("expected_code") String expectedCode,
+        @JsonProperty("context_mode") String contextMode,
+        @JsonProperty("schema_mode") String schemaMode,
+        String description) {}

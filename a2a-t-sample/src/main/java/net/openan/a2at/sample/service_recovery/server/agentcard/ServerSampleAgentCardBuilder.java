@@ -15,8 +15,7 @@ public final class ServerSampleAgentCardBuilder {
     static final String NOTIFICATION_T_EXTENSION_URI_NL =
             "https://projects.tmforum.org/a2aproject/telecommunication/extensions/Notification-T/NL/v1";
 
-    private ServerSampleAgentCardBuilder() {
-    }
+    private ServerSampleAgentCardBuilder() {}
 
     /**
      * Builds the sample AgentCard payload for one bind address.
@@ -32,28 +31,37 @@ public final class ServerSampleAgentCardBuilder {
                 "version", "1.0.0",
                 "defaultInputModes", List.of("application/json", "text/plain"),
                 "defaultOutputModes", List.of("application/json", "text/plain"),
-                "provider", Map.of(
-                        "organization", "Huawei",
-                        "url", "https://www.huawei.com"),
-                "skills", List.of(Map.of(
-                        "id", "Service-Recovery-Subscription",
-                        "name", "Service recovery event reporting",
-                        "description", "Mock service recovery event reporting sample skill",
-                        "tags", List.of("service-recovery", "reporting"))),
-                "capabilities", Map.of(
-                        "streaming", true,
-                        "pushNotifications", false,
-                        "extensions", List.of(
-                                Map.of(
-                                        "uri", NOTIFICATION_T_EXTENSION_URI,
-                                        "description", "Extension of structured prompt Notification-T requests."),
-                                Map.of(
-                                        "uri", NOTIFICATION_T_EXTENSION_URI_NL,
-                                        "description", "Legacy alias of the Notification-T extension."))),
-                "supportedInterfaces", List.of(Map.of(
-                        "protocolBinding", "HTTP+JSON",
-                        "protocolVersion", "1.0",
-                        "url", "http://" + host + ":" + port)));
+                "provider",
+                        Map.of(
+                                "organization", "Huawei",
+                                "url", "https://www.huawei.com"),
+                "skills",
+                        List.of(Map.of(
+                                "id", "Service-Recovery-Subscription",
+                                "name", "Service recovery event reporting",
+                                "description", "Mock service recovery event reporting sample skill",
+                                "tags", List.of("service-recovery", "reporting"))),
+                "capabilities",
+                        Map.of(
+                                "streaming", true,
+                                "pushNotifications", false,
+                                "extensions",
+                                        List.of(
+                                                Map.of(
+                                                        "uri",
+                                                        NOTIFICATION_T_EXTENSION_URI,
+                                                        "description",
+                                                        "Extension of structured prompt Notification-T requests."),
+                                                Map.of(
+                                                        "uri",
+                                                        NOTIFICATION_T_EXTENSION_URI_NL,
+                                                        "description",
+                                                        "Legacy alias of the Notification-T extension."))),
+                "supportedInterfaces",
+                        List.of(Map.of(
+                                "protocolBinding", "HTTP+JSON",
+                                "protocolVersion", "1.0",
+                                "url", "http://" + host + ":" + port)));
     }
 
     /**

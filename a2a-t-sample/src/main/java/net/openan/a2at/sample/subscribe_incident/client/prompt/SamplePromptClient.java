@@ -11,5 +11,3 @@ public interface SamplePromptClient {
 
     PromptGenerationResult generateTaskPrompt(Object userInput);
 }
-
-

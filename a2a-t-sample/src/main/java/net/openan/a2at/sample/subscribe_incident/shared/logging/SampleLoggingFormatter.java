@@ -30,8 +30,7 @@ public final class SampleLoggingFormatter {
     private static final List<String> SECRET_KEYWORDS =
             List.of("api_key", "authorization", "token", "secret", "password");
 
-    private SampleLoggingFormatter() {
-    }
+    private SampleLoggingFormatter() {}
 
     public static String formatStageLog(String actor, String stage, String detail) {
         return timestamp() + " [" + actor + "] " + stage + ": " + detail;
@@ -115,5 +114,3 @@ public final class SampleLoggingFormatter {
         return normalizedKeyName.endsWith("_token") && !normalizedKeyName.endsWith("max_tokens");
     }
 }
-
-

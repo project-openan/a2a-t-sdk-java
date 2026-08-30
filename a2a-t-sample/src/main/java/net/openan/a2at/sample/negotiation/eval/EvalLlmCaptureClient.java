@@ -13,17 +13,17 @@ import net.openan.a2at.sdk.llm.LLMClientFactory;
 import net.openan.a2at.sdk.llm.LLMResponse;
 
 /**
- * LLM client wrapper for the evaluator: records every structured call — the full request (messages, JSON
- * schema, temperature, max tokens) and the response (content, model, usage) — into an in-memory buffer so
- * the report can attach the exact prompts fed to the model to each step.
+ * LLM client wrapper for the evaluator: records every structured call — the full request (messages, JSON schema,
+ * temperature, max tokens) and the response (content, model, usage) — into an in-memory buffer so the report can attach
+ * the exact prompts fed to the model to each step.
  *
- * <p>When a case fails, the recorded prompts show precisely which system prompt, slot description or schema
- * entry the model saw, which is what drives reverse tuning of the prompt resources: a rejected or
- * mis-extracted case can be traced to the exact prompt text instead of being guessed at.
+ * <p>When a case fails, the recorded prompts show precisely which system prompt, slot description or schema entry the
+ * model saw, which is what drives reverse tuning of the prompt resources: a rejected or mis-extracted case can be
+ * traced to the exact prompt text instead of being guessed at.
  *
- * <p>Installed into {@link LLMClientFactory} by replacing the {@code openai} entry — the same reflective
- * mechanism {@code SampleMockLlmInstaller.installLlmLogger} uses. Delegates to
- * {@link SampleLoggingLLMClient} so the live console logging keeps working unchanged.
+ * <p>Installed into {@link LLMClientFactory} by replacing the {@code openai} entry — the same reflective mechanism
+ * {@code SampleMockLlmInstaller.installLlmLogger} uses. Delegates to {@link SampleLoggingLLMClient} so the live console
+ * logging keeps working unchanged.
  *
  * @since 2026-08
  */
@@ -45,8 +45,8 @@ public final class EvalLlmCaptureClient implements LLMClient {
     /**
      * Installs this client as the {@code openai} provider and keeps the console logging configured.
      *
-     * <p>Must be called once at evaluator startup, before any {@code A2ATClient} or {@code A2ATServer} is
-     * constructed, so that every structured call of the run is captured.
+     * <p>Must be called once at evaluator startup, before any {@code A2ATClient} or {@code A2ATServer} is constructed,
+     * so that every structured call of the run is captured.
      */
     public static synchronized void install() {
         try {
@@ -80,10 +80,7 @@ public final class EvalLlmCaptureClient implements LLMClient {
 
     @Override
     public LLMResponse structured(
-            List<Map<String, String>> messages,
-            Map<String, Object> jsonSchema,
-            Double temperature,
-            Integer maxTokens) {
+            List<Map<String, String>> messages, Map<String, Object> jsonSchema, Double temperature, Integer maxTokens) {
         long nanos = System.nanoTime();
         try {
             LLMResponse response = delegate.structured(messages, jsonSchema, temperature, maxTokens);

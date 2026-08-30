@@ -20,5 +20,3 @@ public interface SampleClientRuntime extends AutoCloseable {
     @Override
     void close();
 }
-
-

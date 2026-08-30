@@ -21,11 +21,9 @@ import net.openan.a2at.sample.service_recovery.shared.mock.SampleMockLlmInstalle
  */
 public final class ClientSampleMain {
 
-    private static final String MOCK_RESOURCE_ROOT =
-            "sample/service-recovery/mock_responses";
+    private static final String MOCK_RESOURCE_ROOT = "sample/service-recovery/mock_responses";
 
-    private ClientSampleMain() {
-    }
+    private ClientSampleMain() {}
 
     /**
      * Resolves the sample environment file path, preferring an explicit argument.
@@ -46,9 +44,7 @@ public final class ClientSampleMain {
      * @return client flow outcome with verification checks and received events
      */
     public static ClientFlowOutcome runMain(
-            Path envPath,
-            SampleClientRuntimeFactory runtimeFactory,
-            Consumer<String> logSink) {
+            Path envPath, SampleClientRuntimeFactory runtimeFactory, Consumer<String> logSink) {
         boolean mockNeeded = SampleMockLlmInstaller.isMockNeeded(envPath);
         SampleMockLlmInstaller.installLlmLogger(mockNeeded, "client");
         Path resolvedEnvPath = SampleMockLlmInstaller.resolveEnvPath(envPath, MOCK_RESOURCE_ROOT);
@@ -61,11 +57,7 @@ public final class ClientSampleMain {
                 throw new IllegalStateException("Sample client runtime must implement A2AJavaClientRuntime");
             }
             return ClientSampleFlow.runClientFlow(
-                    runtime.registryClient(),
-                    runtime.promptClient(),
-                    a2aRuntime,
-                    logSink,
-                    resolveMaxArtifacts());
+                    runtime.registryClient(), runtime.promptClient(), a2aRuntime, logSink, resolveMaxArtifacts());
         } finally {
             runtime.close();
         }
@@ -83,7 +75,8 @@ public final class ClientSampleMain {
     }
 
     private static void printSummary(ClientFlowOutcome outcome) {
-        long passedCount = outcome.checks().stream().filter(VerificationCheck::passed).count();
+        long passedCount =
+                outcome.checks().stream().filter(VerificationCheck::passed).count();
         long failedCount = outcome.checks().size() - passedCount;
         System.out.println("==== service-recovery client verification summary ====");
         for (VerificationCheck check : outcome.checks()) {

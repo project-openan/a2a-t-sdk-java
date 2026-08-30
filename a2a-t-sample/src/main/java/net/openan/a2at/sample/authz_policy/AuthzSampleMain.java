@@ -246,7 +246,8 @@ public final class AuthzSampleMain {
                 .config(config)
                 .llmClient(decorated);
         ContentValidator contentValidator = builder.buildAuthContentValidator();
-        return (prompt, schema, templateUri) -> contentValidator.validate(prompt, schema, parseTemplateUri(templateUri));
+        return (prompt, schema, templateUri) ->
+                contentValidator.validate(prompt, schema, parseTemplateUri(templateUri));
     }
 
     /** Parses a template URI string for the typed orchestrator/content-validator seams. */

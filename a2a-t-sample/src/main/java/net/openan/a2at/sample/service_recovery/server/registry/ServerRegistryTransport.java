@@ -12,5 +12,3 @@ public interface ServerRegistryTransport {
 
     ServerRegistryResponse post(String url, Map<String, Object> payload);
 }
-
-

@@ -15,20 +15,17 @@ import net.openan.a2at.sample.subscribe_incident.shared.error.ValueErrorExceptio
 public final class SampleScenarioLoader {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private SampleScenarioLoader() {
-    }
+    private SampleScenarioLoader() {}
 
     public static Map<String, Object> loadClasspathScenario(String resourcePath) {
-        try (InputStream inputStream = SampleScenarioLoader.class.getClassLoader().getResourceAsStream(resourcePath)) {
+        try (InputStream inputStream =
+                SampleScenarioLoader.class.getClassLoader().getResourceAsStream(resourcePath)) {
             if (inputStream == null) {
                 throw new ValueErrorException("Scenario resource not found: " + resourcePath);
             }
-            return OBJECT_MAPPER.readValue(inputStream, new TypeReference<>() {
-            });
+            return OBJECT_MAPPER.readValue(inputStream, new TypeReference<>() {});
         } catch (IOException exception) {
             throw new ValueErrorException("Unable to load scenario resource: " + resourcePath);
         }
     }
 }
-
-

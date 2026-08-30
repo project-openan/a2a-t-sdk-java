@@ -1,7 +1,6 @@
 package net.openan.a2at.sample.service_recovery.server.runtime;
 
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -97,9 +96,7 @@ public final class DefaultSampleServerRuntime implements SampleServerRuntime, A2
         A2ATServer server = new A2ATServer(envPath);
         String templateUri = ServiceRecoverySampleInputs.TEMPLATE_URI;
         return promptText -> server.validateNotificationPromptAndDataFilling(
-                promptText,
-                ServiceRecoverySampleInputs.validationParamSchema(),
-                templateUri);
+                promptText, ServiceRecoverySampleInputs.validationParamSchema(), templateUri);
     }
 
     @Override
@@ -154,15 +151,14 @@ public final class DefaultSampleServerRuntime implements SampleServerRuntime, A2
     }
 
     /**
-     * Builds the mock service recovery event artifact payload. The field structure and values are
-     * loaded from the {@code mock-event-data.json} resource so the zh-CN business fields stay out
-     * of the Java source.
+     * Builds the mock service recovery event artifact payload. The field structure and values are loaded from the
+     * {@code mock-event-data.json} resource so the zh-CN business fields stay out of the Java source.
      *
      * @return mock service recovery event data
      */
     static Map<String, Object> buildMockServiceRecoveryEventData() {
-        return net.openan.a2at.sample.service_recovery.SampleResourceJson
-                .load("sample/service-recovery/server/mock-event-data.json");
+        return net.openan.a2at.sample.service_recovery.SampleResourceJson.load(
+                "sample/service-recovery/server/mock-event-data.json");
     }
 
     /**

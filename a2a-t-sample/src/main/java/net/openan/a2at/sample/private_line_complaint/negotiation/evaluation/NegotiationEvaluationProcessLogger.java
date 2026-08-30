@@ -10,9 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 
-/**
- * Writes one JSON object per invocation stage so a failed evaluation can be diagnosed without rerunning the model.
- */
+/** Writes one JSON object per invocation stage so a failed evaluation can be diagnosed without rerunning the model. */
 final class NegotiationEvaluationProcessLogger implements AutoCloseable {
 
     private final ObjectMapper objectMapper;

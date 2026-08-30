@@ -14,18 +14,15 @@ public final class NegotiationAbnormalEvaluationCaseLoader {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private NegotiationAbnormalEvaluationCaseLoader() {
-    }
+    private NegotiationAbnormalEvaluationCaseLoader() {}
 
     public static List<NegotiationAbnormalEvaluationCase> load() {
-        try (InputStream input = NegotiationAbnormalEvaluationCaseLoader.class
-                .getClassLoader()
-                .getResourceAsStream(RESOURCE_PATH)) {
+        try (InputStream input =
+                NegotiationAbnormalEvaluationCaseLoader.class.getClassLoader().getResourceAsStream(RESOURCE_PATH)) {
             if (input == null) {
                 throw new IllegalStateException("Abnormal negotiation cases not found: " + RESOURCE_PATH);
             }
-            return List.copyOf(OBJECT_MAPPER.readValue(input, new TypeReference<>() {
-            }));
+            return List.copyOf(OBJECT_MAPPER.readValue(input, new TypeReference<>() {}));
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to read abnormal negotiation cases", exception);
         }

@@ -35,9 +35,12 @@ class NegotiationSampleFlowTest {
         NegotiationSampleFlow.NegotiationFlowResult result = run(NegotiationDecision.ACCEPT);
 
         assertEquals(NegotiationDecision.ACCEPT, result.decision());
-        assertEquals(NegotiationSampleFlow.PROPOSE_TEMPLATE_URI, result.propose().templateUri());
+        assertEquals(
+                NegotiationSampleFlow.PROPOSE_TEMPLATE_URI, result.propose().templateUri());
         assertEquals(NegotiationSampleFlow.ENDING_TEMPLATE_URI, result.ending().templateUri());
-        assertEquals(ExtensionUriConstants.NEGOTIATION_T_EXTENSION_URI, result.propose().extensionUri());
+        assertEquals(
+                ExtensionUriConstants.NEGOTIATION_T_EXTENSION_URI,
+                result.propose().extensionUri());
         assertContextIsShared(result);
         assertEquals(
                 List.of(
@@ -64,10 +67,7 @@ class NegotiationSampleFlowTest {
     private NegotiationSampleFlow.NegotiationFlowResult run(NegotiationDecision decision) throws IOException {
         Path env = envFile(decision.name().toLowerCase() + ".env");
         return NegotiationSampleFlow.run(
-                new A2ATClient(env),
-                new A2ATServer(env),
-                NegotiationScenarioLoader.load(),
-                decision);
+                new A2ATClient(env), new A2ATServer(env), NegotiationScenarioLoader.load(), decision);
     }
 
     private Path envFile(String fileName) throws IOException {

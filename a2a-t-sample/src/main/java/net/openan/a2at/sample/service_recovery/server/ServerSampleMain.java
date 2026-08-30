@@ -24,11 +24,9 @@ import org.a2aproject.sdk.server.requesthandlers.RequestHandler;
  */
 public final class ServerSampleMain {
 
-    private static final String MOCK_RESOURCE_ROOT =
-            "sample/service-recovery/mock_responses";
+    private static final String MOCK_RESOURCE_ROOT = "sample/service-recovery/mock_responses";
 
-    private ServerSampleMain() {
-    }
+    private ServerSampleMain() {}
 
     /**
      * Resolves the sample environment file path, preferring an explicit argument.
@@ -49,9 +47,7 @@ public final class ServerSampleMain {
      * @return bootstrap result carrying the bind address, app and server handle
      */
     public static ServerBootstrapResult runMain(
-            Path envPath,
-            SampleServerRuntimeFactory runtimeFactory,
-            Consumer<String> logSink) {
+            Path envPath, SampleServerRuntimeFactory runtimeFactory, Consumer<String> logSink) {
         boolean mockNeeded = SampleMockLlmInstaller.isMockNeeded(envPath);
         SampleMockLlmInstaller.installLlmLogger(mockNeeded, "server");
         Path resolvedEnvPath = SampleMockLlmInstaller.resolveEnvPath(envPath, MOCK_RESOURCE_ROOT);
@@ -65,7 +61,8 @@ public final class ServerSampleMain {
         Object app = runtime.buildApp(agentCard, notificationValidator);
         Map<String, Object> registrationPayload;
         if (runtime instanceof A2AJavaServerRuntime a2aJavaServerRuntime
-                && a2aJavaServerRuntime.createRestApplication(bind.host(), bind.port()) instanceof org.a2aproject.sdk.spec.AgentCard agentCardModel) {
+                && a2aJavaServerRuntime.createRestApplication(bind.host(), bind.port())
+                        instanceof org.a2aproject.sdk.spec.AgentCard agentCardModel) {
             registrationPayload = RegistryAgentCardMapper.toRegistryRegistrationPayload(agentCardModel);
         } else {
             registrationPayload = ServerSampleAgentCardBuilder.buildRegistrationPayload(bind.host(), bind.port());
@@ -74,7 +71,8 @@ public final class ServerSampleMain {
         AutoCloseable serverHandle = null;
         if (runtime instanceof A2AJavaServerRuntime a2aJavaServerRuntime
                 && app instanceof RequestHandler requestHandler
-                && a2aJavaServerRuntime.createRestApplication(bind.host(), bind.port()) instanceof org.a2aproject.sdk.spec.AgentCard agentCardModel) {
+                && a2aJavaServerRuntime.createRestApplication(bind.host(), bind.port())
+                        instanceof org.a2aproject.sdk.spec.AgentCard agentCardModel) {
             serverHandle = EmbeddedA2AHttpServer.start(bind.host(), bind.port(), agentCardModel, requestHandler);
         }
         return new ServerBootstrapResult(bind.host(), bind.port(), app, serverHandle, registrationResult);
@@ -86,7 +84,9 @@ public final class ServerSampleMain {
      * @param args optional environment file path as the first argument
      */
     public static void main(String[] args) {
-        runMain(resolveEnvPath(args), envPath -> new DefaultSampleServerRuntime(envPath, System.out::println),
+        runMain(
+                resolveEnvPath(args),
+                envPath -> new DefaultSampleServerRuntime(envPath, System.out::println),
                 System.out::println);
     }
 
