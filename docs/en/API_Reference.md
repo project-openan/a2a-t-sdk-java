@@ -61,7 +61,7 @@ The A2A-T SDK exposes exactly two public entry points: the client entry `A2ATCli
 | StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT_URI | Negotiation-T feasibility negotiation accept/reject template | Negotiation-T/feasibility-negotiation/accept-reject/v1 |
 | StandardTemplates.NEGOTIATION_ABORT_URI | Negotiation-T common negotiation abort template | Negotiation-T/common/abort/v1 |
 
-- **Facade template URI failure policy (both `A2ATClient` and `A2ATServer`):** every facade method that takes a `templateUri` parameter (including `getPrompt`) accepts a raw URI string. A null template URI throws `NullPointerException`; a blank or malformed URI (fewer than three segments, or a segment that is not simple) throws `IllegalArgumentException` with the message `Unparseable template URI: <input>`. This replaces the previous behavior where a null typed template URI on the server task/notification/authorization validate trio threw `ContentValidationException` with the code `negotiation.invalid_input` — such programming errors are now plain JDK exceptions, not part of the `A2ATError` tree.
+- **Facade template URI failure policy:** every facade method that takes a `templateUri` parameter accepts a raw URI string. A null template URI throws `NullPointerException`; a blank or malformed URI (fewer than three segments, or a segment that is not simple) throws `IllegalArgumentException`.
 
 
 
@@ -152,7 +152,7 @@ Error codes:
 
 - `negotiation.field_missing` (a required field is missing)
 
-A null argument throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) or a templateUri whose phase segment is not `propose` throws `IllegalArgumentException`.
+A null context or templateUri throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) or a templateUri whose phase segment is not `propose` throws `IllegalArgumentException`; a null or blank text is not a programming error and throws `NegotiationGenerationException` with `negotiation.invalid_input` (see the error codes above).
 
 **Response Example**
 
@@ -178,7 +178,7 @@ public MetadataContent generateNegotiationAcceptPromptFromText(
 
 **Typical scenarios**: after receiving the peer's information-negotiation request, the negotiation responder (usually the client agent) supplements/delivers the requested information in natural language and generates an accept message to return, e.g. confirming that diagnosis can start after supplementing the access port name and complaint category.
 
-**Function Description**: generates a negotiation accept message from natural-language text. One LLM content-extraction step (the extracted conclusion must be `ACCEPT`, otherwise it is rejected with `negotiation.invalid_input`) plus deterministic rendering. Applicable to the negotiation responder supplementing/delivering information.
+**Function Description**: generates a negotiation accept message from natural-language text. One LLM content-extraction step (the extracted conclusion must be `ACCEPT`, otherwise it is rejected with `negotiation.conclusion_mismatch`) plus deterministic rendering. Applicable to the negotiation responder supplementing/delivering information.
 
 **Input**
 
@@ -213,7 +213,9 @@ On failure, throws `NegotiationGenerationException` (structure same as 1.3.1). E
 
 - `llm.response_invalid` (LLM response violates the step contract, retryable)
 
-- `negotiation.invalid_input` (text is blank, or the extracted conclusion is not `ACCEPT`)
+- `negotiation.invalid_input` (text is blank)
+
+- `negotiation.conclusion_mismatch` (the extracted conclusion is not `ACCEPT`)
 
 - `negotiation.field_missing` (a required field is missing)
 
@@ -242,7 +244,7 @@ public MetadataContent generateNegotiationRejectPromptFromText(
 
 **Typical scenarios**: when the negotiation responder (usually the client agent) cannot satisfy the peer's negotiation request, it generates a reject message in natural language to return and end the current negotiation round, e.g. the access port name cannot be provided because the site inventory is unavailable.
 
-**Function Description**: generates a negotiation reject message from natural-language text. One LLM content-extraction step (the extracted conclusion must be `REJECT`, otherwise it is rejected with `negotiation.invalid_input`) plus deterministic rendering.
+**Function Description**: generates a negotiation reject message from natural-language text. One LLM content-extraction step (the extracted conclusion must be `REJECT`, otherwise it is rejected with `negotiation.conclusion_mismatch`) plus deterministic rendering.
 
 **Input**: same as [generateNegotiationAcceptPromptFromText](#132-generatenegotiationacceptpromptfromtext), where text is natural language describing the rejection reason.
 
@@ -269,7 +271,9 @@ On failure, throws `NegotiationGenerationException` (structure same as 1.3.1). E
 
 - `llm.response_invalid` (LLM response violates the step contract, retryable)
 
-- `negotiation.invalid_input` (text is blank, or the extracted conclusion is not `REJECT`)
+- `negotiation.invalid_input` (text is blank)
+
+- `negotiation.conclusion_mismatch` (the extracted conclusion is not `REJECT`)
 
 - `negotiation.field_missing` (a required field is missing)
 
@@ -559,7 +563,7 @@ On failure, throws `NegotiationParamExtractionException` (an `A2ATError` subclas
 
 Error codes:
 
-- `negotiation.invalid_input` (the message is not a negotiation message, or the context is null)
+- `negotiation.invalid_input` (the prompt is null or blank, the message is not a negotiation message, or the context is null)
 
 - `negotiation.rule_violation` (the negotiation context violates a rule; the nested slot error codes in `getErrors()` identify the concrete rule, e.g. `negotiation.invalid_context_id`, `negotiation.round_exceeded`)
 
@@ -569,7 +573,7 @@ Error codes:
 
 - `template.not_found` (validation prompt resources missing)
 
-Programming errors: a null prompt, schema or templateUri throws `NullPointerException`; a blank prompt, a blank or malformed templateUri (see the facade failure policy in 1.1), or a mismatched phase segment throws `IllegalArgumentException`.
+Programming errors: a null schema or templateUri throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) or a mismatched phase segment throws `IllegalArgumentException`; a null or blank prompt is not a programming error and throws `NegotiationParamExtractionException` with `negotiation.invalid_input` (see the error codes above).
 
 **Response Example**
 
@@ -618,7 +622,7 @@ On success, returns `FilledParamData` (structure same as [1.3.7](#137-validatepr
 
 On failure, throws `NegotiationParamExtractionException` (structure same as 1.3.7). Error codes:
 
-- `negotiation.invalid_input` (the message is not an accept negotiation message, or the context is null)
+- `negotiation.invalid_input` (the prompt is null or blank, the message is not an accept negotiation message, or the context is null)
 
 - `negotiation.rule_violation` (the negotiation context violates a rule; the nested slot error codes in `getErrors()` identify the concrete rule, e.g. `negotiation.invalid_context_id`, `negotiation.round_exceeded`)
 
@@ -628,7 +632,7 @@ On failure, throws `NegotiationParamExtractionException` (structure same as 1.3.
 
 - `template.not_found` (validation prompt resources missing)
 
-Programming errors: a null prompt, schema or templateUri throws `NullPointerException`; a blank prompt, a blank or malformed templateUri (see the facade failure policy in 1.1), or a phase segment that is not `accept-reject` throws `IllegalArgumentException`.
+Programming errors: a null schema or templateUri throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) or a phase segment that is not `accept-reject` throws `IllegalArgumentException`; a null or blank prompt is not a programming error and throws `NegotiationParamExtractionException` with `negotiation.invalid_input` (see the error codes above).
 
 **Response Example**
 
@@ -671,7 +675,7 @@ On success, returns `FilledParamData` (structure same as [1.3.7](#137-validatepr
 
 On failure, throws `NegotiationParamExtractionException` (structure same as 1.3.7). Error codes:
 
-- `negotiation.invalid_input` (the message is not a reject negotiation message, or the context is null)
+- `negotiation.invalid_input` (the prompt is null or blank, the message is not a reject negotiation message, or the context is null)
 
 - `negotiation.rule_violation` (the negotiation context violates a rule; the nested slot error codes in `getErrors()` identify the concrete rule, e.g. `negotiation.invalid_context_id`, `negotiation.round_exceeded`)
 
@@ -681,7 +685,7 @@ On failure, throws `NegotiationParamExtractionException` (structure same as 1.3.
 
 - `template.not_found` (validation prompt resources missing)
 
-Programming errors: a null prompt, schema or templateUri throws `NullPointerException`; a blank prompt, a blank or malformed templateUri (see the facade failure policy in 1.1), or a phase segment that is not `accept-reject` throws `IllegalArgumentException`.
+Programming errors: a null schema or templateUri throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) or a phase segment that is not `accept-reject` throws `IllegalArgumentException`; a null or blank prompt is not a programming error and throws `NegotiationParamExtractionException` with `negotiation.invalid_input` (see the error codes above).
 
 **Response Example**
 
@@ -804,6 +808,12 @@ Requirement: The complaint diagnosis task result should include the following in
 2. Diagnosis result details (required)
 3. Repair suggestions (optional)
 4. Fault root cause list, where each fault root cause includes fault root cause name, detailed description, repair suggestions, fault root cause point location, etc. (optional)
+
+## Terminology Explanation
+1. Private line interruption
+   - Synonyms: private line interruption, service interruption, network unreachable, service down, service inaccessible
+2. Poor private line quality
+   - Synonyms: private line poor quality, service stutter, service access timeout, service packet loss, service high latency, service jitter, service congestion, service experience degradation, service high error rate, service optical power abnormal
 ```
 
 ### 1.3.11 generateTaskPromptFromDataWithSchema
@@ -894,6 +904,12 @@ Requirement: The complaint diagnosis task result should include the following in
 2. Diagnosis result details (required)
 3. Repair suggestions (optional)
 4. Fault root cause list, where each fault root cause includes fault root cause name, detailed description, repair suggestions, fault root cause point location, etc. (optional)
+
+## Terminology Explanation
+1. Private line interruption
+   - Synonyms: private line interruption, service interruption, network unreachable, service down, service inaccessible
+2. Poor private line quality
+   - Synonyms: private line poor quality, service stutter, service access timeout, service packet loss, service high latency, service jitter, service congestion, service experience degradation, service high error rate, service optical power abnormal
 ```
 
 ### 1.3.12 validateTaskPromptAndDataFilling
@@ -966,6 +982,8 @@ On failure, throws `ContentValidationException` (an `A2ATError` subclass):
 
 Error codes:
 
+- `negotiation.invalid_input` (the prompt is null or blank, the schema is null, or the templateUri prefix segment/version does not match this API)
+
 - `negotiation.semantic_rejected` (semantic validation rejected, including missing or invalid required parameters; the per-slot details in `errors()` use the `content.*` codes, e.g. `content.param_missing`, `content.entry_field_missing`, `content.format_error`, `content.value_not_allowed`)
 
 - `llm.invocation_failed` / `llm.response_invalid` (LLM failures, retryable)
@@ -974,9 +992,9 @@ Error codes:
 
 - `input.text_too_long` (prompt longer than `A2AT_INPUT_TEXT_MAX_CHARS`)
 
-Programming errors: a null prompt / schema / templateUri throws `NullPointerException`; a blank prompt or a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`.
+Programming errors: a null templateUri throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`; a null or blank prompt or a null schema is not a programming error and throws `ContentValidationException` with `negotiation.invalid_input` (see the error codes above).
 
-**Response Example**
+**Response Example** (`faultTime` and `faultDetail` are truncated sample values)
 
 ```text
 extracted =
@@ -993,7 +1011,7 @@ On validation rejection (a negative sample with a missing key slot, from case 3 
 
 ```text
 ContentValidationException: [negotiation.semantic_rejected] ...
-    slot=task_object code=content.param_missing message=... facts={section_label=任务对象}
+    slot=Task Object code=content.param_missing message=... facts={section_label=Task Object}
 ```
 
 ### 1.3.13 generateNotificationPromptFromText
@@ -1054,8 +1072,6 @@ Please complete the network-side service recovery event subscription and reporti
 Service recovery event
 
 ## Subscribe Condition
-(optional)
-1. Subnetwork name. Example: xx subnetwork
 
 ## Notification Data Format
 1. Service recovery plan execution status. Allowed values: not started, ended
@@ -1147,8 +1163,7 @@ Please complete the network-side service recovery event subscription and reporti
 Service recovery event
 
 ## Subscribe Condition
-Subnetwork name: xx subnetwork (optional)
-1. Subnetwork name. Example: xx subnetwork
+Subnetwork name: xx subnetwork
 
 ## Notification Data Format
 1. Service recovery plan execution status. Allowed values: not started, ended (required)
@@ -1215,6 +1230,8 @@ On success, returns `FilledParamData` (structure same as [1.3.12](#1312-validate
 
 On failure, throws `ContentValidationException` (structure same as 1.3.12). Error codes:
 
+- `negotiation.invalid_input` (the prompt is null or blank, the schema is null, or the templateUri prefix segment/version does not match this API)
+
 - `negotiation.semantic_rejected` (required parameter missing or invalid value; the per-slot details in `errors()` use the `content.*` codes)
 
 - `llm.invocation_failed` / `llm.response_invalid` (LLM failures, retryable)
@@ -1223,7 +1240,7 @@ On failure, throws `ContentValidationException` (structure same as 1.3.12). Erro
 
 - `input.text_too_long` (prompt longer than `A2AT_INPUT_TEXT_MAX_CHARS`)
 
-Programming errors: a null prompt / schema / templateUri throws `NullPointerException`; a blank prompt or a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`.
+Programming errors: a null templateUri throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`; a null or blank prompt or a null schema is not a programming error and throws `ContentValidationException` with `negotiation.invalid_input` (see the error codes above).
 
 **Response Example**
 
@@ -1425,6 +1442,8 @@ On success, returns `FilledParamData` (structure same as [1.3.12](#1312-validate
 
 On failure, throws `ContentValidationException` (structure same as 1.3.12). Error codes:
 
+- `negotiation.invalid_input` (the prompt is null or blank, the schema is null, or the templateUri prefix segment/version does not match this API)
+
 - `negotiation.semantic_rejected` (required parameter missing or invalid value, e.g. an add entry missing required fields (`content.entry_field_missing`) or a validity period format error (`content.format_error`))
 
 - `llm.invocation_failed` / `llm.response_invalid` (LLM failures, retryable)
@@ -1433,7 +1452,7 @@ On failure, throws `ContentValidationException` (structure same as 1.3.12). Erro
 
 - `input.text_too_long` (prompt longer than `A2AT_INPUT_TEXT_MAX_CHARS`)
 
-Programming errors: a null prompt / schema / templateUri throws `NullPointerException`; a blank prompt or a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`.
+Programming errors: a null templateUri throws `NullPointerException`; a blank or malformed templateUri (see the facade failure policy in 1.1) throws `IllegalArgumentException`; a null or blank prompt or a null schema is not a programming error and throws `ContentValidationException` with `negotiation.invalid_input` (see the error codes above).
 
 **Response Example**
 
@@ -1598,7 +1617,7 @@ On failure (`success()` is `false`; no exception is thrown, the failure payload 
 | ---- | ---- | ---- |
 | code | String | Machine-readable error code from the error-code list: `scenario.not_matched` (message parsing/scenario recognition failure), `template.not_found` (template missing), slot-domain codes such as `slot.not_provided` (missing required value), `slot.constraint_violated` (out-of-range value) and `slot.rule_violation` (other slot rule violations), `input.text_too_long` (input length guard) |
 | message | String | Human-readable failure description |
-| stage | String | Stage where the failure occurred: `prompt_parse` (message parsing), `generation` (template loading), `slot_validation` (slot validation) |
+| stage | String | Stage where the failure occurred: `input_gate` (input length guard), `prompt_parse` (message parsing), `generation` (template loading), `slot_validation` (slot validation) |
 
 **Response Example**
 
