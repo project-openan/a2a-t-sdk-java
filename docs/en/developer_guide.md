@@ -294,7 +294,7 @@ Business projects can use the BOM to manage A2A-T SDK versions uniformly:
         <dependency>
             <groupId>net.openan.a2a-t.sdk</groupId>
             <artifactId>a2a-t-bom</artifactId>
-            <version>1.0.0</version>
+            <version>1.1.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
