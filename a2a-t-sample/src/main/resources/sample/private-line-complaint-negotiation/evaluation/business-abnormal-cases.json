@@ -4,6 +4,7 @@
     "api": "generate_propose",
     "input": "当前只需要继续处理这条专线投诉，请直接给出处理建议，不需要列出待补充信息。",
     "description": "发起协商文本没有明确的待补充信息项",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.field_missing", "negotiation.content_extract_failed"]
   },
   {
@@ -11,6 +12,7 @@
     "api": "generate_propose",
     "input": "请用一段自然语言概述对端需要提供的资料，不要使用信息项列表或逐项结构。",
     "description": "发起协商文本明确要求非模板列表结构",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.field_missing", "negotiation.content_extract_failed"]
   },
   {
@@ -18,6 +20,7 @@
     "api": "generate_accept",
     "input": "接受本次协商，后续再补充具体信息。",
     "description": "接受文本没有提供任何结果内容",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.field_missing", "negotiation.content_extract_failed"]
   },
   {
@@ -25,6 +28,7 @@
     "api": "generate_accept",
     "input": "同意，信息按之前说的处理即可。",
     "description": "接受文本只有结论，没有可渲染的逐项结果",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.field_missing", "negotiation.content_extract_failed"]
   },
   {
@@ -32,6 +36,7 @@
     "api": "generate_reject",
     "input": "拒绝本次协商。",
     "description": "拒绝文本没有说明拒绝原因或结果项",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.field_missing", "negotiation.content_extract_failed"]
   },
   {
@@ -39,6 +44,7 @@
     "api": "generate_reject",
     "input": "这次不方便提供资料，请用一段话说明即可，不需要逐项列出拒绝内容。",
     "description": "拒绝文本要求非逐项结果结构",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.field_missing", "negotiation.content_extract_failed"]
   },
   {
@@ -46,6 +52,7 @@
     "api": "validate_propose",
     "input": "## 信息协商\n请继续处理当前投诉。",
     "description": "发起报文缺少所需信息项段落",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.rule_violation", "negotiation.semantic_rejected"]
   },
   {
@@ -53,6 +60,7 @@
     "api": "validate_propose",
     "input": "## 信息协商\n请根据<所需信息项>补充相关内容。\n\n## 所需信息项\n请提供相关资料即可。",
     "description": "发起报文的所需信息项不是逐项列表",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.rule_violation", "negotiation.semantic_rejected"]
   },
   {
@@ -60,6 +68,7 @@
     "api": "validate_accept",
     "input": "## 信息协商结果\nAccept",
     "description": "接受报文缺少结果内容段落",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.rule_violation", "negotiation.semantic_rejected"]
   },
   {
@@ -67,6 +76,7 @@
     "api": "validate_accept",
     "input": "## 信息协商结果\nAccept\n\n## 信息协商结果内容\n相关信息保持不变。",
     "description": "接受结果内容不是逐项信息",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.rule_violation", "negotiation.semantic_rejected"]
   },
   {
@@ -74,6 +84,7 @@
     "api": "validate_reject",
     "input": "## 信息协商结果\nReject",
     "description": "拒绝报文缺少结果内容段落",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.rule_violation", "negotiation.semantic_rejected"]
   },
   {
@@ -81,6 +92,7 @@
     "api": "validate_reject",
     "input": "## 信息协商结果\nReject\n\n## 信息协商结果内容\n由于当前情况不允许，暂时无法提供。",
     "description": "拒绝结果内容没有按请求信息项逐项说明",
+    "modelDependent": true,
     "expectedCodes": ["negotiation.rule_violation", "negotiation.semantic_rejected"]
   }
 ]

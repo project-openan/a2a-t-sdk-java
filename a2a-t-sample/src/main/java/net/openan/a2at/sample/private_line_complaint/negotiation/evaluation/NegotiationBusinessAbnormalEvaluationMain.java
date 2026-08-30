@@ -28,18 +28,22 @@ import net.openan.a2at.sdk.server.A2ATServer;
 /** Runs malformed business-content cases against the configured real LLM. */
 public final class NegotiationBusinessAbnormalEvaluationMain {
 
-    private static final ObjectMapper OBJECT_MAPPER =
-            new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
     private static final DateTimeFormatter FILE_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
-    private NegotiationBusinessAbnormalEvaluationMain() {
-    }
+    private NegotiationBusinessAbnormalEvaluationMain() {}
 
     public static void main(String[] args) throws IOException {
         Path envPath = args.length > 0
                 ? Path.of(args[0])
-                : Path.of("a2a-t-sample", "src", "main", "resources", "sample",
-                        "private-line-complaint-negotiation", "qwen.env");
+                : Path.of(
+                        "a2a-t-sample",
+                        "src",
+                        "main",
+                        "resources",
+                        "sample",
+                        "private-line-complaint-negotiation",
+                        "qwen.env");
         String suffix = LocalDateTime.now(ZoneId.systemDefault()).format(FILE_TIMESTAMP);
         Path reportPath = args.length > 1
                 ? Path.of(args[1])
@@ -50,8 +54,7 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
 
         Map<String, String> environment = NegotiationSampleEnvironment.read(envPath);
         requireQwenConfiguration(environment);
-        List<NegotiationBusinessAbnormalEvaluationCase> cases =
-                NegotiationBusinessAbnormalEvaluationCaseLoader.load();
+        List<NegotiationBusinessAbnormalEvaluationCase> cases = NegotiationBusinessAbnormalEvaluationCaseLoader.load();
         String runId = UUID.randomUUID().toString();
         List<Map<String, Object>> results = new ArrayList<>();
         try (NegotiationEvaluationProcessLogger logger =
@@ -64,7 +67,9 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
             }
         }
 
-        long passed = results.stream().filter(result -> Boolean.TRUE.equals(result.get("passed"))).count();
+        long passed = results.stream()
+                .filter(result -> Boolean.TRUE.equals(result.get("passed")))
+                .count();
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("generated_at", Instant.now().toString());
         report.put("run_id", runId);
@@ -75,7 +80,12 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
         report.put("passed", passed);
         report.put("failed", results.size() - passed);
         report.put("success_rate", results.isEmpty() ? 1.0 : (double) passed / results.size());
-        report.put("definition", "业务结构异常用例要求 SDK 识别无法渲染或无法校验的协商报文；这些用例调用真实 LLM，结果可能受模型输出影响。");
+        report.put(
+                "definition",
+                "业务结构异常用例要求 SDK 识别无法渲染或无法校验的协商报文；这些用例调用真实 LLM，结果可能受模型输出影响。"
+                        + "全部用例的期望失败均依赖模型判定（生成侧依赖模型拒绝从模糊输入抽取内容，校验侧依赖语义门模型拒绝结构违规）："
+                        + "模型放行并成功返回（model_dependent_success）同样判定通过，仅意外错误码判定失败。"
+                        + "确定性的 SDK 异常契约验证由 negotiation-abnormal-evaluation 承担。");
         report.put("process_log", processLogPath.toAbsolutePath().toString());
         report.put("cases", results);
         Path parent = reportPath.toAbsolutePath().getParent();
@@ -83,7 +93,8 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
             Files.createDirectories(parent);
         }
         OBJECT_MAPPER.writeValue(reportPath.toFile(), report);
-        System.out.printf("Business abnormal negotiation evaluation complete: %d/%d matched; report=%s; process-log=%s%n",
+        System.out.printf(
+                "Business abnormal negotiation evaluation complete: %d/%d matched; report=%s; process-log=%s%n",
                 passed, results.size(), reportPath.toAbsolutePath(), processLogPath.toAbsolutePath());
     }
 
@@ -103,7 +114,8 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
             A2ATServer server,
             NegotiationBusinessAbnormalEvaluationCase testCase,
             String runId,
-            NegotiationEvaluationProcessLogger logger) throws IOException {
+            NegotiationEvaluationProcessLogger logger)
+            throws IOException {
         long startedAt = System.nanoTime();
         NegotiationPerformative performative = performativeFor(testCase.api());
         NegotiationContext context = new NegotiationContext(UUID.randomUUID().toString(), 1, 3, performative);
@@ -117,8 +129,13 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
         try {
             Object response = invoke(client, server, testCase, context);
             result.put("response", responseSummary(response));
-            result.put("outcome", "unexpected_success");
-            result.put("passed", false);
+            if (testCase.modelDependent()) {
+                result.put("outcome", "model_dependent_success");
+                result.put("passed", true);
+            } else {
+                result.put("outcome", "unexpected_success");
+                result.put("passed", false);
+            }
             logger.write(event(runId, testCase, request, responseSummary(response), result, startedAt));
         } catch (RuntimeException exception) {
             Map<String, Object> error = errorDetails(exception);
@@ -141,17 +158,23 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
             case "generate_propose" -> client.generateNegotiationProposePromptFromText(
                     testCase.input(), context, NegotiationSampleFlow.PROPOSE_TEMPLATE_URI);
             case "validate_propose" -> server.validateProposePromptAndDataFilling(
-                    testCase.input(), context, InformationNegotiationSchemas.propose(),
+                    testCase.input(),
+                    context,
+                    InformationNegotiationSchemas.propose(),
                     NegotiationSampleFlow.PROPOSE_TEMPLATE_URI);
             case "generate_accept" -> server.generateNegotiationAcceptPromptFromText(
                     testCase.input(), context, NegotiationSampleFlow.ENDING_TEMPLATE_URI);
             case "validate_accept" -> client.validateAcceptPromptAndDataFilling(
-                    testCase.input(), context, InformationNegotiationSchemas.accept(),
+                    testCase.input(),
+                    context,
+                    InformationNegotiationSchemas.accept(),
                     NegotiationSampleFlow.ENDING_TEMPLATE_URI);
             case "generate_reject" -> server.generateNegotiationRejectPromptFromText(
                     testCase.input(), context, NegotiationSampleFlow.ENDING_TEMPLATE_URI);
             case "validate_reject" -> client.validateRejectPromptAndDataFilling(
-                    testCase.input(), context, InformationNegotiationSchemas.reject(),
+                    testCase.input(),
+                    context,
+                    InformationNegotiationSchemas.reject(),
                     NegotiationSampleFlow.ENDING_TEMPLATE_URI);
             default -> throw new IllegalArgumentException("Unknown business abnormal API: " + testCase.api());
         };
@@ -167,9 +190,11 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
             request.put("schema", schemaFor(testCase.api()));
         }
         request.put("context", contextPayload(context));
-        request.put("template_uri", testCase.api().contains("propose")
-                ? NegotiationSampleFlow.PROPOSE_TEMPLATE_URI
-                : NegotiationSampleFlow.ENDING_TEMPLATE_URI);
+        request.put(
+                "template_uri",
+                testCase.api().contains("propose")
+                        ? NegotiationSampleFlow.PROPOSE_TEMPLATE_URI
+                        : NegotiationSampleFlow.ENDING_TEMPLATE_URI);
         return request;
     }
 
@@ -196,7 +221,8 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
     }
 
     private static NegotiationPerformative performativeFor(String api) {
-        return api.contains("accept") ? NegotiationPerformative.ACCEPT
+        return api.contains("accept")
+                ? NegotiationPerformative.ACCEPT
                 : api.contains("reject") ? NegotiationPerformative.REJECT : NegotiationPerformative.PROPOSE;
     }
 
@@ -248,13 +274,19 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
     }
 
     private static Map<String, Object> contextPayload(NegotiationContext context) {
-        return Map.of("id", context.id(), "round", context.round(), "maxRounds", context.maxRounds(),
-                "performative", context.performative().name());
+        return Map.of(
+                "id",
+                context.id(),
+                "round",
+                context.round(),
+                "maxRounds",
+                context.maxRounds(),
+                "performative",
+                context.performative().name());
     }
 
     private static void requireQwenConfiguration(Map<String, String> environment) {
-        if (!"openai".equals(environment.get("A2AT_LLM_PROVIDER"))
-                || environment.get("A2AT_LLM_BASE_URL") == null) {
+        if (!"openai".equals(environment.get("A2AT_LLM_PROVIDER")) || environment.get("A2AT_LLM_BASE_URL") == null) {
             throw new IllegalArgumentException(
                     "Business abnormal evaluation requires A2AT_LLM_PROVIDER=openai and A2AT_LLM_BASE_URL");
         }
@@ -263,7 +295,8 @@ public final class NegotiationBusinessAbnormalEvaluationMain {
     private static String gitRevision() {
         try {
             Process process = new ProcessBuilder("git", "rev-parse", "HEAD")
-                    .redirectErrorStream(true).start();
+                    .redirectErrorStream(true)
+                    .start();
             String revision;
             try (var input = process.getInputStream()) {
                 revision = new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim();

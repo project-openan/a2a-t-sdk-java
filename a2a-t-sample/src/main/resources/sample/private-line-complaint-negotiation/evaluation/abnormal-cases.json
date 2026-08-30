@@ -15,8 +15,8 @@
     "input": "",
     "template": "propose",
     "performative": "PROPOSE",
-    "expected_exception": "IllegalArgumentException",
-    "expected_code": null,
+    "expected_exception": "NegotiationParamExtractionException",
+    "expected_code": "negotiation.invalid_input",
     "description": "校验协商发起报文时输入为空"
   },
   {
@@ -188,8 +188,8 @@
     "input": null,
     "template": "propose",
     "performative": "PROPOSE",
-    "expected_exception": "NullPointerException",
-    "expected_code": null,
+    "expected_exception": "NegotiationParamExtractionException",
+    "expected_code": "negotiation.invalid_input",
     "description": "校验协商发起报文时 prompt 为 null"
   },
   {
@@ -242,7 +242,7 @@
     "performative": "PROPOSE",
     "context_mode": "invalid_id",
     "expected_exception": "NegotiationParamExtractionException",
-    "expected_code": "negotiation.invalid_context_id",
+    "expected_code": "negotiation.rule_violation",
     "description": "校验协商发起报文时上下文 id 不是 UUID"
   },
   {
@@ -253,7 +253,7 @@
     "performative": "PROPOSE",
     "context_mode": "exhausted",
     "expected_exception": "NegotiationParamExtractionException",
-    "expected_code": "negotiation.round_exceeded",
+    "expected_code": "negotiation.rule_violation",
     "description": "校验协商发起报文时 round 超过 maxRounds"
   },
   {
@@ -262,8 +262,8 @@
     "input": "",
     "template": "ending",
     "performative": "ACCEPT",
-    "expected_exception": "IllegalArgumentException",
-    "expected_code": null,
+    "expected_exception": "NegotiationParamExtractionException",
+    "expected_code": "negotiation.invalid_input",
     "description": "接受校验接口 prompt 为空"
   },
   {
@@ -272,8 +272,8 @@
     "input": null,
     "template": "ending",
     "performative": "ACCEPT",
-    "expected_exception": "NullPointerException",
-    "expected_code": null,
+    "expected_exception": "NegotiationParamExtractionException",
+    "expected_code": "negotiation.invalid_input",
     "description": "接受校验接口 prompt 为 null"
   },
   {
@@ -326,7 +326,7 @@
     "performative": "ACCEPT",
     "context_mode": "invalid_id",
     "expected_exception": "NegotiationParamExtractionException",
-    "expected_code": "negotiation.invalid_context_id",
+    "expected_code": "negotiation.rule_violation",
     "description": "接受校验接口上下文 id 不是 UUID"
   },
   {
@@ -337,7 +337,7 @@
     "performative": "ACCEPT",
     "context_mode": "exhausted",
     "expected_exception": "NegotiationParamExtractionException",
-    "expected_code": "negotiation.round_exceeded",
+    "expected_code": "negotiation.rule_violation",
     "description": "接受校验接口 round 超过 maxRounds"
   },
   {
@@ -346,8 +346,8 @@
     "input": "",
     "template": "ending",
     "performative": "REJECT",
-    "expected_exception": "IllegalArgumentException",
-    "expected_code": null,
+    "expected_exception": "NegotiationParamExtractionException",
+    "expected_code": "negotiation.invalid_input",
     "description": "拒绝校验接口 prompt 为空"
   },
   {
@@ -356,8 +356,8 @@
     "input": null,
     "template": "ending",
     "performative": "REJECT",
-    "expected_exception": "NullPointerException",
-    "expected_code": null,
+    "expected_exception": "NegotiationParamExtractionException",
+    "expected_code": "negotiation.invalid_input",
     "description": "拒绝校验接口 prompt 为 null"
   },
   {
@@ -410,7 +410,7 @@
     "performative": "REJECT",
     "context_mode": "invalid_id",
     "expected_exception": "NegotiationParamExtractionException",
-    "expected_code": "negotiation.invalid_context_id",
+    "expected_code": "negotiation.rule_violation",
     "description": "拒绝校验接口上下文 id 不是 UUID"
   },
   {
@@ -421,7 +421,7 @@
     "performative": "REJECT",
     "context_mode": "exhausted",
     "expected_exception": "NegotiationParamExtractionException",
-    "expected_code": "negotiation.round_exceeded",
+    "expected_code": "negotiation.rule_violation",
     "description": "拒绝校验接口 round 超过 maxRounds"
   }
 ]
