@@ -21,31 +21,26 @@ import org.a2aproject.sdk.client.ClientEvent;
 /**
  * Core client-side orchestration for the service-recovery e2e sample.
  *
- * <p>One client process runs two independent subscription rounds, so each generated prompt is
- * validated by the server on its own merits — one API producing a usable prompt can never mask the
- * other producing a broken one:
+ * <p>One client process runs two independent subscription rounds, so each generated prompt is validated by the server
+ * on its own merits — one API producing a usable prompt can never mask the other producing a broken one:
  *
  * <ol>
- * <li>{@code generateNotificationPromptFromText} — natural-language subscription request to a
- * rendered prompt, sent to the server over the real a2a-java transport;
- * <li>{@code generateNotificationPromptFromDataWithSchema} — structured input plus data schema to
- * a rendered prompt, sent through the same chain.
- *
- * <p>Each round's server task reports
- * {@link ServiceRecoverySampleInputs#NOTIFICATION_REPORT_COUNT} notification artifacts and then
- * reaches its terminal {@code TASK_STATE_COMPLETED} state, so every stream ends on its own; the
- * client only stops earlier when {@code maxArtifacts} is positive.
- *
- * <p>Console logging is trimmed to the essentials: the API inputs and outputs, the LLM requests
- * and responses (logged by the shared LLM wrapper), and the received notification artifacts in
- * full detail. Stage lines carry a small set of markers for fast visual scanning.
+ *   <li>{@code generateNotificationPromptFromText} — natural-language subscription request to a rendered prompt, sent
+ *       to the server over the real a2a-java transport;
+ *   <li>{@code generateNotificationPromptFromDataWithSchema} — structured input plus data schema to a rendered prompt,
+ *       sent through the same chain.
+ *       <p>Each round's server task reports {@link ServiceRecoverySampleInputs#NOTIFICATION_REPORT_COUNT} notification
+ *       artifacts and then reaches its terminal {@code TASK_STATE_COMPLETED} state, so every stream ends on its own;
+ *       the client only stops earlier when {@code maxArtifacts} is positive.
+ *       <p>Console logging is trimmed to the essentials: the API inputs and outputs, the LLM requests and responses
+ *       (logged by the shared LLM wrapper), and the received notification artifacts in full detail. Stage lines carry a
+ *       small set of markers for fast visual scanning.
  *
  * @since 2026-08
  */
 public final class ClientSampleFlow {
 
-    private ClientSampleFlow() {
-    }
+    private ClientSampleFlow() {}
 
     /**
      * Runs the client flow.
@@ -77,7 +72,8 @@ public final class ClientSampleFlow {
                     "fromText", fromText, a2aRuntime, agentCard, logSink, checks, maxArtifacts, normalizedEvents);
         } else {
             checks.add(VerificationCheck.failed(
-                    "fromText: a2a request sent", "skipped, the from-text generation step produced no rendered prompt"));
+                    "fromText: a2a request sent",
+                    "skipped, the from-text generation step produced no rendered prompt"));
         }
 
         MetadataContent fromData = verifyGenerateFromData(promptClient, logSink, checks);
@@ -94,8 +90,8 @@ public final class ClientSampleFlow {
     }
 
     /**
-     * Runs one subscription round: sends the rendered prompt as an A2A message:stream request and
-     * collects the server events until the task completes (or the artifact budget is reached).
+     * Runs one subscription round: sends the rendered prompt as an A2A message:stream request and collects the server
+     * events until the task completes (or the artifact budget is reached).
      *
      * @param label round label used in check names and logs
      * @param content rendered prompt of this round
@@ -124,8 +120,8 @@ public final class ClientSampleFlow {
         int eventCount = 0;
         String terminalState = "";
         try {
-            for (ClientEvent rawEvent : a2aRuntime.sendMessage(
-                    agentCard, builtRequest.request(), builtRequest.callContext(), logSink)) {
+            for (ClientEvent rawEvent :
+                    a2aRuntime.sendMessage(agentCard, builtRequest.request(), builtRequest.callContext(), logSink)) {
                 Map<String, Object> payload = A2AJavaClientEventMapper.toPayload(rawEvent);
                 Map<String, Object> normalizedEvent = SampleStreamEventNormalizer.normalize(payload);
                 normalizedEvents.add(normalizedEvent);
@@ -148,8 +144,7 @@ public final class ClientSampleFlow {
             checks.add(VerificationCheck.failed(label + ": a2a response received", describe(error)));
             return;
         }
-        int expectedArtifacts =
-                maxArtifacts > 0 ? maxArtifacts : ServiceRecoverySampleInputs.NOTIFICATION_REPORT_COUNT;
+        int expectedArtifacts = maxArtifacts > 0 ? maxArtifacts : ServiceRecoverySampleInputs.NOTIFICATION_REPORT_COUNT;
         checks.add(VerificationCheck.passed(
                 label + ": a2a response received", "events=" + eventCount + " artifacts=" + artifactCount));
         checks.add(expectation(
@@ -171,9 +166,7 @@ public final class ClientSampleFlow {
     }
 
     private static MetadataContent verifyGenerateFromText(
-            SamplePromptClient promptClient,
-            Consumer<String> logSink,
-            List<VerificationCheck> checks) {
+            SamplePromptClient promptClient, Consumer<String> logSink, List<VerificationCheck> checks) {
         String promptInput = ServiceRecoverySampleInputs.naturalLanguageInput();
         emit(logSink, "==================================================================");
         emit(logSink, "== API 1 generateNotificationPromptFromText");
@@ -181,12 +174,11 @@ public final class ClientSampleFlow {
         emit(logSink, "-- input (natural language):");
         emit(logSink, promptInput);
         try {
-            MetadataContent content =
-                    promptClient.generateNotificationPromptFromText(promptInput, ServiceRecoverySampleInputs.TEMPLATE_URI);
+            MetadataContent content = promptClient.generateNotificationPromptFromText(
+                    promptInput, ServiceRecoverySampleInputs.TEMPLATE_URI);
             emit(logSink, "-- output (rendered subscription prompt):");
             emit(logSink, content.promptText());
-            emit(logSink, "-- templateUri=" + content.templateUri()
-                    + "  extensionUri=" + content.extensionUri());
+            emit(logSink, "-- templateUri=" + content.templateUri() + "  extensionUri=" + content.extensionUri());
 
             checks.add(VerificationCheck.passed("fromText: generation returned", "no exception"));
             addGenerationChecks(checks, "fromText", content);
@@ -198,9 +190,7 @@ public final class ClientSampleFlow {
     }
 
     private static MetadataContent verifyGenerateFromData(
-            SamplePromptClient promptClient,
-            Consumer<String> logSink,
-            List<VerificationCheck> checks) {
+            SamplePromptClient promptClient, Consumer<String> logSink, List<VerificationCheck> checks) {
         Map<String, Object> data = ServiceRecoverySampleInputs.structuredInput();
         Map<String, Object> schema = ServiceRecoverySampleInputs.dataSchema();
         emit(logSink, "==================================================================");
@@ -215,8 +205,7 @@ public final class ClientSampleFlow {
                     data, schema, ServiceRecoverySampleInputs.TEMPLATE_URI);
             emit(logSink, "-- output (rendered subscription prompt):");
             emit(logSink, content.promptText());
-            emit(logSink, "-- templateUri=" + content.templateUri()
-                    + "  extensionUri=" + content.extensionUri());
+            emit(logSink, "-- templateUri=" + content.templateUri() + "  extensionUri=" + content.extensionUri());
 
             checks.add(VerificationCheck.passed("fromData: generation returned", "no exception"));
             addGenerationChecks(checks, "fromData", content);
@@ -231,10 +220,7 @@ public final class ClientSampleFlow {
         return String.valueOf(artifact);
     }
 
-    private static void addGenerationChecks(
-            List<VerificationCheck> checks,
-            String label,
-            MetadataContent content) {
+    private static void addGenerationChecks(List<VerificationCheck> checks, String label, MetadataContent content) {
         checks.add(expectation(
                 label + ": templateUri matches",
                 ServiceRecoverySampleInputs.TEMPLATE_URI.equals(content.templateUri()),
@@ -245,10 +231,8 @@ public final class ClientSampleFlow {
                 "promptText blank"));
         checks.add(expectation(
                 label + ": prompt carries the recovery plan execution status",
-                content.promptText() != null
-                        && content.promptText().contains("业务抢通方案执行状态"),
-                "promptText does not carry the required "
-                        + "业务抢通方案执行状态" + " slot"));
+                content.promptText() != null && content.promptText().contains("业务抢通方案执行状态"),
+                "promptText does not carry the required " + "业务抢通方案执行状态" + " slot"));
     }
 
     private static VerificationCheck expectation(String name, boolean passed, String failureDetail) {

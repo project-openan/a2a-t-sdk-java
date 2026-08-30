@@ -30,8 +30,7 @@ public final class SampleLoggingFormatter {
     private static final List<String> SECRET_KEYWORDS =
             List.of("api_key", "authorization", "token", "secret", "password");
 
-    private SampleLoggingFormatter() {
-    }
+    private SampleLoggingFormatter() {}
 
     public static String formatStageLog(String actor, String stage, String detail) {
         return timestamp() + " [" + actor + "] " + stage + ": " + detail;
@@ -40,8 +39,8 @@ public final class SampleLoggingFormatter {
     /**
      * Prefixes one log message with the sample timestamp.
      *
-     * <p>Multi-line messages keep their internal line breaks, but every blank line is removed so
-     * the log output never contains empty lines.
+     * <p>Multi-line messages keep their internal line breaks, but every blank line is removed so the log output never
+     * contains empty lines.
      *
      * @param message log message, may span multiple lines — only the first line carries the stamp
      * @return timestamped log line without any blank line
@@ -144,5 +143,3 @@ public final class SampleLoggingFormatter {
         return normalizedKeyName.endsWith("_token") && !normalizedKeyName.endsWith("max_tokens");
     }
 }
-
-

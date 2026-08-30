@@ -11,5 +11,3 @@ public interface SampleRegistryClient {
 
     Map<String, Object> queryAgentCardByName(String name, String organization);
 }
-
-

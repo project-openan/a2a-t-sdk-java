@@ -10,8 +10,7 @@ import java.util.Map;
 /** Reads the small set of environment values needed by the negotiation sample entry points. */
 public final class NegotiationSampleEnvironment {
 
-    private NegotiationSampleEnvironment() {
-    }
+    private NegotiationSampleEnvironment() {}
 
     public static Path defaultEnvPath(String role) {
         return Path.of(
@@ -35,7 +34,9 @@ public final class NegotiationSampleEnvironment {
                     continue;
                 }
                 int separator = line.indexOf('=');
-                values.put(line.substring(0, separator).trim(), line.substring(separator + 1).trim());
+                values.put(
+                        line.substring(0, separator).trim(),
+                        line.substring(separator + 1).trim());
             }
             return values;
         } catch (IOException exception) {

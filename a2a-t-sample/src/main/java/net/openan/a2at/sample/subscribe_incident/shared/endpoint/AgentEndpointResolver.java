@@ -12,8 +12,7 @@ import net.openan.a2at.sample.subscribe_incident.shared.error.ValueErrorExceptio
  */
 public final class AgentEndpointResolver {
 
-    private AgentEndpointResolver() {
-    }
+    private AgentEndpointResolver() {}
 
     public static ResolvedAgentEndpoint resolvePreferredInterface(Map<String, Object> agentCard) {
         Object supportedInterfacesValue = agentCard.get("supportedInterfaces");
@@ -52,5 +51,3 @@ public final class AgentEndpointResolver {
         return value == null ? "" : String.valueOf(value);
     }
 }
-
-

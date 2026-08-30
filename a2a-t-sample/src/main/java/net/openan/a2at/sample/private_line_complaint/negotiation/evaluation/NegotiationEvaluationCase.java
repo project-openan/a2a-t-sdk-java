@@ -29,8 +29,7 @@ public record NegotiationEvaluationCase(
         if (raw instanceof List<?> entries) {
             for (Object entry : entries) {
                 if (entry instanceof Map<?, ?> item) {
-                    items.add(new NegotiationItem(
-                            String.valueOf(item.get("name")), String.valueOf(item.get("value"))));
+                    items.add(new NegotiationItem(String.valueOf(item.get("name")), String.valueOf(item.get("value"))));
                 }
             }
         }

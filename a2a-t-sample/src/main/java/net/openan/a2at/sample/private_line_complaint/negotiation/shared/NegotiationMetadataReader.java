@@ -9,8 +9,7 @@ import net.openan.a2at.sdk.core.model.NegotiationPerformative;
 /** Reads and validates Negotiation-T metadata received over A2A. */
 public final class NegotiationMetadataReader {
 
-    private NegotiationMetadataReader() {
-    }
+    private NegotiationMetadataReader() {}
 
     public static String readPrompt(Map<String, ?> metadata, String expectedTemplateUri) {
         if (metadata == null) {

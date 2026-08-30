@@ -11,8 +11,8 @@ import java.util.regex.Pattern;
  * Field-level and sample-level accuracy scoring for the {@code Task-T} demo.
  *
  * <p>Each {@link SampleScore} scores one sample: every expected ground-truth field is compared with the corresponding
- * value extracted by {@code A2ATServer#validateTaskPromptAndDataFilling}. {@link Summary} aggregates the scores per client
- * API both as a field hit rate (matched expected fields over total expected fields) and as a sample pass rate
+ * value extracted by {@code A2ATServer#validateTaskPromptAndDataFilling}. {@link Summary} aggregates the scores per
+ * client API both as a field hit rate (matched expected fields over total expected fields) and as a sample pass rate
  * (samples whose expected fields all hit over total samples).
  *
  * <p>Fields are matched in one of two modes: structured identifier fields ({@code accessPort}, {@code bizScenario},
@@ -31,8 +31,7 @@ final class TaskTAccuracyEvaluator {
         CONTAINS
     }
 
-    private TaskTAccuracyEvaluator() {
-    }
+    private TaskTAccuracyEvaluator() {}
 
     /**
      * One expected slot compared against the extracted value.
@@ -97,16 +96,15 @@ final class TaskTAccuracyEvaluator {
      */
     static List<FieldScore> scoreFields(TaskTSample sample, Map<String, Object> extractedParams) {
         List<FieldScore> scores = new ArrayList<>();
-        sample.expectedParams()
-                .forEach((slot, expected) -> {
-                    Object extracted = extractedParams.get(slot);
-                    String extractedText = extracted == null ? null : String.valueOf(extracted);
-                    boolean matched = matches(extractedText, expected, slot);
-                    String detail = matched ? "" : "expected=" + expected + ", extracted=" + (extractedText == null
-                                    ? "<missing>"
-                                    : extractedText);
-                    scores.add(new FieldScore(slot, expected, extractedText, matched, detail));
-                });
+        sample.expectedParams().forEach((slot, expected) -> {
+            Object extracted = extractedParams.get(slot);
+            String extractedText = extracted == null ? null : String.valueOf(extracted);
+            boolean matched = matches(extractedText, expected, slot);
+            String detail = matched
+                    ? ""
+                    : "expected=" + expected + ", extracted=" + (extractedText == null ? "<missing>" : extractedText);
+            scores.add(new FieldScore(slot, expected, extractedText, matched, detail));
+        });
         return scores;
     }
 
@@ -114,8 +112,8 @@ final class TaskTAccuracyEvaluator {
      * Picks the match mode for one slot: the free-text complaint detail and fault time are matched by containment,
      * every other structured field is matched exactly.
      *
-     * <p>Fault time uses containment because the LLM may return the time in various formats (ISO with/without
-     * timezone, Chinese natural language, etc.) while the expected value is a canonical subset.
+     * <p>Fault time uses containment because the LLM may return the time in various formats (ISO with/without timezone,
+     * Chinese natural language, etc.) while the expected value is a canonical subset.
      *
      * @param slot expected slot name keyed by the server field names
      * @return containment mode for the complaint detail and fault time, exact mode otherwise
@@ -131,11 +129,9 @@ final class TaskTAccuracyEvaluator {
     }
 
     /**
-     * Hit rule for one slot. For structured fields, equal after normalization.
-     * For the fault detail, one contains the other. For the fault time, the
-     * numeric month-day digits are extracted and compared, so both ISO
-     * ({@code 2026-05-22T14:00:00Z}) and Chinese ({@code 5月22号下午两点多})
-     * formats match the same canonical expected value.
+     * Hit rule for one slot. For structured fields, equal after normalization. For the fault detail, one contains the
+     * other. For the fault time, the numeric month-day digits are extracted and compared, so both ISO
+     * ({@code 2026-05-22T14:00:00Z}) and Chinese ({@code 5月22号下午两点多}) formats match the same canonical expected value.
      *
      * @param extracted extracted value, may be {@code null}
      * @param expected ground-truth value
@@ -160,10 +156,8 @@ final class TaskTAccuracyEvaluator {
     }
 
     /**
-     * Extracts the numeric month-day part from a date string and compares.
-     * Handles both ISO ({@code 2026-05-22t14:00:00z}) and Chinese
-     * ({@code 5月22号下午两点多}) formats by extracting the month and day
-     * digits.
+     * Extracts the numeric month-day part from a date string and compares. Handles both ISO
+     * ({@code 2026-05-22t14:00:00z}) and Chinese ({@code 5月22号下午两点多}) formats by extracting the month and day digits.
      */
     private static boolean matchDatePart(String extracted, String expected) {
         String extractedMd = extractMonthDay(extracted);
@@ -176,9 +170,8 @@ final class TaskTAccuracyEvaluator {
         // Try Chinese format: "5月22号" or "2026年5月11号"
         Matcher chineseMatcher = CHINESE_DATE_PATTERN.matcher(value);
         if (chineseMatcher.find()) {
-            return String.format("%02d%02d",
-                    Integer.parseInt(chineseMatcher.group(1)),
-                    Integer.parseInt(chineseMatcher.group(2)));
+            return String.format(
+                    "%02d%02d", Integer.parseInt(chineseMatcher.group(1)), Integer.parseInt(chineseMatcher.group(2)));
         }
         // Try ISO format: "2026-05-22" in "2026-05-22t14:00:00z"
         Matcher isoMatcher = ISO_DATE_PATTERN.matcher(value);
@@ -188,10 +181,8 @@ final class TaskTAccuracyEvaluator {
         return "";
     }
 
-    private static final Pattern CHINESE_DATE_PATTERN =
-            Pattern.compile("(\\d{1,2})\\s*月\\s*(\\d{1,2})\\s*[号日]");
-    private static final Pattern ISO_DATE_PATTERN =
-            Pattern.compile("(\\d{4})-(\\d{2})-(\\d{2})");
+    private static final Pattern CHINESE_DATE_PATTERN = Pattern.compile("(\\d{1,2})\\s*月\\s*(\\d{1,2})\\s*[号日]");
+    private static final Pattern ISO_DATE_PATTERN = Pattern.compile("(\\d{4})-(\\d{2})-(\\d{2})");
 
     private static String normalize(String value) {
         return value == null ? "" : value.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
@@ -206,8 +197,10 @@ final class TaskTAccuracyEvaluator {
      */
     static Summary summarize(String api, List<SampleScore> scores) {
         int passedSamples = (int) scores.stream().filter(SampleScore::passed).count();
-        int matchedFields = scores.stream().mapToInt(SampleScore::matchedFieldCount).sum();
-        int expectedFields = scores.stream().mapToInt(SampleScore::expectedFieldCount).sum();
+        int matchedFields =
+                scores.stream().mapToInt(SampleScore::matchedFieldCount).sum();
+        int expectedFields =
+                scores.stream().mapToInt(SampleScore::expectedFieldCount).sum();
         return new Summary(api, scores.size(), passedSamples, matchedFields, expectedFields);
     }
 }

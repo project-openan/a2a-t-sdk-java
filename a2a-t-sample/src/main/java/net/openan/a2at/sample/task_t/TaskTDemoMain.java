@@ -223,8 +223,8 @@ public final class TaskTDemoMain {
                     println(sample.text());
                     println();
                     println("[生成] generateTaskPromptFromText:");
-                    metadata =
-                            client.generateTaskPromptFromText(sample.text(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
+                    metadata = client.generateTaskPromptFromText(
+                            sample.text(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
                 }
                 System.out.println("  templateUri : " + metadata.templateUri());
                 System.out.println("  promptText : " + metadata.promptText());
@@ -266,7 +266,9 @@ public final class TaskTDemoMain {
             A2ATServer server, TaskTSample sample, MetadataContent metadata, String caseLabel) {
         try {
             Map<String, Object> extracted = server.validateTaskPromptAndDataFilling(
-                            metadata.promptText(), sample.validationSchema(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI)
+                            metadata.promptText(),
+                            sample.validationSchema(),
+                            StandardTemplates.PRIVATE_LINE_COMPLAINT_URI)
                     .data();
             println("[服务端] " + caseLabel + " validateTaskPromptAndDataFilling 通过，提取参数:");
             println(pretty(extracted));

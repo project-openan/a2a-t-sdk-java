@@ -7,7 +7,4 @@ import java.util.Map;
  *
  * @since 2026-05
  */
-public record ServerRegistryResponse(int statusCode, String text, Map<String, Object> jsonBody) {
-}
-
-
+public record ServerRegistryResponse(int statusCode, String text, Map<String, Object> jsonBody) {}

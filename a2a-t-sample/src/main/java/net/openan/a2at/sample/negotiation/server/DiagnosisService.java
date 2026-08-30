@@ -9,8 +9,8 @@ import net.openan.a2at.sdk.core.model.FilledParamData;
  *
  * <p>The text layout comes from the {@code diagnosis} templates of the scenario configuration ({@code result_line},
  * {@code detail_line} with a {@code {params}} placeholder, {@code advice_line}); the parameter values themselves are
- * taken from what {@code validateTaskPromptAndDataFilling} extracted, so the result adapts to any Task-T input. In a real
- * deployment this service would call the EMS/NMS north-bound API instead of rendering text.
+ * taken from what {@code validateTaskPromptAndDataFilling} extracted, so the result adapts to any Task-T input. In a
+ * real deployment this service would call the EMS/NMS north-bound API instead of rendering text.
  *
  * @since 2026-08
  */

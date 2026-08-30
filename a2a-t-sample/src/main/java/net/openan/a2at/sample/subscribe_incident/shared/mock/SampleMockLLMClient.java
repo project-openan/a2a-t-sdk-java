@@ -14,12 +14,11 @@ import net.openan.a2at.sdk.llm.LLMResponse;
 /**
  * Deterministic LLM client used by the sample when no real API key is available.
  *
- * <p>Returns canned structured responses for the three SDK LLM steps, in call order: scenario
- * recognition, slot extraction, then semantic validation. The canned responses are loaded from
- * {@code mock_responses} JSON resources on the classpath and mirror what a real LLM would return
- * for the bundled subscribe-incident templates, so the end-to-end sample flow runs without any
- * external LLM service. Each process keeps its own call cursor, which matches the separate client
- * and server runtimes used by the sample e2e flow.
+ * <p>Returns canned structured responses for the three SDK LLM steps, in call order: scenario recognition, slot
+ * extraction, then semantic validation. The canned responses are loaded from {@code mock_responses} JSON resources on
+ * the classpath and mirror what a real LLM would return for the bundled subscribe-incident templates, so the end-to-end
+ * sample flow runs without any external LLM service. Each process keeps its own call cursor, which matches the separate
+ * client and server runtimes used by the sample e2e flow.
  *
  * @since 2026-08
  */
@@ -45,9 +44,8 @@ public final class SampleMockLLMClient implements LLMClient {
      * @param language locale identifier used to select the response files
      */
     public static synchronized void configure(String resourceRoot, String language) {
-        SampleMockLLMClient.resourceRoot = resourceRoot == null || resourceRoot.isBlank()
-                ? DEFAULT_RESOURCE_ROOT
-                : resourceRoot;
+        SampleMockLLMClient.resourceRoot =
+                resourceRoot == null || resourceRoot.isBlank() ? DEFAULT_RESOURCE_ROOT : resourceRoot;
         SampleMockLLMClient.language = language == null || language.isBlank() ? DEFAULT_LANGUAGE : language.trim();
         SampleMockLLMClient.responses = null;
     }
@@ -63,17 +61,11 @@ public final class SampleMockLLMClient implements LLMClient {
 
     @Override
     public LLMResponse structured(
-            List<Map<String, String>> messages,
-            Map<String, Object> jsonSchema,
-            Double temperature,
-            Integer maxTokens) {
+            List<Map<String, String>> messages, Map<String, Object> jsonSchema, Double temperature, Integer maxTokens) {
         List<String> mockResponses = responses();
         String content = mockResponses.get(Math.floorMod(callIndex.getAndIncrement(), mockResponses.size()));
         return new LLMResponse(
-                content,
-                "mock-llm",
-                Map.of("prompt_tokens", 0, "completion_tokens", 0, "total_tokens", 0),
-                Map.of());
+                content, "mock-llm", Map.of("prompt_tokens", 0, "completion_tokens", 0, "total_tokens", 0), Map.of());
     }
 
     private static List<String> responses() {
@@ -99,7 +91,8 @@ public final class SampleMockLLMClient implements LLMClient {
     }
 
     private static String loadResource(String resourcePath) {
-        try (InputStream inputStream = SampleMockLLMClient.class.getClassLoader().getResourceAsStream(resourcePath)) {
+        try (InputStream inputStream =
+                SampleMockLLMClient.class.getClassLoader().getResourceAsStream(resourcePath)) {
             if (inputStream == null) {
                 throw new ValueErrorException("Mock LLM response resource not found: " + resourcePath);
             }

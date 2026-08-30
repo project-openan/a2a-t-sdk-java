@@ -14,8 +14,7 @@ import org.a2aproject.sdk.spec.TextPart;
  */
 public final class A2AJavaRequestBuilder {
 
-    private A2AJavaRequestBuilder() {
-    }
+    private A2AJavaRequestBuilder() {}
 
     public static BuiltA2AJavaRequest buildStreamRequest(
             String promptText, String extensionUri, String metadataPayload) {
@@ -30,5 +29,3 @@ public final class A2AJavaRequestBuilder {
         return new BuiltA2AJavaRequest(request, callContext);
     }
 }
-
-

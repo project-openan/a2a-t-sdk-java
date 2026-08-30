@@ -11,8 +11,8 @@ import net.openan.a2at.sdk.server.A2ATServer;
  * Strategy abstraction for generating negotiation messages, isolating the fromData (rule-based) vs fromText (LLM)
  * difference behind a single interface.
  *
- * <p>Everything else in the demo — Task-T generation, {@code validateTaskPromptAndDataFilling} parameter validation, the
- * negotiation state machine — is identical regardless of which strategy is active. Only the negotiation prompt
+ * <p>Everything else in the demo — Task-T generation, {@code validateTaskPromptAndDataFilling} parameter validation,
+ * the negotiation state machine — is identical regardless of which strategy is active. Only the negotiation prompt
  * generation step differs: fromData builds typed records and calls the deterministic API; fromText passes natural
  * language and lets the SDK's LLM extraction step parse it.
  *

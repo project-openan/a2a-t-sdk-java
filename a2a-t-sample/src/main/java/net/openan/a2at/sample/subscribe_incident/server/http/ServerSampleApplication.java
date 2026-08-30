@@ -8,7 +8,4 @@ import net.openan.a2at.sample.subscribe_incident.server.flow.PromptComplianceChe
  *
  * @since 2026-05
  */
-public record ServerSampleApplication(Map<String, Object> agentCard, PromptComplianceChecker promptChecker) {
-}
-
-
+public record ServerSampleApplication(Map<String, Object> agentCard, PromptComplianceChecker promptChecker) {}

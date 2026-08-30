@@ -6,8 +6,8 @@ import net.openan.a2at.sdk.core.model.MetadataContent;
 /**
  * Prompt-generation bridge used by the client sample flow.
  *
- * <p>Exposes the two Notification-T generation entry points verified by this sample: the from-text
- * variant and the schema-guided from-data variant.
+ * <p>Exposes the two Notification-T generation entry points verified by this sample: the from-text variant and the
+ * schema-guided from-data variant.
  *
  * @since 2026-08
  */

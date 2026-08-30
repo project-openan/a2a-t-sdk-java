@@ -230,10 +230,7 @@ class NegotiationFacadeOutputSymmetryTest {
     }
 
     private static SymmetryCase endingCase(
-            String label,
-            NegotiationPerformative performative,
-            String templateUri,
-            NegotiationEndingContent content) {
+            String label, NegotiationPerformative performative, String templateUri, NegotiationEndingContent content) {
         return new SymmetryCase(
                 label,
                 performative,
@@ -243,8 +240,7 @@ class NegotiationFacadeOutputSymmetryTest {
     }
 
     /** One symmetry case: a fixed input addressed to one of the three from-data generation methods. */
-    private record SymmetryCase(
-            String label, NegotiationPerformative performative, String templateUri, Object data) {
+    private record SymmetryCase(String label, NegotiationPerformative performative, String templateUri, Object data) {
 
         MetadataContent generate(ProposeGenerator propose, EndingGenerator accept, EndingGenerator reject) {
             return switch (performative) {

@@ -22,8 +22,7 @@ import org.a2aproject.sdk.spec.TextPart;
  */
 public final class A2AJavaClientEventMapper {
 
-    private A2AJavaClientEventMapper() {
-    }
+    private A2AJavaClientEventMapper() {}
 
     public static Map<String, Object> toPayload(ClientEvent event) {
         if (event instanceof TaskEvent taskEvent) {
@@ -33,7 +32,9 @@ public final class A2AJavaClientEventMapper {
         }
         if (event instanceof TaskUpdateEvent taskUpdateEvent) {
             if (taskUpdateEvent.getUpdateEvent() instanceof TaskStatusUpdateEvent statusUpdateEvent) {
-                return Map.of("status", Map.of("state", statusUpdateEvent.status().state().name()));
+                return Map.of(
+                        "status",
+                        Map.of("state", statusUpdateEvent.status().state().name()));
             }
             if (taskUpdateEvent.getUpdateEvent() instanceof TaskArtifactUpdateEvent artifactUpdateEvent) {
                 return Map.of("artifact", toArtifactMap(artifactUpdateEvent.artifact()));
@@ -92,5 +93,3 @@ public final class A2AJavaClientEventMapper {
         return Map.of("value", String.valueOf(part));
     }
 }
-
-

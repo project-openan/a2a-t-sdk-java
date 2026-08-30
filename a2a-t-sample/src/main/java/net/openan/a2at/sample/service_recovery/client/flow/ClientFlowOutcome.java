@@ -11,5 +11,4 @@ import net.openan.a2at.sample.service_recovery.VerificationCheck;
  * @param events normalized stream events received from the server, in arrival order
  * @since 2026-08
  */
-public record ClientFlowOutcome(List<VerificationCheck> checks, List<Map<String, Object>> events) {
-}
+public record ClientFlowOutcome(List<VerificationCheck> checks, List<Map<String, Object>> events) {}

@@ -3,8 +3,8 @@
  *
  * <p>The demo loads scenarios from a JSON configuration file, generates authorization prompts through the
  * {@code A2ATClient} facade, validates them through the {@code A2ATServer} facade, and reports
- * {@code match}/{@code mismatch} results with a non-zero exit code when any scenario does not match
- * its expected outcome.
+ * {@code match}/{@code mismatch} results with a non-zero exit code when any scenario does not match its expected
+ * outcome.
  *
  * <p>Layout:
  *

@@ -18,35 +18,32 @@ import net.openan.a2at.sdk.llm.LLMResponse;
  * Reasoning capture apparatus for the Authorization-T demo.
  *
  * <p>When enabled ({@code -Dauthz.reasoning=true}), it decorates the underlying {@link LLMClient} to:
+ *
  * <ul>
- *   <li>append a short reasoning-instruction appendix to the {@code slot_extraction} and
- *       {@code content_validation} system prompts (identified by exact fingerprint match against the
- *       classpath {@code system.md} resources);</li>
- *   <li>extend the {@code content_validation} output schema with an optional {@code reasoning}
- *       property (so the instruction does not contradict {@code additionalProperties:false});</li>
- *   <li>best-effort parse the returned raw content for the {@code reasoning} field and record it,
- *       keyed by scenario label.</li>
+ *   <li>append a short reasoning-instruction appendix to the {@code slot_extraction} and {@code content_validation}
+ *       system prompts (identified by exact fingerprint match against the classpath {@code system.md} resources);
+ *   <li>extend the {@code content_validation} output schema with an optional {@code reasoning} property (so the
+ *       instruction does not contradict {@code additionalProperties:false});
+ *   <li>best-effort parse the returned raw content for the {@code reasoning} field and record it, keyed by scenario
+ *       label.
  * </ul>
  *
- * <p>Unmatched stages (negotiation and other extensions) are passed through untouched with no capture.
- * Captures are associated to scenarios through a {@link ThreadLocal} double-slot (label + entry list),
- * which is correct because one executor task thread runs the complete client→server flow for one
- * scenario.
+ * <p>Unmatched stages (negotiation and other extensions) are passed through untouched with no capture. Captures are
+ * associated to scenarios through a {@link ThreadLocal} double-slot (label + entry list), which is correct because one
+ * executor task thread runs the complete client→server flow for one scenario.
  *
  * @since 2026-08
  */
 public final class AuthzReasoningCapture {
 
-    private static final String SLOT_EXTRACTION_SYSTEM =
-            "/prompt_resources/prompts/slot_extraction/zh-CN/system.md";
+    private static final String SLOT_EXTRACTION_SYSTEM = "/prompt_resources/prompts/slot_extraction/zh-CN/system.md";
     private static final String CONTENT_VALIDATION_SYSTEM =
             "/prompt_resources/prompts/content_validation/zh-CN/system.md";
 
-    private static final String REASONING_APPENDIX =
-            "\n\n[reasoning_appendix]\n"
-                    + "除上述要求的 JSON 字段外，请额外输出一个 \"reasoning\" 字段（字符串），"
-                    + "简要说明本次提参/校验每个结论的依据与推理过程。"
-                    + "该字段仅供调用方分析使用，不会影响对其他字段的判定与使用。";
+    private static final String REASONING_APPENDIX = "\n\n[reasoning_appendix]\n"
+            + "除上述要求的 JSON 字段外，请额外输出一个 \"reasoning\" 字段（字符串），"
+            + "简要说明本次提参/校验每个结论的依据与推理过程。"
+            + "该字段仅供调用方分析使用，不会影响对其他字段的判定与使用。";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -64,8 +61,8 @@ public final class AuthzReasoningCapture {
      * Resolves the reasoning-capture flag from the {@code authz.reasoning} system property.
      *
      * @return {@code true} when reasoning capture is enabled, {@code false} by default
-     * @throws IllegalArgumentException if the property is set to a value other than {@code true} or
-     *     {@code false} (case-insensitive)
+     * @throws IllegalArgumentException if the property is set to a value other than {@code true} or {@code false}
+     *     (case-insensitive)
      * @since 2026-08
      */
     public static boolean resolveReasoningFlag() {
@@ -123,8 +120,8 @@ public final class AuthzReasoningCapture {
     }
 
     /**
-     * Ends capture for the current thread's scenario, merging the recorded stages into the registry
-     * (the last response per stage wins across infra retries) and clearing the thread-local state.
+     * Ends capture for the current thread's scenario, merging the recorded stages into the registry (the last response
+     * per stage wins across infra retries) and clearing the thread-local state.
      *
      * @since 2026-08
      */
@@ -158,8 +155,7 @@ public final class AuthzReasoningCapture {
      * @param serverRaw raw LLM response content from the content_validation stage, or {@code null}
      * @since 2026-08
      */
-    public record StageCapture(
-            String clientReasoning, String serverReasoning, String clientRaw, String serverRaw) {}
+    public record StageCapture(String clientReasoning, String serverReasoning, String clientRaw, String serverRaw) {}
 
     private enum Stage {
         SLOT_EXTRACTION,

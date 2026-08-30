@@ -408,10 +408,14 @@ public final class NegotiationEvalApp {
 
         // -- step 4: outbound validation of the generated propose --
         Map<String, Object> proposeValidationInput = Map.of(
-                "prompt", proposePrompt,
-                "context", contextJson(proposeContext),
-                "schema", negotiationSchema(actualMissing, taskSchema),
-                "template_uri", DemoTemplates.NEGOTIATION_PROPOSE);
+                "prompt",
+                proposePrompt,
+                "context",
+                contextJson(proposeContext),
+                "schema",
+                negotiationSchema(actualMissing, taskSchema),
+                "template_uri",
+                DemoTemplates.NEGOTIATION_PROPOSE);
         Boolean proposeValid = null;
         try {
             long nanos = System.nanoTime();
@@ -478,10 +482,14 @@ public final class NegotiationEvalApp {
                     apiCall(
                             "A2ATClient.validateProposePromptAndDataFilling",
                             Map.of(
-                                    "prompt", proposePrompt,
-                                    "context", contextJson(proposeContext),
-                                    "schema", negotiationSchema(actualMissing, taskSchema),
-                                    "template_uri", DemoTemplates.NEGOTIATION_PROPOSE)));
+                                    "prompt",
+                                    proposePrompt,
+                                    "context",
+                                    contextJson(proposeContext),
+                                    "schema",
+                                    negotiationSchema(actualMissing, taskSchema),
+                                    "template_uri",
+                                    DemoTemplates.NEGOTIATION_PROPOSE)));
             step.put("client_requested_slots", new ArrayList<>(clientRequestedSlots));
             steps.add(step);
             emit("[eval]   [5] client extracted requested slots: " + clientRequestedSlots + " (" + secs(nanos) + "s)");
@@ -501,10 +509,14 @@ public final class NegotiationEvalApp {
                     apiCall(
                             "A2ATClient.validateProposePromptAndDataFilling",
                             Map.of(
-                                    "prompt", proposePrompt,
-                                    "context", contextJson(proposeContext),
-                                    "schema", negotiationSchema(actualMissing, taskSchema),
-                                    "template_uri", DemoTemplates.NEGOTIATION_PROPOSE)));
+                                    "prompt",
+                                    proposePrompt,
+                                    "context",
+                                    contextJson(proposeContext),
+                                    "schema",
+                                    negotiationSchema(actualMissing, taskSchema),
+                                    "template_uri",
+                                    DemoTemplates.NEGOTIATION_PROPOSE)));
             step.put("client_requested_slots", List.of());
             steps.add(step);
             emit("[eval]   [5] client propose validation REJECTED: " + error.getCode() + " " + error.getMessage()
@@ -631,10 +643,14 @@ public final class NegotiationEvalApp {
 
         // -- step 7: inbound validation of the accept message; extracted values must match the client fill --
         Map<String, Object> acceptValidationInput = Map.of(
-                "prompt", acceptPrompt,
-                "context", contextJson(acceptContext),
-                "schema", negotiationSchema(slotsToFill, taskSchema),
-                "template_uri", DemoTemplates.NEGOTIATION_ACCEPT);
+                "prompt",
+                acceptPrompt,
+                "context",
+                contextJson(acceptContext),
+                "schema",
+                negotiationSchema(slotsToFill, taskSchema),
+                "template_uri",
+                DemoTemplates.NEGOTIATION_ACCEPT);
         Boolean acceptValid = null;
         Boolean fillValueMatch = null;
         Map<String, Object> extractedAcceptParams = null;

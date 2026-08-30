@@ -28,13 +28,10 @@ import org.a2aproject.sdk.spec.TextPart;
 /** Sends one A2A information-negotiation request and validates its terminal Artifact. */
 public final class NegotiationClientMain {
 
-    private NegotiationClientMain() {
-    }
+    private NegotiationClientMain() {}
 
     public static void main(String[] args) {
-        Path envPath = args.length == 0
-                ? NegotiationSampleEnvironment.defaultEnvPath("client")
-                : Path.of(args[0]);
+        Path envPath = args.length == 0 ? NegotiationSampleEnvironment.defaultEnvPath("client") : Path.of(args[0]);
         Map<String, String> env = NegotiationSampleEnvironment.read(envPath);
         if (NegotiationMockLlmInstaller.PROVIDER.equals(env.get("A2AT_LLM_PROVIDER"))) {
             NegotiationMockLlmInstaller.install();
@@ -72,16 +69,16 @@ public final class NegotiationClientMain {
                         NegotiationContext endingContext = NegotiationMetadataReader.readContext(endingMetadata);
                         Map<String, Object> result = decision == NegotiationDecision.ACCEPT
                                 ? client.validateAcceptPromptAndDataFilling(
-                                        prompt,
-                                        endingContext,
-                                        InformationNegotiationSchemas.accept(),
-                                        NegotiationSampleFlow.ENDING_TEMPLATE_URI)
+                                                prompt,
+                                                endingContext,
+                                                InformationNegotiationSchemas.accept(),
+                                                NegotiationSampleFlow.ENDING_TEMPLATE_URI)
                                         .data()
                                 : client.validateRejectPromptAndDataFilling(
-                                        prompt,
-                                        endingContext,
-                                        InformationNegotiationSchemas.reject(),
-                                        NegotiationSampleFlow.ENDING_TEMPLATE_URI)
+                                                prompt,
+                                                endingContext,
+                                                InformationNegotiationSchemas.reject(),
+                                                NegotiationSampleFlow.ENDING_TEMPLATE_URI)
                                         .data();
                         System.out.println("[negotiation-client] result=" + result);
                     }

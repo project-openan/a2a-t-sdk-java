@@ -2,7 +2,6 @@ package net.openan.a2at.sample.task_t;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -11,8 +10,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Guards the packaged sample file {@code private-line-complaint-samples.json}: sample counts per case, the contract
- * {@code enum} on the scenario fields of both schemas, and the optional-slot observation samples (which must not
- * expect the optional time/serial fields).
+ * {@code enum} on the scenario fields of both schemas, and the optional-slot observation samples (which must not expect
+ * the optional time/serial fields).
  */
 class TaskTPrivateLineComplaintSamplesTest {
 
@@ -29,10 +28,10 @@ class TaskTPrivateLineComplaintSamplesTest {
 
     @Test
     void should_ContractScenarioEnum_OnBothSchemas() {
-        Map<String, Object> semantics = TaskTPrivateLineComplaintSamples
-                .dataWithSchemaSamples().get(0).semanticsSchema();
-        Map<String, Object> validation = TaskTPrivateLineComplaintSamples
-                .dataWithSchemaSamples().get(0).validationSchema();
+        Map<String, Object> semantics =
+                TaskTPrivateLineComplaintSamples.dataWithSchemaSamples().get(0).semanticsSchema();
+        Map<String, Object> validation =
+                TaskTPrivateLineComplaintSamples.dataWithSchemaSamples().get(0).validationSchema();
 
         assertEquals(List.of("专线中断", "专线质差"), enumOf(semantics, "complaintScenario"));
         assertEquals(List.of("专线中断", "专线质差"), enumOf(validation, "bizScenario"));
@@ -40,10 +39,9 @@ class TaskTPrivateLineComplaintSamplesTest {
 
     @Test
     void should_OptionalSlotObservationSamples_NotExpectTimeOrSerial() {
-        TaskTSample text = sampleByName(
-                TaskTPrivateLineComplaintSamples.textSamples(), "text-optional-slots-missing");
-        TaskTSample data = sampleByName(
-                TaskTPrivateLineComplaintSamples.dataWithSchemaSamples(), "data-optional-slots-missing");
+        TaskTSample text = sampleByName(TaskTPrivateLineComplaintSamples.textSamples(), "text-optional-slots-missing");
+        TaskTSample data =
+                sampleByName(TaskTPrivateLineComplaintSamples.dataWithSchemaSamples(), "data-optional-slots-missing");
 
         assertFalse(text.expectedParams().containsKey(TaskTPrivateLineComplaintSamples.SERVER_TIME));
         assertFalse(text.expectedParams().containsKey(TaskTPrivateLineComplaintSamples.SERVER_TICKET));
@@ -60,6 +58,9 @@ class TaskTPrivateLineComplaintSamplesTest {
     }
 
     private static TaskTSample sampleByName(List<TaskTSample> samples, String name) {
-        return samples.stream().filter(sample -> sample.name().equals(name)).findFirst().orElse(null);
+        return samples.stream()
+                .filter(sample -> sample.name().equals(name))
+                .findFirst()
+                .orElse(null);
     }
 }

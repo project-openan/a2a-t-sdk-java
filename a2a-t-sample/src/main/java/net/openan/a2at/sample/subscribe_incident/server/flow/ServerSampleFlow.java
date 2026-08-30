@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
-import net.openan.a2at.sample.subscribe_incident.shared.logging.SampleLoggingFormatter;
 import net.openan.a2at.sample.subscribe_incident.shared.error.ValueErrorException;
+import net.openan.a2at.sample.subscribe_incident.shared.logging.SampleLoggingFormatter;
 import net.openan.a2at.sdk.server.model.PromptComplianceFailure;
 import net.openan.a2at.sdk.server.model.PromptComplianceResult;
 import org.a2aproject.sdk.server.ServerCallContext;
@@ -33,8 +33,7 @@ public final class ServerSampleFlow {
 
     private static final String WORKING_MESSAGE = "Incident reporting task in progress";
 
-    private ServerSampleFlow() {
-    }
+    private ServerSampleFlow() {}
 
     public static void executeServerFlow(
             RequestContext requestContext,
@@ -71,9 +70,7 @@ public final class ServerSampleFlow {
         emit(logSink, SampleLoggingFormatter.formatStageLog("server", "task-status", "TASK_STATE_SUBMITTED"));
         if (!complianceResult.success()) {
             agentEmitter.reject(buildStatusMessage(
-                    contextId,
-                    taskId,
-                    "Prompt validation failed: " + failureMessage(complianceResult.failure())));
+                    contextId, taskId, "Prompt validation failed: " + failureMessage(complianceResult.failure())));
             emit(logSink, SampleLoggingFormatter.formatStageLog("server", "task-status", "TASK_STATE_REJECTED"));
             return;
         }
@@ -96,7 +93,8 @@ public final class ServerSampleFlow {
         } catch (ServerFlowInterruptedException exception) {
             throw exception;
         } catch (RuntimeException exception) {
-            agentEmitter.fail(buildStatusMessage(contextId, taskId, "Mock incident stream failed: " + exception.getMessage()));
+            agentEmitter.fail(
+                    buildStatusMessage(contextId, taskId, "Mock incident stream failed: " + exception.getMessage()));
             emit(logSink, SampleLoggingFormatter.formatStageLog("server", "task-status", "TASK_STATE_FAILED"));
         }
     }
@@ -157,5 +155,3 @@ public final class ServerSampleFlow {
         return failure == null ? "unknown error" : failure.message();
     }
 }
-
-

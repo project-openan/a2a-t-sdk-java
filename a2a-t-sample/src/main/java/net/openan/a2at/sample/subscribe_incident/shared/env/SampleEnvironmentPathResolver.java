@@ -10,8 +10,7 @@ import java.nio.file.Path;
  */
 public final class SampleEnvironmentPathResolver {
 
-    private SampleEnvironmentPathResolver() {
-    }
+    private SampleEnvironmentPathResolver() {}
 
     public static Path resolve(Path directory, String primaryFileName, String fallbackFileName) {
         Path primary = directory.resolve(primaryFileName);
@@ -26,5 +25,3 @@ public final class SampleEnvironmentPathResolver {
         return primary;
     }
 }
-
-

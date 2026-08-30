@@ -38,8 +38,8 @@ public final class NegotiationAgentExecutor implements AgentExecutor {
             NegotiationMetadataReader.requireExtension(extensionHeader(requestContext));
             Message message = requestContext.getMessage();
             Map<String, ?> metadata = message == null ? null : message.metadata();
-            String proposePrompt = NegotiationMetadataReader.readPrompt(
-                    metadata, NegotiationSampleFlow.PROPOSE_TEMPLATE_URI);
+            String proposePrompt =
+                    NegotiationMetadataReader.readPrompt(metadata, NegotiationSampleFlow.PROPOSE_TEMPLATE_URI);
             NegotiationContext context = NegotiationMetadataReader.readContext(metadata);
             server.validateProposePromptAndDataFilling(
                     proposePrompt,
@@ -54,7 +54,8 @@ public final class NegotiationAgentExecutor implements AgentExecutor {
             agentEmitter.submit();
             agentEmitter.startWork();
             agentEmitter.addArtifact(
-                    List.of(new TextPart("Information negotiation " + decision.name().toLowerCase())),
+                    List.of(new TextPart(
+                            "Information negotiation " + decision.name().toLowerCase())),
                     "information-negotiation",
                     "Private-line complaint negotiation result",
                     Map.copyOf(ending.buildMetadataContent()),

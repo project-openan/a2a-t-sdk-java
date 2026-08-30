@@ -13,8 +13,7 @@ import org.a2aproject.sdk.spec.TaskStatusUpdateEvent;
  * @since 2026-05
  */
 public final class SampleStreamTerminalStateDecider {
-    private SampleStreamTerminalStateDecider() {
-    }
+    private SampleStreamTerminalStateDecider() {}
 
     public static boolean isTerminal(ClientEvent event) {
         if (event instanceof TaskEvent taskEvent) {
@@ -40,5 +39,3 @@ public final class SampleStreamTerminalStateDecider {
                 || state == TaskState.TASK_STATE_AUTH_REQUIRED;
     }
 }
-
-

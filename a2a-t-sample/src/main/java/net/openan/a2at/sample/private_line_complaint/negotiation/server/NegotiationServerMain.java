@@ -24,13 +24,10 @@ import org.a2aproject.sdk.server.tasks.InMemoryTaskStore;
 /** Starts the A2A HTTP server for the private-line complaint negotiation sample. */
 public final class NegotiationServerMain {
 
-    private NegotiationServerMain() {
-    }
+    private NegotiationServerMain() {}
 
     public static void main(String[] args) throws InterruptedException {
-        Path envPath = args.length == 0
-                ? NegotiationSampleEnvironment.defaultEnvPath("server")
-                : Path.of(args[0]);
+        Path envPath = args.length == 0 ? NegotiationSampleEnvironment.defaultEnvPath("server") : Path.of(args[0]);
         Map<String, String> env = NegotiationSampleEnvironment.read(envPath);
         if (NegotiationMockLlmInstaller.PROVIDER.equals(env.get("A2AT_LLM_PROVIDER"))) {
             NegotiationMockLlmInstaller.install();
@@ -58,7 +55,10 @@ public final class NegotiationServerMain {
                 executor,
                 executor);
         try (EmbeddedA2AHttpServer ignored = EmbeddedA2AHttpServer.start(
-                host, port, RegistryAgentCardMapper.toA2AJavaAgentCard(NegotiationAgentCard.build(host, port)), handler)) {
+                host,
+                port,
+                RegistryAgentCardMapper.toA2AJavaAgentCard(NegotiationAgentCard.build(host, port)),
+                handler)) {
             System.out.println("[negotiation-server] listening on http://" + host + ":" + port);
             Thread.currentThread().join();
         }

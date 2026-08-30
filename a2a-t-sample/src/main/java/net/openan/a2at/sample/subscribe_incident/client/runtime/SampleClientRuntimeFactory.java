@@ -11,5 +11,3 @@ public interface SampleClientRuntimeFactory {
 
     SampleClientRuntime create(Path envPath);
 }
-
-

@@ -21,5 +21,3 @@ public interface A2AJavaClientRuntime {
             ClientCallContext callContext,
             Consumer<String> logSink);
 }
-
-

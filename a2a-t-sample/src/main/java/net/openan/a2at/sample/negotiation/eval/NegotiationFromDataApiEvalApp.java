@@ -38,22 +38,21 @@ import net.openan.a2at.sdk.server.A2ATServer;
  * Focused capability evaluator for the six Negotiation-T fromData interfaces:
  *
  * <ul>
- *   <li>generation - {@code generateNegotiationProposePromptFromData},
- *       {@code generateNegotiationAcceptPromptFromData}, {@code generateNegotiationRejectPromptFromData};
+ *   <li>generation - {@code generateNegotiationProposePromptFromData}, {@code generateNegotiationAcceptPromptFromData},
+ *       {@code generateNegotiationRejectPromptFromData};
  *   <li>validation and parameter extraction - {@code validateProposePromptAndDataFilling},
  *       {@code validateAcceptPromptAndDataFilling}, {@code validateRejectPromptAndDataFilling}.
  * </ul>
  *
- * <p>Each case is one generate-validate round trip over pure structured data: every item is one key (the
- * Task-T template slot name from the private-line-complaint scenario) carrying an atomic value - no
- * natural-language passages, no template-error scenarios. The generated message is validated through the
- * matching validate interface (propose validated client-side, accept/reject server-side - the receiving
- * role of the protocol), and the extracted parameters must carry back exactly the input key-value pairs.
+ * <p>Each case is one generate-validate round trip over pure structured data: every item is one key (the Task-T
+ * template slot name from the private-line-complaint scenario) carrying an atomic value - no natural-language passages,
+ * no template-error scenarios. The generated message is validated through the matching validate interface (propose
+ * validated client-side, accept/reject server-side - the receiving role of the protocol), and the extracted parameters
+ * must carry back exactly the input key-value pairs.
  *
- * <p>Generation is deterministic rendering (no LLM call); validation runs the SDK negotiation semantic
- * pipeline (one LLM call), so a real API key is needed and each validation is recorded as {@code llm_calls}
- * evidence in the report. The case matrix follows the Task-T field model (required:
- * 任务对象/投诉分类/OSS侧事件流水号; optional: 问题发生时间/投诉详情).
+ * <p>Generation is deterministic rendering (no LLM call); validation runs the SDK negotiation semantic pipeline (one
+ * LLM call), so a real API key is needed and each validation is recorded as {@code llm_calls} evidence in the report.
+ * The case matrix follows the Task-T field model (required: 任务对象/投诉分类/OSS侧事件流水号; optional: 问题发生时间/投诉详情).
  *
  * <p>Usage:
  *
@@ -133,16 +132,14 @@ public final class NegotiationFromDataApiEvalApp {
         boolean expectSuccess = Boolean.TRUE.equals(expect.get("succeeds"));
 
         Map<String, Object> itemsInput = asMap(input.get("items"));
-        String relationship = input.containsKey("relationship")
-                ? String.valueOf(input.get("relationship"))
-                : null;
+        String relationship = input.containsKey("relationship") ? String.valueOf(input.get("relationship")) : null;
         String template = resolveTemplate(api, input);
 
         NegotiationPerformative performative = "propose".equals(api)
                 ? NegotiationPerformative.PROPOSE
                 : "accept".equals(api) ? NegotiationPerformative.ACCEPT : NegotiationPerformative.REJECT;
-        NegotiationContext context =
-                new NegotiationContext(UUID.randomUUID().toString(), 1, NegotiationContext.DEFAULT_MAX_ROUNDS, performative);
+        NegotiationContext context = new NegotiationContext(
+                UUID.randomUUID().toString(), 1, NegotiationContext.DEFAULT_MAX_ROUNDS, performative);
         List<NegotiationItem> items = new ArrayList<>();
         for (Map.Entry<String, Object> entry : itemsInput.entrySet()) {
             items.add(new NegotiationItem(entry.getKey(), String.valueOf(entry.getValue())));
@@ -150,12 +147,10 @@ public final class NegotiationFromDataApiEvalApp {
 
         String generateMethod = "propose".equals(api)
                 ? "A2ATServer.generateNegotiationProposePromptFromData"
-                : "A2ATClient.generateNegotiation"
-                        + ("accept".equals(api) ? "Accept" : "Reject") + "PromptFromData";
+                : "A2ATClient.generateNegotiation" + ("accept".equals(api) ? "Accept" : "Reject") + "PromptFromData";
         String validateMethod = "propose".equals(api)
                 ? "A2ATClient.validateProposePromptAndDataFilling"
-                : "A2ATServer.validate"
-                        + ("accept".equals(api) ? "Accept" : "Reject") + "PromptAndDataFilling";
+                : "A2ATServer.validate" + ("accept".equals(api) ? "Accept" : "Reject") + "PromptAndDataFilling";
         // the receiving role validates: the client validates the server's propose, the server validates the
         // client's accept/reject - exactly the role assignment of the negotiation protocol
         String generateRole = "propose".equals(api) ? "server" : "client";
@@ -184,20 +179,27 @@ public final class NegotiationFromDataApiEvalApp {
         api(generateStep, apiCall(generateMethod, generateInput));
         String prompt = null;
         try {
-            MetadataContent content = switch (api) {
-                case "propose" -> new A2ATServer(envPath).generateNegotiationProposePromptFromData(
-                        new NegotiationProposeData(
-                                context, new InformationProposeContent(items, relationship)), template);
-                case "accept" -> new A2ATClient(envPath).generateNegotiationAcceptPromptFromData(
-                        new NegotiationEndingData(
-                                context, new InformationEndingContent(NegotiationConclusion.ACCEPT, items)),
-                        template);
-                case "reject" -> new A2ATClient(envPath).generateNegotiationRejectPromptFromData(
-                        new NegotiationEndingData(
-                                context, new InformationEndingContent(NegotiationConclusion.REJECT, items)),
-                        template);
-                default -> throw new IllegalArgumentException("Unknown api: " + api);
-            };
+            MetadataContent content =
+                    switch (api) {
+                        case "propose" -> new A2ATServer(envPath)
+                                .generateNegotiationProposePromptFromData(
+                                        new NegotiationProposeData(
+                                                context, new InformationProposeContent(items, relationship)),
+                                        template);
+                        case "accept" -> new A2ATClient(envPath)
+                                .generateNegotiationAcceptPromptFromData(
+                                        new NegotiationEndingData(
+                                                context,
+                                                new InformationEndingContent(NegotiationConclusion.ACCEPT, items)),
+                                        template);
+                        case "reject" -> new A2ATClient(envPath)
+                                .generateNegotiationRejectPromptFromData(
+                                        new NegotiationEndingData(
+                                                context,
+                                                new InformationEndingContent(NegotiationConclusion.REJECT, items)),
+                                        template);
+                        default -> throw new IllegalArgumentException("Unknown api: " + api);
+                    };
             prompt = content.promptText();
             generateStep.put("generated_prompt", prompt);
             generateStep.put("template_uri", content.templateUri());
@@ -209,9 +211,13 @@ public final class NegotiationFromDataApiEvalApp {
             if (expectSuccess) {
                 String normalized = normalize(prompt);
                 for (Map.Entry<String, Object> entry : itemsInput.entrySet()) {
-                    check(checks, "prompt contains item name: " + entry.getKey(),
+                    check(
+                            checks,
+                            "prompt contains item name: " + entry.getKey(),
                             normalized.contains(normalize(entry.getKey())));
-                    check(checks, "prompt contains item value: " + entry.getKey(),
+                    check(
+                            checks,
+                            "prompt contains item value: " + entry.getKey(),
                             normalized.contains(normalize(String.valueOf(entry.getValue()))));
                 }
                 if (input.containsKey("relationship") && !relationship.isBlank()) {
@@ -221,13 +227,19 @@ public final class NegotiationFromDataApiEvalApp {
                     check(checks, "prompt contains marker: " + marker, normalized.contains(normalize(marker)));
                 }
                 if (expect.get("template") != null) {
-                    check(checks, "template uri matches",
+                    check(
+                            checks,
+                            "template uri matches",
                             String.valueOf(expect.get("template")).equals(content.templateUri()));
                 }
                 // the wire context carries the performative of the emitted message and keeps the session identity
-                check(checks, "emitted context performative matches the api",
+                check(
+                        checks,
+                        "emitted context performative matches the api",
                         emitted != null && performative.equals(emitted.performative()));
-                check(checks, "emitted context keeps the session id",
+                check(
+                        checks,
+                        "emitted context keeps the session id",
                         emitted != null && context.id().equals(emitted.id()));
             } else {
                 check(checks, "expected generation failure but succeeded", false);
@@ -235,7 +247,11 @@ public final class NegotiationFromDataApiEvalApp {
         } catch (RuntimeException error) {
             generateStep.put("error", errorJson(error));
             if (expectSuccess) {
-                check(checks, "expected generation success but failed: " + error.getClass().getSimpleName(), false);
+                check(
+                        checks,
+                        "expected generation success but failed: "
+                                + error.getClass().getSimpleName(),
+                        false);
             } else {
                 check(checks, "generation failed as expected", true);
             }
@@ -256,17 +272,17 @@ public final class NegotiationFromDataApiEvalApp {
             Map<String, Object> validateStep = step("2. validate + extract " + api + " (fromData)", validateRole);
             api(validateStep, apiCall(validateMethod, validateInput));
             try {
-                FilledParamData params = switch (api) {
-                    case "propose" -> new A2ATClient(envPath).validateProposePromptAndDataFilling(
-                            prompt, context, extractionSchema, template);
-                    case "accept" -> new A2ATServer(envPath).validateAcceptPromptAndDataFilling(
-                            prompt, context, extractionSchema, template);
-                    case "reject" -> new A2ATServer(envPath).validateRejectPromptAndDataFilling(
-                            prompt, context, extractionSchema, template);
-                    default -> throw new IllegalArgumentException("Unknown api: " + api);
-                };
-                Map<String, Object> extracted =
-                        params.data() == null ? Map.of() : new LinkedHashMap<>(params.data());
+                FilledParamData params =
+                        switch (api) {
+                            case "propose" -> new A2ATClient(envPath)
+                                    .validateProposePromptAndDataFilling(prompt, context, extractionSchema, template);
+                            case "accept" -> new A2ATServer(envPath)
+                                    .validateAcceptPromptAndDataFilling(prompt, context, extractionSchema, template);
+                            case "reject" -> new A2ATServer(envPath)
+                                    .validateRejectPromptAndDataFilling(prompt, context, extractionSchema, template);
+                            default -> throw new IllegalArgumentException("Unknown api: " + api);
+                        };
+                Map<String, Object> extracted = params.data() == null ? Map.of() : new LinkedHashMap<>(params.data());
                 Map<String, Object> extractedJson = new LinkedHashMap<>();
                 for (Map.Entry<String, Object> entry : extracted.entrySet()) {
                     if (!CONTEXT_KEYS.contains(entry.getKey())) {
@@ -307,9 +323,9 @@ public final class NegotiationFromDataApiEvalApp {
     }
 
     /**
-     * Caller-owned extraction schema, shared with the fromText samples: the same information-negotiation
-     * contracts work for both generation paths because the validate*AndDataFilling interfaces and the rendered
-     * wire format are identical.
+     * Caller-owned extraction schema, shared with the fromText samples: the same information-negotiation contracts work
+     * for both generation paths because the validate*AndDataFilling interfaces and the rendered wire format are
+     * identical.
      */
     static Map<String, Object> extractionSchema(String api) {
         return switch (api) {
@@ -321,8 +337,8 @@ public final class NegotiationFromDataApiEvalApp {
     }
 
     /**
-     * Asserts that semantic extraction returns exactly the negotiated business field names, and that
-     * accept/reject payloads transport the input item text (supplied value / reason).
+     * Asserts that semantic extraction returns exactly the negotiated business field names, and that accept/reject
+     * payloads transport the input item text (supplied value / reason).
      */
     private static void checkExtractedFields(
             List<Map<String, Object>> checks,
@@ -335,21 +351,29 @@ public final class NegotiationFromDataApiEvalApp {
         for (Map<String, Object> item : extractedItems) {
             extractedNames.add(String.valueOf(item.get("name")));
         }
-        check(checks, "extracted field names match the negotiated items",
+        check(
+                checks,
+                "extracted field names match the negotiated items",
                 extractedNames.equals(new TreeSet<>(itemsInput.keySet())));
         if ("propose".equals(api) && input.containsKey("relationship")) {
             String relationship = String.valueOf(input.get("relationship"));
-            check(checks, "extracted relationship matches input",
+            check(
+                    checks,
+                    "extracted relationship matches input",
                     valueMatches(extractedJson.get("relationship"), relationship));
         } else {
-            check(checks, "relationship is absent for a single field or ending message",
+            check(
+                    checks,
+                    "relationship is absent for a single field or ending message",
                     extractedJson.get("relationship") == null);
         }
         if ("accept".equals(api) || "reject".equals(api)) {
             String payloadKey = "accept".equals(api) ? "value" : "reason";
             for (Map<String, Object> item : extractedItems) {
                 String name = String.valueOf(item.get("name"));
-                check(checks, "extracted " + payloadKey + " matches input item: " + name,
+                check(
+                        checks,
+                        "extracted " + payloadKey + " matches input item: " + name,
                         valueMatches(item.get(payloadKey), String.valueOf(itemsInput.get(name))));
             }
         }
@@ -362,8 +386,7 @@ public final class NegotiationFromDataApiEvalApp {
         }
         String extractedText = normalize(String.valueOf(extracted));
         String inputText = normalize(input);
-        return !extractedText.isEmpty()
-                && (extractedText.contains(inputText) || inputText.contains(extractedText));
+        return !extractedText.isEmpty() && (extractedText.contains(inputText) || inputText.contains(extractedText));
     }
 
     private static Map<String, Object> errorJson(RuntimeException error) {

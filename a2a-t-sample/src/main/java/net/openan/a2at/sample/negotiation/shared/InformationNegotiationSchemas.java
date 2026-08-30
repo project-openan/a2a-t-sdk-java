@@ -8,12 +8,12 @@ import java.util.Map;
 /**
  * Business-neutral, phase-specific caller schemas for information-negotiation validation.
  *
- * <p>The three validation APIs intentionally use independent parameter contracts. The contracts describe the
- * shape of the extracted result while the information-item names and values come from the negotiation message.
+ * <p>The three validation APIs intentionally use independent parameter contracts. The contracts describe the shape of
+ * the extracted result while the information-item names and values come from the negotiation message.
  *
  * <p>Shared by every information-negotiation sample path — fromText (natural-language generation) and fromData
- * (typed-record generation) — because the validate*AndDataFilling interfaces and the rendered wire format are
- * identical for both.
+ * (typed-record generation) — because the validate*AndDataFilling interfaces and the rendered wire format are identical
+ * for both.
  */
 public final class InformationNegotiationSchemas {
 
@@ -23,8 +23,7 @@ public final class InformationNegotiationSchemas {
 
     private static final Map<String, Object> REJECT = createRejectSchema();
 
-    private InformationNegotiationSchemas() {
-    }
+    private InformationNegotiationSchemas() {}
 
     public static Map<String, Object> propose() {
         return PROPOSE;

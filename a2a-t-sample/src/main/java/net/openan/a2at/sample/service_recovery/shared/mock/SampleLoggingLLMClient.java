@@ -12,10 +12,10 @@ import net.openan.a2at.sdk.llm.providers.OpenAIClient;
 /**
  * Logging-aware LLM client wrapper used by the sample.
  *
- * <p>Wraps either the real {@link OpenAIClient} or the {@link SampleMockLLMClient} and logs the
- * full request (messages, JSON schema, temperature, max tokens) and response (content, model,
- * usage) for every structured call, mirroring the Python sample's {@code llm_logger}. In mock mode
- * an extra {@code llm-mock} stage line marks that the canned response was used.
+ * <p>Wraps either the real {@link OpenAIClient} or the {@link SampleMockLLMClient} and logs the full request (messages,
+ * JSON schema, temperature, max tokens) and response (content, model, usage) for every structured call, mirroring the
+ * Python sample's {@code llm_logger}. In mock mode an extra {@code llm-mock} stage line marks that the canned response
+ * was used.
  *
  * @since 2026-08
  */
@@ -61,22 +61,22 @@ public final class SampleLoggingLLMClient implements LLMClient {
 
     @Override
     public LLMResponse structured(
-            List<Map<String, String>> messages,
-            Map<String, Object> jsonSchema,
-            Double temperature,
-            Integer maxTokens) {
+            List<Map<String, String>> messages, Map<String, Object> jsonSchema, Double temperature, Integer maxTokens) {
         // Keep the LLM request and response fully visible: they are core debugging artifacts.
         StringBuilder request = new StringBuilder("llm-request:");
         for (Map<String, String> message : messages) {
-            request.append("\n--- role=").append(message.get("role")).append(" ---\n").append(message.get("content"));
+            request.append("\n--- role=")
+                    .append(message.get("role"))
+                    .append(" ---\n")
+                    .append(message.get("content"));
         }
         logSink.accept(SampleLoggingFormatter.timestamped(request.toString()));
         LLMResponse response = delegate.structured(messages, jsonSchema, temperature, maxTokens);
         if (mockMode) {
             logSink.accept(SampleLoggingFormatter.formatStageLog(role, "llm-mock", "using canned mock LLM response"));
         }
-        logSink.accept(SampleLoggingFormatter.timestamped("llm-response:\n" + response.content()
-                + "\n(model=" + response.model() + ", usage=" + response.usage() + ")"));
+        logSink.accept(SampleLoggingFormatter.timestamped("llm-response:\n" + response.content() + "\n(model="
+                + response.model() + ", usage=" + response.usage() + ")"));
         return response;
     }
 }

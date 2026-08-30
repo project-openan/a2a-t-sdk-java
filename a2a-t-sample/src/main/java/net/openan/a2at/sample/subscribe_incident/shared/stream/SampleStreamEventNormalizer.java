@@ -11,8 +11,7 @@ import net.openan.a2at.sample.subscribe_incident.shared.error.ValueErrorExceptio
  */
 public final class SampleStreamEventNormalizer {
 
-    private SampleStreamEventNormalizer() {
-    }
+    private SampleStreamEventNormalizer() {}
 
     public static Map<String, Object> normalize(Map<String, Object> payload) {
         if (payload == null || payload.isEmpty()) {
@@ -44,5 +43,3 @@ public final class SampleStreamEventNormalizer {
         throw new ValueErrorException("Unsupported SSE payload: " + payload);
     }
 }
-
-

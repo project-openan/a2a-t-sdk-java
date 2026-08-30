@@ -5,8 +5,4 @@ package net.openan.a2at.sample.service_recovery.shared.endpoint;
  *
  * @since 2026-05
  */
-public record ResolvedAgentEndpoint(
-        String agentName, String protocolBinding, String protocolVersion, String url) {
-}
-
-
+public record ResolvedAgentEndpoint(String agentName, String protocolBinding, String protocolVersion, String url) {}

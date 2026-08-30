@@ -38,8 +38,7 @@ public final class ClientSampleFlow {
 
     private static final String LANGUAGE_EN_US = "en-US";
 
-    private ClientSampleFlow() {
-    }
+    private ClientSampleFlow() {}
 
     public static List<Map<String, Object>> runClientFlow(
             Map<String, Object> scenarioPayload,
@@ -48,7 +47,8 @@ public final class ClientSampleFlow {
             A2AJavaClientRuntime a2aRuntime,
             AgentEndpointCache endpointCache,
             Consumer<String> logSink) {
-        return runClientFlow(scenarioPayload, registryClient, promptClient, a2aRuntime, endpointCache, logSink, 0, "zh-CN");
+        return runClientFlow(
+                scenarioPayload, registryClient, promptClient, a2aRuntime, endpointCache, logSink, 0, "zh-CN");
     }
 
     public static List<Map<String, Object>> runClientFlow(
@@ -60,7 +60,14 @@ public final class ClientSampleFlow {
             Consumer<String> logSink,
             int maxArtifacts) {
         return runClientFlow(
-                scenarioPayload, registryClient, promptClient, a2aRuntime, endpointCache, logSink, maxArtifacts, "zh-CN");
+                scenarioPayload,
+                registryClient,
+                promptClient,
+                a2aRuntime,
+                endpointCache,
+                logSink,
+                maxArtifacts,
+                "zh-CN");
     }
 
     public static List<Map<String, Object>> runClientFlow(
@@ -81,7 +88,9 @@ public final class ClientSampleFlow {
         emit(
                 logSink,
                 SampleLoggingFormatter.formatStageLog(
-                        "client", "agentcard-resolved", "url=" + endpoint.url() + " binding=" + endpoint.protocolBinding()));
+                        "client",
+                        "agentcard-resolved",
+                        "url=" + endpoint.url() + " binding=" + endpoint.protocolBinding()));
 
         String promptInput = buildPromptInput(language);
         emit(logSink, SampleLoggingFormatter.formatPayloadLog("client", "prompt-input", promptInput));
@@ -92,26 +101,39 @@ public final class ClientSampleFlow {
         BuiltA2AJavaRequest builtRequest = A2AJavaRequestBuilder.buildStreamRequest(
                 promptText, NOTIFICATION_T_EXTENSION_URI_NL, buildRequestMetadata(scenarioPayload));
         emit(logSink, SampleLoggingFormatter.formatPayloadLog("client", "a2a-request-body", builtRequest.request()));
-        emit(logSink, SampleLoggingFormatter.formatPayloadLog("client", "request-headers", builtRequest.callContext().getHeaders()));
-        emit(logSink, SampleLoggingFormatter.formatStageLog(
-                "client", "request-built", "extension=" + builtRequest.callContext().getHeaders().get("A2A-Extensions")));
+        emit(
+                logSink,
+                SampleLoggingFormatter.formatPayloadLog(
+                        "client", "request-headers", builtRequest.callContext().getHeaders()));
+        emit(
+                logSink,
+                SampleLoggingFormatter.formatStageLog(
+                        "client",
+                        "request-built",
+                        "extension=" + builtRequest.callContext().getHeaders().get("A2A-Extensions")));
 
         List<Map<String, Object>> normalizedEvents = new ArrayList<>();
         int artifactCount = 0;
-        for (ClientEvent rawEvent : a2aRuntime.sendMessage(
-                agentCard, builtRequest.request(), builtRequest.callContext(), logSink)) {
+        for (ClientEvent rawEvent :
+                a2aRuntime.sendMessage(agentCard, builtRequest.request(), builtRequest.callContext(), logSink)) {
             Map<String, Object> payload = A2AJavaClientEventMapper.toPayload(rawEvent);
             Map<String, Object> normalizedEvent = SampleStreamEventNormalizer.normalize(payload);
             normalizedEvents.add(normalizedEvent);
             if ("status".equals(normalizedEvent.get("kind"))) {
-                emit(logSink, SampleLoggingFormatter.formatStageLog(
-                        "client", "task-status", String.valueOf(normalizedEvent.get("state"))));
+                emit(
+                        logSink,
+                        SampleLoggingFormatter.formatStageLog(
+                                "client", "task-status", String.valueOf(normalizedEvent.get("state"))));
             } else if ("message".equals(normalizedEvent.get("kind"))) {
-                emit(logSink, SampleLoggingFormatter.formatStageLog(
-                        "client", "task-message", String.valueOf(normalizedEvent.get("text"))));
+                emit(
+                        logSink,
+                        SampleLoggingFormatter.formatStageLog(
+                                "client", "task-message", String.valueOf(normalizedEvent.get("text"))));
             } else if ("artifact".equals(normalizedEvent.get("kind"))) {
-                emit(logSink, SampleLoggingFormatter.formatPayloadLog(
-                        "client", "task-artifact", normalizedEvent.get("artifact")));
+                emit(
+                        logSink,
+                        SampleLoggingFormatter.formatPayloadLog(
+                                "client", "task-artifact", normalizedEvent.get("artifact")));
                 artifactCount++;
                 if (maxArtifacts > 0 && artifactCount >= maxArtifacts) {
                     emit(logSink, "[client] max-artifacts-reached: " + maxArtifacts);
@@ -143,7 +165,9 @@ public final class ClientSampleFlow {
     }
 
     private static String buildPromptInput(String language) {
-        return LANGUAGE_EN_US.equalsIgnoreCase(language) ? NATURAL_LANGUAGE_PROMPT_INPUT_EN : NATURAL_LANGUAGE_PROMPT_INPUT_ZH;
+        return LANGUAGE_EN_US.equalsIgnoreCase(language)
+                ? NATURAL_LANGUAGE_PROMPT_INPUT_EN
+                : NATURAL_LANGUAGE_PROMPT_INPUT_ZH;
     }
 
     private static AgentCardQuery resolveAgentCardQuery(Map<String, Object> scenarioPayload) {
@@ -173,8 +197,5 @@ public final class ClientSampleFlow {
         return resolved.isEmpty() ? defaultValue : resolved;
     }
 
-    private record AgentCardQuery(String name, String organization) {
-    }
+    private record AgentCardQuery(String name, String organization) {}
 }
-
-

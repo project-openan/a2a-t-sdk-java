@@ -12,5 +12,3 @@ public interface PromptComplianceChecker {
 
     PromptComplianceResult checkTaskPrompt(String processedPromptText);
 }
-
-
