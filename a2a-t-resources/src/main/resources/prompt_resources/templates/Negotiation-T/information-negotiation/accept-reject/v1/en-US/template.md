@@ -9,9 +9,9 @@ Requirement:
 {{information_negotiation_result_content}} (required)
 Requirement:
 1. If the information can be provided:
-    - State the name and content
+	- State the name and content
 2. If the information cannot be provided:
-    - State the name and the specific reason why it cannot be provided (optional)
+	- State the name and the specific reason why it cannot be provided (optional)
 Example 1:
 Energy saving area information: Songshanhu
 Energy saving rate guarantee goal: 20Mbps

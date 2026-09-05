@@ -42,6 +42,5 @@ Requirement:
 10. Service recovery plan execution failure reason. This information must be provided when the service recovery plan execution result is "failure". Example: After optimization, tunnel link C is occupied and tunnel optimization cannot be performed (optional)
 
 ## Expected Output
-1. Subscription result. Allowed values: success, failure
-2. Subscription failure reason (optional)
-3. After successful subscription, report messages according to <Notification Data Format>
+1. Subscription result. Allowed values: success
+2. After successful subscription, report messages according to <Notification Data Format>
