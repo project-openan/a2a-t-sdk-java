@@ -20,7 +20,7 @@ Main capabilities include:
 - **Client-side template message generation**: the client generates protocol messages conforming to the A2A-T format from natural-language or structured input.
 - **Server-side template message validation**: the server validates whether A2A-T protocol-format messages sent by the client match the scenario, template, and slot constraints.
 - **Multi-round negotiation management**: supports the `information`, `feasibility`, and `target` negotiation flows.
-- **Template resource management**: bundles scenario, slot, template, and system prompt resources, and supports both `classpath` and local-file resource loading.
+- **Template resource management**: bundles scenario, slot, template, and system prompt resources, and supports two resource loading modes: `classpath` built-in resources and `local_file` local file resources.
 - **LLM adaptation**: connects to external large models through OpenAI-compatible call chains.
 
 For the API list and usage details provided by the SDK, see [API_Reference.md](API_Reference.md).
@@ -185,9 +185,8 @@ Service recovery event
 7. Service recovery plan details
 
 ## Expected Output
-1. Subscription result, possible values: success, failure
-2. Reason for subscription failure (optional)
-3. After a successful subscription, report messages per the <Notification Data Format>
+1. Subscription result, possible values: success
+2. After a successful subscription, report messages per the <Notification Data Format>
 */
 ```
 
