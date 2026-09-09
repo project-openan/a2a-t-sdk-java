@@ -14,7 +14,7 @@ HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 SLOT = re.compile(r"{{\s*([^{}\s]+)\s*}}")
 TASK = {"Task Description", "Task Type", "Task Target", "Task Object", "Task Context", "Constraints", "Expected Output", "Operation Type", "Terminology Explanation"}
 NOTIFICATION = {"Subscription Description", "Notification Topic", "Subscribe Condition", "Notification Data Format", "Expected Output"}
-AUTHORIZATION = {"Authorization Policy Operation Type", "Authorization Policy Operation Description", "Network Operation Authorization Policy List", "Expected Output"}
+AUTHORIZATION = {"Authorization Policy Operation Type", "Authorization Policy Operation Description", "Network Operation Authorization Policy List", "Expected Output", "Terminology Explanation"}
 ALIASES = {
     "任务描述": "Task Description", "任务类型": "Task Type", "任务目标": "Task Target", "任务对象": "Task Object",
     "目标对象": "Task Object", "任务上下文": "Task Context", "约束条件": "Constraints", "预期输出": "Expected Output",

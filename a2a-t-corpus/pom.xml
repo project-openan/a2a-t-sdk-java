@@ -13,14 +13,15 @@
     <packaging>jar</packaging>
 
     <name>a2a-t Corpus</name>
-    <description>SDK-level consistency corpus suite: negotiation test cases, golden fixtures and property tests.</description>
+    <description>Accuracy verification corpus suite for the a2a-t Java SDK: data-driven workflow cases executed against a real LLM; excluded from packaging and CI.</description>
+
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.source.skip>true</maven.source.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>net.openan.a2a-t.sdk</groupId>
-            <artifactId>a2a-t-negotiation</artifactId>
-            <version>${project.version}</version>
-        </dependency>
         <dependency>
             <groupId>net.openan.a2a-t.sdk</groupId>
             <artifactId>a2a-t-client</artifactId>
@@ -29,6 +30,11 @@
         <dependency>
             <groupId>net.openan.a2a-t.sdk</groupId>
             <artifactId>a2a-t-server</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.openan.a2a-t.sdk</groupId>
+            <artifactId>a2a-t-negotiation</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -42,17 +48,19 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <version>${junit.jupiter.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>net.jqwik</groupId>
-            <artifactId>jqwik</artifactId>
-            <version>${jqwik.version}</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
+
+    <build>
+        <testResources>
+            <testResource>
+                <directory>src/test/java</directory>
+                <includes>
+                    <include>**/resources/**</include>
+                </includes>
+            </testResource>
+            <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+        </testResources>
+    </build>
 </project>

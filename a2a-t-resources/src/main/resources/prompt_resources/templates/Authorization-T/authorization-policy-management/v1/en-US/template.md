@@ -27,3 +27,11 @@ Requirement:
 1. Authorization operation execution result. Allowed values: success, failure, partial success
 2. When the authorization operation is executed successfully, return the <Network Operation Authorization Policy List> that was executed successfully
 3. When the authorization operation fails or is partially successful, return a failure list containing the authorization policies and the failure reasons
+
+## Terminology Explanation
+1. Service complaint diagnosis
+   - Synonyms: Leased Line Service Complaint, corporate leased line complaint, corporate business complaint, leased line complaint, corporate leased line business complaint diagnosis, leased line business complaint diagnosis, leased line complaint diagnosis, circuit complaint, leased line business appeal, leased line service complaint, group leased line business complaint, government-enterprise leased line customer complaint, leased line complaint event
+2. Service recovery
+   - Synonyms: Service Restoration, Service Recovery, restore service, service recovery, temporary service recovery, rapid service recovery, rapid service restoration, emergency service restoration, service restoration handling
+3. Tunnel optimization
+   - Synonyms: Tunnel Optimization, tunnel optimization, tunnel path optimization, tunnel service optimization, tunnel resource optimization, tunnel rerouting optimization, tunnel routing regularization, tunnel path reorganization
