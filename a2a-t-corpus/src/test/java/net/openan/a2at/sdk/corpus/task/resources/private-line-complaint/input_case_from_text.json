@@ -27,7 +27,10 @@
               "bizScenario": {
                 "type": "string",
                 "description": "投诉分类场景，仅允许取值：专线中断、专线质差",
-                "enum": ["专线中断", "专线质差"]
+                "enum": [
+                  "专线中断",
+                  "专线质差"
+                ]
               },
               "faultTime": {
                 "type": "string",
@@ -42,7 +45,10 @@
                 "description": "投诉/故障现象详情描述"
               }
             },
-            "required": ["accessPort", "bizScenario"]
+            "required": [
+              "accessPort",
+              "bizScenario"
+            ]
           },
           "templateUri": "Task-T/network-layer/private-line-complaint/v1",
           "promptText": {
@@ -56,7 +62,10 @@
       {
         "result": "success",
         "data": {},
-        "error": { "errCode": "", "errMessage": "" }
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
       },
       {
         "result": "success",
@@ -64,7 +73,10 @@
           "accessPort": "P781-珠江新城-PTN7900-23-TPA1EG24-17",
           "bizScenario": "专线中断"
         },
-        "error": { "errCode": "", "errMessage": "" }
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
       }
     ]
   },
@@ -86,7 +98,10 @@
       {
         "result": "error",
         "data": {},
-        "error": { "errCode": "template.not_found", "errMessage": "" }
+        "error": {
+          "errCode": "template.not_found",
+          "errMessage": ""
+        }
       }
     ]
   },
@@ -116,7 +131,9 @@
                 "description": "接入端口名称，唯一标识被投诉的专线对象"
               }
             },
-            "required": ["accessPort"]
+            "required": [
+              "accessPort"
+            ]
           },
           "templateUri": "Task-T/network-layer/private-line-complaint/v1",
           "promptText": ""
@@ -127,12 +144,18 @@
       {
         "result": "success",
         "data": {},
-        "error": { "errCode": "", "errMessage": "" }
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
       },
       {
         "result": "error",
         "data": {},
-        "error": { "errCode": "negotiation.invalid_input", "errMessage": "" }
+        "error": {
+          "errCode": "negotiation.invalid_input",
+          "errMessage": ""
+        }
       }
     ]
   },
@@ -164,10 +187,16 @@
               "bizScenario": {
                 "type": "string",
                 "description": "投诉分类场景，仅允许取值：专线中断、专线质差",
-                "enum": ["专线中断", "专线质差"]
+                "enum": [
+                  "专线中断",
+                  "专线质差"
+                ]
               }
             },
-            "required": ["accessPort", "bizScenario"]
+            "required": [
+              "accessPort",
+              "bizScenario"
+            ]
           },
           "templateUri": "Task-T/network-layer/private-line-complaint/v1",
           "promptText": {
@@ -181,14 +210,20 @@
       {
         "result": "success",
         "data": {},
-        "error": { "errCode": "", "errMessage": "" }
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
       },
       {
         "result": "success",
         "data": {
           "accessPort": "P781-珠江新城-PTN7900-23-TPA1EG24-17"
         },
-        "error": { "errCode": "", "errMessage": "" }
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
       }
     ]
   },
@@ -220,10 +255,16 @@
               "bizScenario": {
                 "type": "string",
                 "description": "投诉分类场景，仅允许取值：专线中断、专线质差",
-                "enum": ["专线中断", "专线质差"]
+                "enum": [
+                  "专线中断",
+                  "专线质差"
+                ]
               }
             },
-            "required": ["accessPort", "bizScenario"]
+            "required": [
+              "accessPort",
+              "bizScenario"
+            ]
           },
           "templateUri": "Task-T/network-layer/private-line-complaint/v1",
           "promptText": {
@@ -237,14 +278,101 @@
       {
         "result": "success",
         "data": {},
-        "error": { "errCode": "", "errMessage": "" }
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
       },
       {
         "result": "success",
         "data": {
           "accessPort": "P781-珠江新城-PTN7900-23-TPA1EG24-17"
         },
-        "error": { "errCode": "", "errMessage": "" }
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
+      }
+    ]
+  },
+  {
+    "id": "TC00000006",
+    "caseDimension": "01-意图清晰参数完整",
+    "caseDesc": "基础档-专线业务中断-接入端口名称-标准",
+    "caseCategory": "正常",
+    "input": [
+      {
+        "api": "generateTaskPromptFromText",
+        "args": {
+          "text": "发生专线业务中断，专线业务对应的接入端口名称为P781-珠江新城-PTN7900-23-TPA1EG24-17，业务投诉工单流水号为fault-id-1-017-20230511-09013",
+          "templateUri": "Task-T/network-layer/private-line-complaint/v1"
+        }
+      },
+      {
+        "api": "validateTaskPromptAndDataFilling",
+        "args": {
+          "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "accessPort": {
+                "type": "string",
+                "description": "接入端口名称，唯一标识被投诉的专线对象"
+              },
+              "bizScenario": {
+                "type": "string",
+                "description": "投诉分类场景，仅允许取值：专线中断、专线质差",
+                "enum": [
+                  "专线中断",
+                  "专线质差"
+                ]
+              },
+              "faultTime": {
+                "type": "string",
+                "description": "问题发生时间"
+              },
+              "eventSerialNo": {
+                "type": "string",
+                "description": "OSS 侧受理的投诉工单或事件流水号"
+              },
+              "faultDetail": {
+                "type": "string",
+                "description": "投诉/故障现象详情描述"
+              }
+            },
+            "required": [
+              "accessPort",
+              "bizScenario"
+            ]
+          },
+          "templateUri": "Task-T/network-layer/private-line-complaint/v1",
+          "promptText": {
+            "$fromStep": 1,
+            "$field": "promptText"
+          }
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "success",
+        "data": {},
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
+      },
+      {
+        "result": "success",
+        "data": {
+          "accessPort": "P781-珠江新城-PTN7900-23-TPA1EG24-17",
+          "bizScenario": "专线中断"
+        },
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
       }
     ]
   }
