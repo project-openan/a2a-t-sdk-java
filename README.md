@@ -82,7 +82,7 @@ The repository is organized as Maven multi-modules, with core code under each mo
 | `a2a-t-negotiation` | Negotiation types, runtime state machine, and state storage |
 | `a2a-t-client` | Client facade providing task prompt generation and negotiation entry points (`A2ATClient`) |
 | `a2a-t-server` | Server facade providing A2A-T protocol message validation and negotiation entry points (`A2ATServer`) |
-| `a2a-t-corpus` | Conformance test corpus (pure test module) with data-driven cases and property-based tests |
+| `a2a-t-corpus` | Accuracy verification corpus (pure test module): data-driven workflow cases executed against a real LLM; excluded from packaging and CI |
 | `a2a-t-sample` | Runnable client/server samples |
 
 Each module's `src/test/java` mirrors the main package structure, covering the negotiation state machine, negotiation handlers, resource loaders, prompt rendering, and client/server orchestration.

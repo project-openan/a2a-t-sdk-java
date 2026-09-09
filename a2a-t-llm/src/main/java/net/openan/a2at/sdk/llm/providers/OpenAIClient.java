@@ -138,7 +138,10 @@ public class OpenAIClient implements LLMClient {
         String rawContent = extractMessageText(response);
         try {
             if (rawContent == null || rawContent.isBlank()) {
-                throw new LLMRuntimeError(config.provider() + " returned empty content (rate limit or model timeout)");
+                throw new LLMRuntimeError(config.provider()
+                        + " returned empty content (finish_reason=" + extractFinishReason(response)
+                        + "): typically rate limiting, a request timeout, or max_tokens exhausted by reasoning"
+                        + " content - check model quotas and the MAX_TOKENS/TIMEOUT settings");
             }
             Object parsed = OBJECT_MAPPER.readValue(rawContent, Object.class);
             if (!(parsed instanceof Map<?, ?>)) {
@@ -152,6 +155,14 @@ public class OpenAIClient implements LLMClient {
         }
     }
 
+    private static String extractFinishReason(ChatCompletion response) {
+        if (response.choices().isEmpty()) {
+            return "unknown";
+        }
+        Object finishReason = response.choices().get(0).finishReason();
+        return finishReason == null ? "none" : finishReason.toString();
+    }
+
     private String extractMessageText(ChatCompletion response) {
         if (response.choices().isEmpty()) {
             throw new LLMRuntimeError(config.provider() + " response did not include any choices");
@@ -161,7 +172,9 @@ public class OpenAIClient implements LLMClient {
                 .message()
                 .content()
                 .orElseThrow(
-                        () -> new LLMRuntimeError(config.provider() + " response did not include message content"));
+                        () -> new LLMRuntimeError(config.provider()
+                                + " response did not include message content (finish_reason="
+                                + extractFinishReason(response) + ")"));
     }
 
     private static Map<String, Integer> mapUsage(ChatCompletion response) {
