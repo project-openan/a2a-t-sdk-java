@@ -28,19 +28,27 @@ class PromptResourceAccessTest {
     @TempDir
     Path promptRootDir;
 
-    private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    private final ListAppender<ILoggingEvent> accessAppender = new ListAppender<>();
 
-    private final Logger logger = (Logger) LoggerFactory.getLogger(PromptResourceAccess.class);
+    private final Logger accessLogger = (Logger) LoggerFactory.getLogger(PromptResourceAccess.class);
+
+    private final ListAppender<ILoggingEvent> fallbackAppender = new ListAppender<>();
+
+    private final Logger fallbackLogger = (Logger) LoggerFactory.getLogger(BuiltinFallbackWarnings.class);
 
     @BeforeEach
     void attachAppender() {
-        appender.start();
-        logger.addAppender(appender);
+        accessAppender.start();
+        accessLogger.addAppender(accessAppender);
+        fallbackAppender.start();
+        fallbackLogger.addAppender(fallbackAppender);
     }
 
     @AfterEach
     void detachAppender() {
-        logger.detachAppender(appender);
+        accessLogger.detachAppender(accessAppender);
+        fallbackLogger.detachAppender(fallbackAppender);
+        fallbackAppender.stop();
     }
 
     @Test
@@ -49,7 +57,7 @@ class PromptResourceAccessTest {
                 PromptResourceAccess.create(new PromptRuntimeConfig("en-US", "classpath", promptRootDir.toString()));
 
         assertTrue(access.classpath());
-        List<String> warnings = warningMessages();
+        List<String> warnings = warningMessages(accessAppender);
         assertEquals(1, warnings.size());
         assertContains(
                 warnings.get(0), "prompt_resource_local_root_ignored", "root=" + promptRootDir, "source=classpath");
@@ -161,6 +169,58 @@ class PromptResourceAccessTest {
     }
 
     @Test
+    void localFileModeFallsBackToBuiltinTemplateWhenMissingLocally() {
+        PromptResourceAccess access =
+                PromptResourceAccess.create(new PromptRuntimeConfig("en-US", "local_file", promptRootDir.toString()));
+
+        String template = access.templateLoader().loadTemplate("ran-energy-saving", "en-US");
+
+        assertTrue(template.startsWith("## Operation Type"), "the built-in template should be loaded on fallback");
+        assertTrue(template.contains("{{operation_type}}"), "the built-in template should carry its slot placeholders");
+        List<String> warnings = warningMessages(fallbackAppender);
+        assertEquals(1, warnings.size());
+        assertContains(
+                warnings.get(0),
+                "prompt_resource_builtin_fallback",
+                "path=prompt_resources/templates/ran-energy-saving/en-US/template.md",
+                "source=classpath");
+    }
+
+    @Test
+    void localFileModeFallsBackToBuiltinSlotSchemaWhenMissingLocally() {
+        PromptResourceAccess access =
+                PromptResourceAccess.create(new PromptRuntimeConfig("en-US", "local_file", promptRootDir.toString()));
+
+        PromptSlotSchema schema = access.slotSchemaLoader().loadSlotSchema("ran-energy-saving", "en-US");
+
+        assertEquals("ran-energy-saving", schema.scenarioCode());
+        assertFalse(schema.slotDefinitions().isEmpty());
+        assertEquals(1, warningMessages(fallbackAppender).size());
+    }
+
+    @Test
+    void localFileModeFallsBackToBuiltinScenarioCatalogWhenMissingLocally() {
+        PromptResourceAccess access =
+                PromptResourceAccess.create(new PromptRuntimeConfig("en-US", "local_file", promptRootDir.toString()));
+
+        List<ScenarioDefinition> scenarios = access.loadScenarios("en-US");
+
+        assertFalse(scenarios.isEmpty(), "a missing local scenarios.json must fall back to the built-in scenario catalog");
+        assertEquals(1, warningMessages(fallbackAppender).size());
+    }
+
+    @Test
+    void builtinFallbackWarnsOnlyOncePerResourcePathAcrossLoaderInstances() {
+        PromptResourceAccess access =
+                PromptResourceAccess.create(new PromptRuntimeConfig("en-US", "local_file", promptRootDir.toString()));
+
+        access.templateLoader().loadTemplate("ran-energy-saving", "en-US");
+        access.templateLoader().loadTemplate("ran-energy-saving", "en-US");
+
+        assertEquals(1, warningMessages(fallbackAppender).size(), "the shared dedup set must warn only once per path");
+    }
+
+    @Test
     void localFileModeIgnoresUnsupportedLocalDirectoriesWithSingleWarning() throws IOException {
         write(
                 promptRootDir
@@ -183,7 +243,7 @@ class PromptResourceAccessTest {
 
         PromptResourceAccess.create(new PromptRuntimeConfig("en-US", "local_file", promptRootDir.toString()));
 
-        List<String> warnings = warningMessages();
+        List<String> warnings = warningMessages(accessAppender);
         assertEquals(1, warnings.size());
         assertContains(
                 warnings.get(0),
@@ -215,7 +275,7 @@ class PromptResourceAccessTest {
         assertEquals("Unsupported prompt source type: database", exception.getMessage());
     }
 
-    private List<String> warningMessages() {
+    private static List<String> warningMessages(ListAppender<ILoggingEvent> appender) {
         return appender.list.stream()
                 .filter(event -> event.getLevel() == Level.WARN)
                 .map(ILoggingEvent::getFormattedMessage)

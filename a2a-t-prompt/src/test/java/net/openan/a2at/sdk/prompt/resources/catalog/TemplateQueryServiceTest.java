@@ -13,9 +13,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import net.openan.a2at.sdk.core.model.PromptTemplate;
+import net.openan.a2at.sdk.core.model.StandardTemplates;
 import net.openan.a2at.sdk.core.model.TemplateUri;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,7 +75,18 @@ class TemplateQueryServiceTest {
     }
 
     @Test
-    void localFileSourceTypeListsLocalBusinessContentUnionClasspathNegotiationOnly() throws IOException {
+    void classpathSourceTypeIgnoresConfiguredButNonexistentLocalRoot() {
+        Path missing = localRootDir.resolve("missing");
+
+        TemplateQueryService service = new TemplateQueryService(LANGUAGE, "classpath", missing.toString());
+
+        List<PromptTemplate> templates = service.getPrompts();
+        assertFalse(templates.isEmpty());
+        assertTrue(templates.stream().allMatch(t -> CLASSPATH.equals(t.source())));
+    }
+
+    @Test
+    void localFileSourceTypeListsLocalUnionBuiltinBusinessAndClasspathNegotiation() throws IOException {
         writeTemplate(localRootDir, "Task-T/network-layer/custom-planning/v1", "<!-- Custom task -->\nbody");
 
         TemplateQueryService service = new TemplateQueryService(LANGUAGE, "local_file", localRootDir.toString());
@@ -82,12 +95,37 @@ class TemplateQueryServiceTest {
         Set<String> uris = templates.stream().map(t -> t.templateUri().uri()).collect(Collectors.toSet());
 
         assertTrue(uris.contains("Task-T/network-layer/custom-planning/v1"));
-        assertFalse(uris.contains("Task-T/network-layer/ran-energy-saving/v1"));
-        assertFalse(uris.contains("Notification-T/network-layer/subscribe-incident/v1"));
-        assertFalse(uris.contains("Authorization-T/authorization-policy-management/v1"));
+        assertTrue(uris.contains("Task-T/network-layer/ran-energy-saving/v1"));
+        assertTrue(uris.contains("Notification-T/network-layer/subscribe-incident/v1"));
+        assertTrue(uris.contains("Authorization-T/authorization-policy-management/v1"));
         for (String negotiationUri : NEGOTIATION_CLOSED_SET) {
             assertTrue(uris.contains(negotiationUri));
         }
+    }
+
+    @Test
+    void localFileSingleQueryFallsBackToBuiltinWhenMissingLocally() {
+        TemplateQueryService service = new TemplateQueryService(LANGUAGE, "local_file", localRootDir.toString());
+
+        Optional<PromptTemplate> template = service.getPrompt(StandardTemplates.ENERGY_SAVING);
+
+        assertTrue(template.isPresent());
+        assertEquals(CLASSPATH, template.get().source());
+    }
+
+    @Test
+    void localFileSamePathLocalOverridesBuiltinWithSingleLocalEntry() throws IOException {
+        writeTemplate(localRootDir, "Task-T/network-layer/ran-energy-saving/v1", "<!-- Local override -->\nlocal body");
+
+        TemplateQueryService service = new TemplateQueryService(LANGUAGE, "local_file", localRootDir.toString());
+
+        List<PromptTemplate> matches = service.getPrompts().stream()
+                .filter(t -> t.templateUri().uri().equals("Task-T/network-layer/ran-energy-saving/v1"))
+                .toList();
+
+        assertEquals(1, matches.size());
+        assertEquals(LOCAL, matches.get(0).source());
+        assertTrue(matches.get(0).content().contains("local body"));
     }
 
     @Test

@@ -1,7 +1,7 @@
 package net.openan.a2at.sdk.client.prompt.assembly;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.openan.a2at.sdk.core.exception.ResourceNotFoundException;
 import net.openan.a2at.sdk.core.model.A2ATConfig;
 import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
@@ -55,7 +54,7 @@ class DefaultA2ATClientBuilderTest {
     }
 
     @Test
-    void buildPromptGenerationOrchestratorPropagatesMissingScenarioCatalog() throws IOException {
+    void buildPromptGenerationOrchestratorFallsBackToBuiltinScenarioCatalog() throws IOException {
         String provider = "test-scenario-failure";
         if (!LLMClientFactory.availableProviders().contains(provider)) {
             LLMClientFactory.register(provider, CountingClient.class);
@@ -75,7 +74,9 @@ class DefaultA2ATClientBuilderTest {
         DefaultA2ATClientBuilder builder =
                 DefaultA2ATClientBuilder.builder().config(config).envPath(envFile);
 
-        assertThrows(ResourceNotFoundException.class, () -> builder.buildPromptGenerationOrchestrator());
+        assertNotNull(
+                builder.buildPromptGenerationOrchestrator(),
+                "a missing local scenarios.json must fall back to the built-in scenario catalog instead of failing");
     }
 
     private static Path createTempEnvFileWithoutScenarioCatalog(String provider) throws IOException {
