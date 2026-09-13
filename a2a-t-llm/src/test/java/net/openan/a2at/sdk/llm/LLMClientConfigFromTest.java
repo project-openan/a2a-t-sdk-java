@@ -25,6 +25,7 @@ class LLMClientConfigFromTest {
                 500,
                 200,
                 false,
+                true,
                 "medium",
                 3,
                 List.of());
@@ -40,15 +41,36 @@ class LLMClientConfigFromTest {
         assertEquals(0.5d, config.temperature());
         assertEquals(30.0d, config.timeoutSeconds());
         assertEquals(false, config.disableSystemProxy());
+        assertEquals(true, config.sslVerify());
         assertEquals("medium", config.reasoningEffort());
         assertEquals(500, config.sessionMaxTotal());
         assertEquals(200, config.sessionMaxPerProvider());
     }
 
     @Test
+    void carriesSslVerifyDisabledThroughFrom() {
+        LlmConfig llmConfig = new LlmConfig(
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, false, null, 3, List.of());
+
+        LLMClientConfig config = LLMClientConfig.from(llmConfig);
+
+        assertEquals(false, config.sslVerify());
+    }
+
+    @Test
+    void legacyLlmConfigConstructorKeepsSslVerifyEnabled() {
+        LlmConfig llmConfig = new LlmConfig(
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, null, 3, List.of());
+
+        LLMClientConfig config = LLMClientConfig.from(llmConfig);
+
+        assertEquals(true, config.sslVerify());
+    }
+
+    @Test
     void rejectsMissingProvider() {
         LlmConfig llmConfig =
-                new LlmConfig("", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, null, 3, List.of());
+                new LlmConfig("", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, true, null, 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 
@@ -58,7 +80,7 @@ class LLMClientConfigFromTest {
     @Test
     void rejectsMissingModel() {
         LlmConfig llmConfig =
-                new LlmConfig("openai", "", "sk-test", null, 10, null, null, null, 300, 100, false, null, 3, List.of());
+                new LlmConfig("openai", "", "sk-test", null, 10, null, null, null, 300, 100, false, true, null, 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 
@@ -68,7 +90,7 @@ class LLMClientConfigFromTest {
     @Test
     void rejectsMissingApiKey() {
         LlmConfig llmConfig =
-                new LlmConfig("openai", "gpt-4o", "", null, 10, null, null, null, 300, 100, false, null, 3, List.of());
+                new LlmConfig("openai", "gpt-4o", "", null, 10, null, null, null, 300, 100, false, true, null, 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 
@@ -78,7 +100,7 @@ class LLMClientConfigFromTest {
     @Test
     void rejectsMultipleMissingKeysAndListsThemAll() {
         LlmConfig llmConfig =
-                new LlmConfig("", "", "", null, 10, null, null, null, 300, 100, false, null, 3, List.of());
+                new LlmConfig("", "", "", null, 10, null, null, null, 300, 100, false, true, null, 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 
@@ -90,7 +112,7 @@ class LLMClientConfigFromTest {
     @Test
     void rejectsHistoryWindowAbove100() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 101, null, null, null, 300, 100, false, null, 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 101, null, null, null, 300, 100, false, true, null, 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 
@@ -100,7 +122,7 @@ class LLMClientConfigFromTest {
     @Test
     void rejectsSessionMaxTotalAbove3000() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 3001, 100, false, null, 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 3001, 100, false, true, null, 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 
@@ -110,7 +132,7 @@ class LLMClientConfigFromTest {
     @Test
     void rejectsSessionMaxPerProviderAbove1000() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 1001, false, null, 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 1001, false, true, null, 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 
@@ -120,7 +142,7 @@ class LLMClientConfigFromTest {
     @Test
     void rejectsSessionMaxTotalSmallerThanSessionMaxPerProvider() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 50, 100, false, null, 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 50, 100, false, true, null, 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 
@@ -131,7 +153,7 @@ class LLMClientConfigFromTest {
     @Test
     void derivesUnconfiguredOptionalsAsNull() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, null, 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, true, null, 3, List.of());
 
         LLMClientConfig config = LLMClientConfig.from(llmConfig);
 
@@ -140,13 +162,14 @@ class LLMClientConfigFromTest {
         assertNull(config.temperature());
         assertNull(config.timeoutSeconds());
         assertEquals(false, config.disableSystemProxy());
+        assertEquals(true, config.sslVerify());
         assertNull(config.reasoningEffort());
     }
 
     @Test
     void normalizesReasoningEffortCase() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, "MEDIUM", 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, true, "MEDIUM", 3, List.of());
 
         LLMClientConfig config = LLMClientConfig.from(llmConfig);
 
@@ -156,7 +179,7 @@ class LLMClientConfigFromTest {
     @Test
     void rejectsUnknownReasoningEffortValue() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, "middle", 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, true, "middle", 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 
@@ -167,7 +190,7 @@ class LLMClientConfigFromTest {
     @Test
     void treatsBlankReasoningEffortAsNull() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, "  ", 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, true, "  ", 3, List.of());
 
         LLMClientConfig config = LLMClientConfig.from(llmConfig);
 
@@ -177,7 +200,7 @@ class LLMClientConfigFromTest {
     @Test
     void treatsNullReasoningEffortAsNull() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, null, 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 100, false, true, null, 3, List.of());
 
         LLMClientConfig config = LLMClientConfig.from(llmConfig);
 
@@ -198,6 +221,7 @@ class LLMClientConfigFromTest {
                 300,
                 100,
                 false,
+                true,
                 null,
                 3,
                 List.of(
@@ -213,7 +237,7 @@ class LLMClientConfigFromTest {
     @Test
     void acceptsEmptyParseErrors() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 10, 2048, 0.5d, 30.0d, 500, 200, false, "medium", 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 10, 2048, 0.5d, 30.0d, 500, 200, false, true, "medium", 3, List.of());
 
         LLMClientConfig config = LLMClientConfig.from(llmConfig);
 
@@ -224,7 +248,7 @@ class LLMClientConfigFromTest {
     @Test
     void rejectsHistoryWindowZeroOrNegative() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 0, null, null, null, 300, 100, false, null, 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 0, null, null, null, 300, 100, false, true, null, 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 
@@ -234,7 +258,7 @@ class LLMClientConfigFromTest {
     @Test
     void rejectsSessionMaxTotalZeroOrNegative() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 0, 100, false, null, 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 0, 100, false, true, null, 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 
@@ -244,7 +268,7 @@ class LLMClientConfigFromTest {
     @Test
     void rejectsSessionMaxPerProviderZeroOrNegative() {
         LlmConfig llmConfig = new LlmConfig(
-                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 0, false, null, 3, List.of());
+                "openai", "gpt-4o", "sk-test", null, 10, null, null, null, 300, 0, false, true, null, 3, List.of());
 
         LLMConfigError error = assertThrows(LLMConfigError.class, () -> LLMClientConfig.from(llmConfig));
 

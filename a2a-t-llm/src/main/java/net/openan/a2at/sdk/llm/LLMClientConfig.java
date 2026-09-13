@@ -22,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
  * @param sessionMaxTotal reserved total session limit
  * @param sessionMaxPerProvider reserved per-provider session limit
  * @param disableSystemProxy whether to bypass the JVM or operating-system HTTP proxy
+ * @param sslVerify whether to verify the TLS certificate chain and hostname of the LLM endpoint
  * @param reasoningEffort optional reasoning effort for reasoning models (none/minimal/low/medium/high/xhigh); null
  *     leaves the parameter unset
  * @since 2026-06
@@ -38,6 +39,7 @@ public record LLMClientConfig(
         int sessionMaxTotal,
         int sessionMaxPerProvider,
         boolean disableSystemProxy,
+        boolean sslVerify,
         String reasoningEffort) {
 
     private static final int MAX_HISTORY_WINDOW = 100;
@@ -48,6 +50,36 @@ public record LLMClientConfig(
 
     private static final Set<String> VALID_REASONING_EFFORTS =
             Set.of("none", "minimal", "low", "medium", "high", "xhigh");
+
+    /** Pre-{@code sslVerify} signature kept for binary compatibility; TLS peer verification stays enabled. */
+    public LLMClientConfig(
+            String provider,
+            String model,
+            String apiKey,
+            String baseUrl,
+            int historyWindow,
+            Integer maxTokens,
+            Double temperature,
+            Double timeoutSeconds,
+            int sessionMaxTotal,
+            int sessionMaxPerProvider,
+            boolean disableSystemProxy,
+            String reasoningEffort) {
+        this(
+                provider,
+                model,
+                apiKey,
+                baseUrl,
+                historyWindow,
+                maxTokens,
+                temperature,
+                timeoutSeconds,
+                sessionMaxTotal,
+                sessionMaxPerProvider,
+                disableSystemProxy,
+                true,
+                reasoningEffort);
+    }
 
     /**
      * Derives an LLM client configuration from the unified LLM configuration.
@@ -78,6 +110,7 @@ public record LLMClientConfig(
                 llmConfig.sessionMaxTotal(),
                 llmConfig.sessionMaxPerProvider(),
                 llmConfig.disableSystemProxy(),
+                llmConfig.sslVerify(),
                 reasoningEffort);
     }
 

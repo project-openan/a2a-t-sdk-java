@@ -97,6 +97,7 @@ class DefaultA2ATServerBuilderTest {
                         300,
                         100,
                         false,
+                        true,
                         null,
                         3,
                         List.of()),

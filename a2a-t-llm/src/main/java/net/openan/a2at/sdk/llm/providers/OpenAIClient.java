@@ -11,6 +11,8 @@ import com.openai.models.chat.completions.ChatCompletionMessageParam;
 import com.openai.models.chat.completions.ChatCompletionSystemMessageParam;
 import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
 import java.net.Proxy;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,11 +20,16 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiFunction;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMConfigError;
 import net.openan.a2at.sdk.llm.LLMResponse;
 import net.openan.a2at.sdk.llm.LLMRuntimeError;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * OpenAI LLM provider client.
@@ -32,6 +39,8 @@ import net.openan.a2at.sdk.llm.LLMRuntimeError;
 public class OpenAIClient implements LLMClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private static final Logger log = LoggerFactory.getLogger(OpenAIClient.class);
 
     private static final String JSON_MODE_INSTRUCTION =
             "Return a valid JSON object string. The output must be valid json. "
@@ -213,11 +222,48 @@ public class OpenAIClient implements LLMClient {
             if (runtimeConfig.disableSystemProxy()) {
                 builder.proxy(Proxy.NO_PROXY);
             }
+            if (!runtimeConfig.sslVerify()) {
+                applyInsecureTls(builder);
+            }
             if (runtimeConfig.timeoutSeconds() != null && runtimeConfig.timeoutSeconds() > 0.0d) {
                 builder.timeout(Duration.ofMillis(Math.max(1L, Math.round(runtimeConfig.timeoutSeconds() * 1000.0d))));
             }
             sdkClient = builder.build();
         }
         return sdkClient;
+    }
+
+    /**
+     * Disables TLS certificate-chain and hostname verification for the provider endpoint.
+     *
+     * <p>Only for controlled environments whose HTTPS endpoint cannot yet present a certificate trusted by the JVM.
+     * Everything else on the connection keeps the OpenAI SDK defaults.
+     */
+    private static void applyInsecureTls(OpenAIOkHttpClient.Builder builder) {
+        X509TrustManager trustAllManager =
+                new X509TrustManager() {
+                    @Override
+                    public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+
+                    @Override
+                    public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+
+                    @Override
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[0];
+                    }
+                };
+        try {
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, new TrustManager[] {trustAllManager}, new SecureRandom());
+            builder.sslSocketFactory(sslContext.getSocketFactory());
+        } catch (Exception error) {
+            throw new LLMConfigError("Failed to disable TLS certificate-chain and hostname verification", error);
+        }
+        builder.trustManager(trustAllManager);
+        builder.hostnameVerifier((hostname, session) -> true);
+        log.warn(
+                "[A2AT-LLM] TLS certificate chain and hostname verification are disabled; "
+                        + "use only in controlled environments with trusted networks");
     }
 }

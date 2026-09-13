@@ -1678,10 +1678,10 @@ The sample configuration file provided by the SDK is `env.example`. When constru
 | `A2AT_LLM_HISTORY_WINDOW` | Number of session history messages to keep, default `10` |
 | `A2AT_LLM_REASONING_EFFORT` | Reasoning effort level; one of `none`/`minimal`/`low`/`medium`/`high`/`xhigh`, not set when left empty |
 | `A2AT_LLM_DISABLE_SYSTEM_PROXY` | Whether to bypass the system HTTP proxy when accessing the LLM, default `false` |
+| `A2AT_LLM_SSL_VERIFY` | Whether to verify the LLM endpoint TLS certificate chain and hostname; `false` disables both — prefer importing a trusted CA and use `false` only short-term in controlled environments, default `true` |
 | `A2AT_LLM_SESSION_MAX_TOTAL` | Maximum total number of tracked sessions, default `300` |
 | `A2AT_LLM_SESSION_MAX_PER_PROVIDER` | Maximum number of tracked sessions per provider, default `100` |
 | `A2AT_LLM_MAX_ATTEMPTS` | Maximum number of attempts for retryable LLM steps; range 1-10 (out-of-range values are clamped), default `3` |
 | `A2AT_NEGOTIATION_STATE_STORE_TYPE` | Negotiation state storage; currently supports `in_memory` |
-
 
 
