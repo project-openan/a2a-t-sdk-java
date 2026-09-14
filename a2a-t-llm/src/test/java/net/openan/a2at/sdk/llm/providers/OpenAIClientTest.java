@@ -98,7 +98,7 @@ class OpenAIClientTest {
     void structuredFallsBackToConfigTemperatureAndMaxTokens() {
         AtomicReference<ChatCompletionCreateParams> capturedParams = new AtomicReference<>();
         LLMClientConfig config = new LLMClientConfig(
-                "openai", "gpt-4o-mini", "sk-test", "https://api.example.test/v1", 10, 128, 0.4d, null, 300, 100, false, null);
+                "openai", "gpt-4o-mini", "sk-test", "https://api.example.test/v1", 10, 128, 0.4d, null, 300, 100, false, true, null);
         OpenAIClient client = new OpenAIClient(config, (runtimeConfig, requestParams) -> {
             capturedParams.set(requestParams);
             return chatCompletion("{}");
@@ -203,7 +203,7 @@ class OpenAIClientTest {
     }
 
     private static LLMClientConfig config(String apiKey, String baseUrl) {
-        return new LLMClientConfig("openai", "gpt-4o-mini", apiKey, baseUrl, 10, null, null, null, 300, 100, false, null);
+        return new LLMClientConfig("openai", "gpt-4o-mini", apiKey, baseUrl, 10, null, null, null, 300, 100, false, true, null);
     }
 
     private static ChatCompletion chatCompletion(String content) {

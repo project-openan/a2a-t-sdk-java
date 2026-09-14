@@ -26,6 +26,7 @@ public record LlmConfig(
         int sessionMaxTotal,
         int sessionMaxPerProvider,
         boolean disableSystemProxy,
+        boolean sslVerify,
         @Nullable String reasoningEffort,
         int maxAttempts,
         List<String> parseErrors) {
@@ -50,6 +51,40 @@ public record LlmConfig(
 
     public LlmConfig {
         parseErrors = List.copyOf(parseErrors);
+    }
+
+    /** Pre-{@code sslVerify} signature kept for binary compatibility; TLS peer verification stays enabled. */
+    public LlmConfig(
+            String provider,
+            String model,
+            String apiKey,
+            String baseUrl,
+            int historyWindow,
+            @Nullable Integer maxTokens,
+            @Nullable Double temperature,
+            @Nullable Double timeoutSeconds,
+            int sessionMaxTotal,
+            int sessionMaxPerProvider,
+            boolean disableSystemProxy,
+            @Nullable String reasoningEffort,
+            int maxAttempts,
+            List<String> parseErrors) {
+        this(
+                provider,
+                model,
+                apiKey,
+                baseUrl,
+                historyWindow,
+                maxTokens,
+                temperature,
+                timeoutSeconds,
+                sessionMaxTotal,
+                sessionMaxPerProvider,
+                disableSystemProxy,
+                true,
+                reasoningEffort,
+                maxAttempts,
+                parseErrors);
     }
 
     /**
@@ -79,6 +114,8 @@ public record LlmConfig(
                         A2ATConfigKeys.Llm.SESSION_MAX_PER_PROVIDER, DEFAULT_SESSION_MAX_PER_PROVIDER, parseErrors),
                 parseBoolean(values.get(A2ATConfigKeys.Llm.DISABLE_SYSTEM_PROXY),
                         A2ATConfigKeys.Llm.DISABLE_SYSTEM_PROXY, false, parseErrors),
+                parseBoolean(values.get(A2ATConfigKeys.Llm.SSL_VERIFY),
+                        A2ATConfigKeys.Llm.SSL_VERIFY, true, parseErrors),
                 parseReasoningEffort(values.get(A2ATConfigKeys.Llm.REASONING_EFFORT)),
                 parseMaxAttempts(values.get(A2ATConfigKeys.Llm.MAX_ATTEMPTS)),
                 parseErrors);
