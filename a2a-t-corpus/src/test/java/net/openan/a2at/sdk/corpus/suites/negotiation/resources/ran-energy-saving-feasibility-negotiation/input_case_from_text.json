@@ -1,0 +1,61 @@
+[
+  {
+    "id": "TC00000001",
+    "caseDimension": "01-意图清晰参数完整",
+    "caseDesc": "无线节能-可行性协商-propose-自然语言生成并校验",
+    "caseCategory": "正常",
+    "input": [
+      {
+        "api": "generateNegotiationProposePromptFromText",
+        "args": {
+          "text": "无线网络节能任务已完成目标澄清，区域松山湖管委会，分时段速率保障目标{00:00~06:00,2Mbps}、{06:00~18:00,10Mbps}，节能时段08:00~12:00，小区制式NR，请评估该节能目标能否达成。",
+          "context": {
+            "id": "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+            "round": 1,
+            "maxRounds": 5,
+            "performative": "PROPOSE"
+          },
+          "templateUri": "Negotiation-T/feasibility-negotiation/propose/v1"
+        }
+      },
+      {
+        "api": "validateProposePromptAndDataFilling",
+        "args": {
+          "promptText": {
+            "$fromStep": 1,
+            "$field": "promptText"
+          },
+          "context": {
+            "id": "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+            "round": 1,
+            "maxRounds": 5,
+            "performative": "PROPOSE"
+          },
+          "schema": {
+            "type": "object",
+            "properties": {}
+          },
+          "templateUri": "Negotiation-T/feasibility-negotiation/propose/v1"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "success",
+        "data": {},
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
+      },
+      {
+        "result": "success",
+        "data": {},
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
+      }
+    ]
+  }
+]

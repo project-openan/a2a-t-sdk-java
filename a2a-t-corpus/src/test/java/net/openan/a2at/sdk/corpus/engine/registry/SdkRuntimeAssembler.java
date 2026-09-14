@@ -14,30 +14,35 @@ import net.openan.a2at.sdk.corpus.engine.config.CorpusEnvConfig;
 import net.openan.a2at.sdk.corpus.engine.llm.RecordingMeteredLlmClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.providers.OpenAIClient;
+import net.openan.a2at.sdk.negotiation.generation.NegotiationGenerationOrchestrator;
+import net.openan.a2at.sdk.negotiation.generation.NegotiationGenerationOrchestratorBuilder;
 import net.openan.a2at.sdk.server.assembly.DefaultA2ATServerBuilder;
 
 /**
  * Assembles the SDK runtime the corpus exercises against.
  *
  * <p>Every component is produced by the production builders ({@code DefaultA2ATClientBuilder} /
- * {@code DefaultA2ATServerBuilder}); the sole test seam is the {@link RecordingMeteredLlmClient} injected through the
- * builder {@code llmClient(...)} injection point. The unified {@link A2ATConfig} is constructed directly from the
- * corpus test configuration (classpath prompt resources, fixed language), so the module never touches production
- * {@code A2AT_LLM_*} environment values.
+ * {@code DefaultA2ATServerBuilder} / {@code NegotiationGenerationOrchestratorBuilder}); the sole test seam is the
+ * {@link RecordingMeteredLlmClient} injected through the builder {@code llmClient(...)} injection point. The unified
+ * {@link A2ATConfig} is constructed directly from the corpus test configuration (classpath prompt resources, fixed
+ * language), so the module never touches production {@code A2AT_LLM_*} environment values.
  */
 public final class SdkRuntimeAssembler {
 
-    /** Fully assembled runtime with the single shared recording LLM client. */
+    /** Fully assembled Task-T runtime with the single shared recording LLM client. */
     public record Runtime(
             RecordingMeteredLlmClient recorder,
             ClientPromptGenerationOrchestrator clientGeneration,
             ContentValidator taskValidator) {}
 
+    /** Fully assembled Negotiation-T runtime with the single shared recording LLM client. */
+    public record NegotiationRuntime(
+            RecordingMeteredLlmClient recorder,
+            NegotiationGenerationOrchestrator orchestrator) {}
+
     private SdkRuntimeAssembler() {}
 
-    public static Runtime taskRuntime() {
-        CorpusEnvConfig env = CorpusEnvConfig.load();
-
+    private static RecordingMeteredLlmClient newRecorder(CorpusEnvConfig env) {
         LLMClientConfig llmClientConfig = new LLMClientConfig(
                 env.provider(),
                 env.model(),
@@ -51,8 +56,12 @@ public final class SdkRuntimeAssembler {
                 100,
                 false,
                 null);
-        RecordingMeteredLlmClient recorder =
-                new RecordingMeteredLlmClient(new OpenAIClient(llmClientConfig), env.model());
+        return new RecordingMeteredLlmClient(new OpenAIClient(llmClientConfig), env.model());
+    }
+
+    public static Runtime taskRuntime() {
+        CorpusEnvConfig env = CorpusEnvConfig.load();
+        RecordingMeteredLlmClient recorder = newRecorder(env);
 
         LlmConfig llmConfig = new LlmConfig(
                 env.provider(),
@@ -88,5 +97,31 @@ public final class SdkRuntimeAssembler {
                 .buildTaskContentValidator();
 
         return new Runtime(recorder, clientGeneration, taskValidator);
+    }
+
+    public static NegotiationRuntime negotiationRuntime() {
+        CorpusEnvConfig env = CorpusEnvConfig.load();
+        RecordingMeteredLlmClient recorder = newRecorder(env);
+
+        NegotiationGenerationOrchestrator orchestrator = NegotiationGenerationOrchestratorBuilder.builder()
+                .language("zh-CN")
+                .llmClient(recorder)
+                .maxAttempts(env.maxAttempts())
+                .build();
+
+        return new NegotiationRuntime(recorder, orchestrator);
+    }
+
+    public static ApiRegistry buildTaskRegistry(Runtime runtime) {
+        ApiRegistry registry = new ApiRegistry();
+        ClientApis.registerTaskApis(registry, runtime.clientGeneration());
+        ServerApis.registerTaskApis(registry, runtime.taskValidator());
+        return registry;
+    }
+
+    public static ApiRegistry buildNegotiationRegistry(NegotiationRuntime runtime) {
+        ApiRegistry registry = new ApiRegistry();
+        NegotiationApis.registerNegotiationApis(registry, runtime.orchestrator());
+        return registry;
     }
 }

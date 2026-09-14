@@ -1,10 +1,11 @@
-package net.openan.a2at.sdk.corpus.task;
+package net.openan.a2at.sdk.corpus.suites.task;
 
+import java.util.Set;
 import net.openan.a2at.sdk.corpus.engine.CorpusWorkFlowSuite;
 
 /**
  * Task-T natural-language workflow suite: for every scenario directory under
- * {@code corpus/task/resources/}, runs the recorded SDK API flow of each case in
+ * {@code suites/task/resources/}, runs the recorded SDK API flow of each case in
  * {@code input_case_from_text.json} against a real LLM.
  *
  * <p>Default API flow (also shown in the case files): {@code generateTaskPromptFromText} →
@@ -28,5 +29,10 @@ public final class TaskTFromTextWorkFlowTest extends CorpusWorkFlowSuite {
     @Override
     protected String flowType() {
         return FLOW_FROM_TEXT;
+    }
+
+    @Override
+    protected Set<String> apiNames() {
+        return taskApiNames();
     }
 }

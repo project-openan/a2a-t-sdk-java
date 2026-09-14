@@ -1,0 +1,87 @@
+[
+  {
+    "id": "TC00000001",
+    "caseDimension": "01-结构化数据完整",
+    "caseDesc": "无线节能-目标协商-propose-结构数据生成并校验",
+    "caseCategory": "正常",
+    "input": [
+      {
+        "api": "generateNegotiationProposePromptFromData",
+        "args": {
+          "data": {
+            "context": {
+              "id": "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+              "round": 1,
+              "maxRounds": 5,
+              "performative": "PROPOSE"
+            },
+            "content": {
+              "target_negotiation_description": "无线网络节能任务：区域松山湖管委会，分时段速率保障目标{00:00~06:00,2Mbps}、{06:00~18:00,10Mbps}，小区制式NR，需确认目标是否清晰",
+              "intent_understanding": [
+                {
+                  "name": "区域",
+                  "value": "松山湖管委会"
+                },
+                {
+                  "name": "分时段速率保障目标",
+                  "value": "{00:00~06:00,2Mbps}、{06:00~18:00,10Mbps}"
+                },
+                {
+                  "name": "小区制式",
+                  "value": "NR"
+                }
+              ],
+              "alignment_and_clarification": null,
+              "request_for_clarification": [
+                {
+                  "name": "节能时间范围",
+                  "value": "未明确指定默认全时段节能？"
+                }
+              ],
+              "target_confirm_request": null
+            }
+          },
+          "templateUri": "Negotiation-T/target-negotiation/propose/v1"
+        }
+      },
+      {
+        "api": "validateProposePromptAndDataFilling",
+        "args": {
+          "promptText": {
+            "$fromStep": 1,
+            "$field": "promptText"
+          },
+          "context": {
+            "id": "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+            "round": 1,
+            "maxRounds": 5,
+            "performative": "PROPOSE"
+          },
+          "schema": {
+            "type": "object",
+            "properties": {}
+          },
+          "templateUri": "Negotiation-T/target-negotiation/propose/v1"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "success",
+        "data": {},
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
+      },
+      {
+        "result": "success",
+        "data": {},
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
+      }
+    ]
+  }
+]
