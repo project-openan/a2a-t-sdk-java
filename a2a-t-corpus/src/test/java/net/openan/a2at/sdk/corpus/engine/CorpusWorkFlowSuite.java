@@ -13,12 +13,11 @@ import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.TestInstance;
 import net.openan.a2at.sdk.corpus.engine.discover.ScenarioScanner;
 import net.openan.a2at.sdk.corpus.engine.engine.WorkflowEngine;
+import net.openan.a2at.sdk.corpus.engine.llm.RecordingMeteredLlmClient;
 import net.openan.a2at.sdk.corpus.engine.loader.CaseFileLoader;
 import net.openan.a2at.sdk.corpus.engine.loader.InputCase;
 import net.openan.a2at.sdk.corpus.engine.registry.ApiRegistry;
-import net.openan.a2at.sdk.corpus.engine.registry.ClientApis;
 import net.openan.a2at.sdk.corpus.engine.registry.SdkRuntimeAssembler;
-import net.openan.a2at.sdk.corpus.engine.registry.ServerApis;
 import net.openan.a2at.sdk.corpus.engine.report.ResultAggregator;
 import net.openan.a2at.sdk.corpus.engine.report.TranscriptWriter;
 
@@ -26,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Base class of every {@code -T} workflow suite. A concrete suite declares only its extension folder, its workflow
- * type (from_text / from_data) and the consumed case file; scenario discovery, case loading, execution, expectation
- * comparison and transcript/summary writing are all inherited.
+ * type (from_text / from_data), the consumed case file and the runtime kind; scenario discovery, case loading,
+ * execution, expectation comparison and transcript/summary writing are all inherited.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class CorpusWorkFlowSuite {
@@ -46,13 +45,29 @@ public abstract class CorpusWorkFlowSuite {
 
     public static final String API_VALIDATE_TASK = "validateTaskPromptAndDataFilling";
 
-    private static volatile SdkRuntimeAssembler.Runtime runtime;
+    /** Negotiation-T API names, used for load-time membership checks. */
+    public static final String API_GENERATE_NEGOTIATION_PROPOSE_FROM_TEXT = "generateNegotiationProposePromptFromText";
+    public static final String API_GENERATE_NEGOTIATION_ACCEPT_FROM_TEXT = "generateNegotiationAcceptPromptFromText";
+    public static final String API_GENERATE_NEGOTIATION_REJECT_FROM_TEXT = "generateNegotiationRejectPromptFromText";
+    public static final String API_GENERATE_NEGOTIATION_ABORT_FROM_TEXT = "generateNegotiationAbortPromptFromText";
+    public static final String API_GENERATE_NEGOTIATION_PROPOSE_FROM_DATA = "generateNegotiationProposePromptFromData";
+    public static final String API_GENERATE_NEGOTIATION_ACCEPT_FROM_DATA = "generateNegotiationAcceptPromptFromData";
+    public static final String API_GENERATE_NEGOTIATION_REJECT_FROM_DATA = "generateNegotiationRejectPromptFromData";
+    public static final String API_GENERATE_NEGOTIATION_ABORT_FROM_DATA = "generateNegotiationAbortPromptFromData";
+    public static final String API_VALIDATE_NEGOTIATION_PROPOSE = "validateProposePromptAndDataFilling";
+    public static final String API_VALIDATE_NEGOTIATION_ACCEPT = "validateAcceptPromptAndDataFilling";
+    public static final String API_VALIDATE_NEGOTIATION_REJECT = "validateRejectPromptAndDataFilling";
+    public static final String API_VALIDATE_NEGOTIATION_ABORT = "validateAbortPromptAndDataFilling";
+
+    private static volatile SdkRuntimeAssembler.Runtime taskRuntimeSingleton;
+
+    private static volatile SdkRuntimeAssembler.NegotiationRuntime negotiationRuntimeSingleton;
 
     private final List<WorkflowEngine.CaseResult> results = new ArrayList<>();
 
     private final Map<String, Path> scenarioDirs = new LinkedHashMap<>();
 
-    /** Extension resource folder under the corpus package, e.g. {@code task}. */
+    /** Extension resource folder under the suites package, e.g. {@code task} or {@code negotiation}. */
     protected abstract String extensionFolder();
 
     /** Consumed case file, e.g. {@code input_case_from_text.json}. */
@@ -61,11 +76,25 @@ public abstract class CorpusWorkFlowSuite {
     /** Flow type used for the transcript and summary file names: {@code from_text} or {@code from_data}. */
     protected abstract String flowType();
 
+    /** Runtime kind: {@code "task"} (default) or {@code "negotiation"}. */
+    protected String runtimeKind() {
+        return "task";
+    }
+
+    /** API names for load-time membership checks. */
+    protected abstract Set<String> apiNames();
+
     @TestFactory
     Stream<DynamicTest> corpusCases() {
-        SdkRuntimeAssembler.Runtime runtime = runtime();
-        ApiRegistry registry = taskRegistry(runtime);
-        WorkflowEngine engine = new WorkflowEngine(registry, runtime.recorder());
+        ApiRegistry registry;
+        if ("negotiation".equals(runtimeKind())) {
+            SdkRuntimeAssembler.NegotiationRuntime rt = negotiationRuntime();
+            registry = SdkRuntimeAssembler.buildNegotiationRegistry(rt);
+        } else {
+            SdkRuntimeAssembler.Runtime rt = taskRuntime();
+            registry = SdkRuntimeAssembler.buildTaskRegistry(rt);
+        }
+        WorkflowEngine engine = new WorkflowEngine(registry, registryRecorder());
 
         List<ScenarioScanner.Scenario> scenarios = ScenarioScanner.filterScenarios(
                 ScenarioScanner.discover(extensionFolder(), inputFileName()),
@@ -108,11 +137,25 @@ public abstract class CorpusWorkFlowSuite {
         System.out.println("Summary: " + summaryFile);
     }
 
-    private static synchronized SdkRuntimeAssembler.Runtime runtime() {
-        if (runtime == null) {
-            runtime = SdkRuntimeAssembler.taskRuntime();
+    private static synchronized SdkRuntimeAssembler.Runtime taskRuntime() {
+        if (taskRuntimeSingleton == null) {
+            taskRuntimeSingleton = SdkRuntimeAssembler.taskRuntime();
         }
-        return runtime;
+        return taskRuntimeSingleton;
+    }
+
+    private static synchronized SdkRuntimeAssembler.NegotiationRuntime negotiationRuntime() {
+        if (negotiationRuntimeSingleton == null) {
+            negotiationRuntimeSingleton = SdkRuntimeAssembler.negotiationRuntime();
+        }
+        return negotiationRuntimeSingleton;
+    }
+
+    private RecordingMeteredLlmClient registryRecorder() {
+        if ("negotiation".equals(runtimeKind())) {
+            return negotiationRuntime().recorder();
+        }
+        return taskRuntime().recorder();
     }
 
     private static Map<String, List<WorkflowEngine.CaseResult>> groupByScenario(
@@ -124,16 +167,25 @@ public abstract class CorpusWorkFlowSuite {
         return grouped;
     }
 
-    /** Registers the Task-T phase-1 registry entries. */
-    public static ApiRegistry taskRegistry(SdkRuntimeAssembler.Runtime runtime) {
-        ApiRegistry registry = new ApiRegistry();
-        ClientApis.registerTaskApis(registry, runtime.clientGeneration());
-        ServerApis.registerTaskApis(registry, runtime.taskValidator());
-        return registry;
-    }
-
     /** Task-T phase-1 API names, used for load-time membership checks without touching the LLM runtime. */
     public static Set<String> taskApiNames() {
         return Set.of(API_GENERATE_TASK_FROM_TEXT, API_GENERATE_TASK_FROM_DATA, API_VALIDATE_TASK);
+    }
+
+    /** Negotiation-T phase-1 API names, used for load-time membership checks without touching the LLM runtime. */
+    public static Set<String> negotiationApiNames() {
+        return Set.of(
+                API_GENERATE_NEGOTIATION_PROPOSE_FROM_TEXT,
+                API_GENERATE_NEGOTIATION_ACCEPT_FROM_TEXT,
+                API_GENERATE_NEGOTIATION_REJECT_FROM_TEXT,
+                API_GENERATE_NEGOTIATION_ABORT_FROM_TEXT,
+                API_GENERATE_NEGOTIATION_PROPOSE_FROM_DATA,
+                API_GENERATE_NEGOTIATION_ACCEPT_FROM_DATA,
+                API_GENERATE_NEGOTIATION_REJECT_FROM_DATA,
+                API_GENERATE_NEGOTIATION_ABORT_FROM_DATA,
+                API_VALIDATE_NEGOTIATION_PROPOSE,
+                API_VALIDATE_NEGOTIATION_ACCEPT,
+                API_VALIDATE_NEGOTIATION_REJECT,
+                API_VALIDATE_NEGOTIATION_ABORT);
     }
 }

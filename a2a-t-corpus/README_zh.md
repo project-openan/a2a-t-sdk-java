@@ -2,7 +2,7 @@
 
 A2A-T SDK 的数据驱动准确性验证：把 JSON 工作流用例经生产 SDK 装配链路对**真实 LLM** 执行，产出逐步 API/LLM 完整转录、时延与 Token 指标，并以 95%+ 准确率达标线支撑提示词调优。
 
-阶段策略（当前）仅实现 **Task-T**，作为标杆迭代优化；Notification-T / Negotiation-T / Authorization-T 待 Task-T 稳定后按同结构扩展（套件类 + `resources/` + 注册表条目，零分叉）。
+当前实现扩展：**Task-T**（专线投诉诊断）与 **Negotiation-T**（无线节能目标/信息/可行性协商），均为标杆迭代；Notification-T / Authorization-T 待参考场景稳定后按同结构扩展（套件类 + `resources/` + 注册表条目，零分叉）。
 
 - **纯测试模块**：无 `src/main`，不进 BOM、不参与发布（`maven.deploy.skip/source.skip/javadoc.skip=true`），且从 CI 排除（`mvn ... -pl '!a2a-t-corpus'`）。
 - **必须配置真实 LLM**：缺少三个必填 `A2AT_LLM_*` 配置时 fail-fast 并给出配置指引。`.env` 键名与项目根 `env.example` 保持一致，corpus 模板即根模板的精调子集。
@@ -16,11 +16,18 @@ a2a-t-corpus/
 ├── tools/            inputCsvToJson(.py/.sh)、outputJsonToCsv(.py/.sh)、csv-templates/
 └── src/test/java/net/openan/a2at/sdk/corpus/
     ├── engine/       框架核心：config/loader/registry/engine/llm/assertion/report/discover + CorpusWorkFlowSuite
-    ├── task/         TaskTFromTextWorkFlowTest、TaskTFromDataWorkFlowTest、resources/<场景>/
-    └── self/         语料自守卫元测试（无 LLM）
+    └── suites/       各扩展的准确性验证套件
+        ├── task/             TaskTFromTextWorkFlowTest、TaskTFromDataWorkFlowTest、TaskSelfGuardTest、
+        │   └── resources/<场景>/   input_case_from_text.json 与 input_case_from_data.json
+        │                          （用例设计，人工构造）；output_result_*.json 由引擎每次运行写回
+        └── negotiation/      NegotiationTFromTextWorkFlowTest、NegotiationTFromDataWorkFlowTest、
+                              NegotiationSelfGuardTest
+            └── resources/<场景>/   ran-energy-saving-target-negotiation、
+                                    ran-energy-saving-information-negotiation、
+                                    ran-energy-saving-feasibility-negotiation
 ```
 
-`task/resources/<场景>/` 下为 `input_case_from_text.json` 与 `input_case_from_data.json`（用例设计，人工构造）；`output_result_*.json` 由引擎在每次运行后写回。
+`suites/<扩展>/resources/<场景>/` 下为 `input_case_from_text.json` 与 `input_case_from_data.json`（用例设计，人工构造）；`output_result_*.json` 由引擎在每次运行后写回。
 
 ## 快速开始
 
@@ -29,13 +36,15 @@ cp a2a-t-corpus/env.example a2a-t-corpus/.env   # 填写 A2AT_LLM_BASE_URL / API
 mvn -pl a2a-t-corpus -am test -Dtest=TaskTFromTextWorkFlowTest
 mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario=private-line-complaint
 mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario='private-*' -Dcase.filter='TC0000000*'
+# 无线节能协商场景
+mvn -pl a2a-t-corpus test -Dtest=NegotiationTFromTextWorkFlowTest -Dcorpus.scenario='ran-energy-saving-*'
 ```
 
 - `-Dcorpus.scenario`：场景名 glob（`*` 通配，逗号分隔）；`-Dcase.filter`：用例 id glob。
 - `-Dtest` 过滤在 `-am` 下作用于整个反应堆；父 POM 已配置 surefire `failIfNoSpecifiedTests=false`，上游模块无同名测试类不会导致构建失败。
 - 每条已执行用例完成即打印到控制台；失败/崩溃用例同时打印完整 interaction 轨迹；转录文件只反映本次执行（过滤运行会以命中的用例整体覆盖文件）。
 - `-Dcorpus.output.dir=<dir>`：把输出重定向到指定目录（缺省写回场景目录；summary 默认落 `target/corpus/`）。
-- 无 LLM 时先跑结构自守卫：`mvn -pl a2a-t-corpus test -Dtest=CorpusSelfGuardTest`。
+- 无 LLM 时先跑结构自守卫：`mvn -pl a2a-t-corpus test -Dtest=TaskSelfGuardTest,NegotiationSelfGuardTest`。
 
 ## 用例 JSON 契约（v1，一手定义见 `schemas/`）
 
@@ -75,10 +84,10 @@ mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario='pr
 python a2a-t-corpus/tools/inputCsvToJson.py --template --out my-cases.csv   # 用例设计表（含一行示例）
 # 填表后转换（默认开启产物结构校验）
 python a2a-t-corpus/tools/inputCsvToJson.py --csv my-cases.csv \
-    --out a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/task/resources/<场景>/input_case_from_text.json
+    --out a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/suites/task/resources/<场景>/input_case_from_text.json
 # 跑套件后审视（一行=一个用例，含每步完整请求/响应）
 python a2a-t-corpus/tools/outputJsonToCsv.py \
-    --json a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/task/resources/<场景>/output_result_from_text.json \
+    --json a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/suites/task/resources/<场景>/output_result_from_text.json \
     --out review.csv
 # 可选：把 input JSON 回填为设计表
 python a2a-t-corpus/tools/inputCsvToJson.py --reverse --csv <input_case_from_text.json> --out back.csv
@@ -97,8 +106,8 @@ tools/inputCsvToJson.sh --reverse --csv <input_case_from_text.json> --out back.c
 
 ## 新增场景（零 Java 改动）
 
-新建 `task/resources/<场景>/` 并放入两个 input JSON 即可——`@TestFactory` 套件运行时扫描发现场景。结构门禁先用 `CorpusSelfGuardTest`（无 LLM）跑一遍。
+新建 `suites/<扩展>/resources/<场景>/` 并放入两个 input JSON 即可——`@TestFactory` 套件运行时扫描发现场景。结构门禁先用对应扩展的 `*SelfGuardTest`（无 LLM）跑一遍。
 
-## 后续阶段（Task-T 稳定后）
+## 后续阶段（参考场景稳定后）
 
-Notification-T / Negotiation-T / Authorization-T：新增 `corpus/<扩展>/<XXWorkFlowTest>` 套件与对应 `resources/`，在 `ApiRegistry` 登记该扩展 facade 方法，框架与工具链原样复用。
+Notification-T / Authorization-T：新增 `suites/<扩展>/<XXWorkFlowTest>` 套件与对应 `resources/`，在 `ApiRegistry` 登记该扩展 facade 方法，框架与工具链原样复用。

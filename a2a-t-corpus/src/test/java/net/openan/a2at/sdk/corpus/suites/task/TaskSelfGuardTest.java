@@ -1,4 +1,4 @@
-package net.openan.a2at.sdk.corpus.self;
+package net.openan.a2at.sdk.corpus.suites.task;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,14 +12,14 @@ import net.openan.a2at.sdk.corpus.engine.loader.InputCase;
 import org.junit.jupiter.api.Test;
 
 /**
- * Corpus self-guard (meta test): validates every Task-T scenario case file structurally without any LLM call. This is
+ * Task-T self-guard (meta test): validates every Task-T scenario case file structurally without any LLM call. This is
  * the fast gate hit first in IDE runs and local workflows - unknown keys, misaligned expectations, unknown api names,
  * out-of-catalog error codes and category/expectation contradictions all fail here.
  *
  * <p>Id uniqueness is enforced per-file by the {@link CaseFileLoader}; ids may repeat across different flow files
  * within the same scenario.
  */
-public final class CorpusSelfGuardTest {
+public final class TaskSelfGuardTest {
 
     /** Categories carrying a cross-step expectation contract (case data is Chinese). */
     static final String CATEGORY_NORMAL = "正常";

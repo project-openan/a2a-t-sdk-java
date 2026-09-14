@@ -1,0 +1,117 @@
+[
+  {
+    "id": "TC00000001",
+    "caseDimension": "01-意图清晰参数完整",
+    "caseDesc": "无线节能-目标协商-propose-自然语言生成并校验",
+    "caseCategory": "正常",
+    "input": [
+      {
+        "api": "generateNegotiationProposePromptFromText",
+        "args": {
+          "text": "我们需要确认无线网络节能任务的速率保障目标，区域为松山湖管委会，计划的分时段速率保障目标为{00:00~06:00,2Mbps}、{06:00~18:00,10Mbps}，节能的小区制式为NR，请确认这些目标是否清晰。",
+          "context": {
+            "id": "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+            "round": 1,
+            "maxRounds": 5,
+            "performative": "PROPOSE"
+          },
+          "templateUri": "Negotiation-T/target-negotiation/propose/v1"
+        }
+      },
+      {
+        "api": "validateProposePromptAndDataFilling",
+        "args": {
+          "promptText": {
+            "$fromStep": 1,
+            "$field": "promptText"
+          },
+          "context": {
+            "id": "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+            "round": 1,
+            "maxRounds": 5,
+            "performative": "PROPOSE"
+          },
+          "schema": {
+            "type": "object",
+            "properties": {}
+          },
+          "templateUri": "Negotiation-T/target-negotiation/propose/v1"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "success",
+        "data": {},
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
+      },
+      {
+        "result": "success",
+        "data": {},
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
+      }
+    ]
+  },
+  {
+    "id": "TC00000002",
+    "caseDimension": "02-校验空报文",
+    "caseDesc": "目标协商-propose 后 validate 传入空报文，返回 negotiation.invalid_input",
+    "caseCategory": "异常",
+    "input": [
+      {
+        "api": "generateNegotiationProposePromptFromText",
+        "args": {
+          "text": "无线网络节能任务，区域松山湖管委会，分时段速率保障目标{00:00~06:00,2Mbps}。",
+          "context": {
+            "id": "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+            "round": 1,
+            "maxRounds": 5,
+            "performative": "PROPOSE"
+          },
+          "templateUri": "Negotiation-T/target-negotiation/propose/v1"
+        }
+      },
+      {
+        "api": "validateProposePromptAndDataFilling",
+        "args": {
+          "promptText": "",
+          "context": {
+            "id": "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+            "round": 1,
+            "maxRounds": 5,
+            "performative": "PROPOSE"
+          },
+          "schema": {
+            "type": "object",
+            "properties": {}
+          },
+          "templateUri": "Negotiation-T/target-negotiation/propose/v1"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "success",
+        "data": {},
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
+      },
+      {
+        "result": "error",
+        "data": {},
+        "error": {
+          "errCode": "negotiation.invalid_input",
+          "errMessage": ""
+        }
+      }
+    ]
+  }
+]

@@ -4,9 +4,9 @@ Data-driven accuracy verification for the A2A-T SDK: workflow cases written as J
 through the production SDK assembly path, with per-step API/LLM transcripts, latency and token metrics, and 95%+ accuracy
 target reporting for prompt tuning.
 
-Phase 1 (current) implements **Task-T only**, as the benchmark pilot; Notification-T / Negotiation-T /
-Authorization-T follow the same structure once Task-T stabilizes (suite class + `resources/` + registry entries,
-zero fork).
+Current extensions: **Task-T** (private-line complaint diagnosis) and **Negotiation-T** (RAN energy-saving target /
+information / feasibility negotiation), each as the benchmark pilot; Notification-T / Authorization-T follow the same
+structure once their reference scenarios stabilize (suite class + `resources/` + registry entries, zero fork).
 
 - **Pure test module**: no `src/main`, not in the BOM, excluded from release artifacts
   (`maven.deploy.skip/source.skip/javadoc.skip=true`) and from CI (`mvn ... -pl '!a2a-t-corpus'`).
@@ -23,12 +23,19 @@ a2a-t-corpus/
 ├── tools/            inputCsvToJson(.py/.sh), outputJsonToCsv(.py/.sh), csv-templates/
 └── src/test/java/net/openan/a2at/sdk/corpus/
     ├── engine/       framework core: config/loader/registry/engine/llm/assertion/report/discover + CorpusWorkFlowSuite
-    ├── task/         TaskTFromTextWorkFlowTest, TaskTFromDataWorkFlowTest, resources/<scenario>/
-    └── self/         corpus self-guard meta test (no LLM)
+    └── suites/       the per-extension workflow suites
+        ├── task/             TaskTFromTextWorkFlowTest, TaskTFromDataWorkFlowTest, TaskSelfGuardTest,
+        │   └── resources/<scenario>/   input_case_from_text.json, input_case_from_data.json
+        │                               (+ output_result_*.json written back by each run)
+        └── negotiation/      NegotiationTFromTextWorkFlowTest, NegotiationTFromDataWorkFlowTest,
+                              NegotiationSelfGuardTest
+            └── resources/<scenario>/   ran-energy-saving-target-negotiation,
+                                        ran-energy-saving-information-negotiation,
+                                        ran-energy-saving-feasibility-negotiation
 ```
 
-`task/resources/<scenario>/` holds `input_case_from_text.json` and `input_case_from_data.json` (case design,
-hand-authored); `output_result_*.json` files are written back by the engine after each run.
+`suites/<extension>/resources/<scenario>/` holds `input_case_from_text.json` and `input_case_from_data.json`
+(case design, hand-authored); `output_result_*.json` files are written back by the engine after each run.
 
 ## Quick start
 
@@ -37,6 +44,8 @@ cp a2a-t-corpus/env.example a2a-t-corpus/.env   # fill A2AT_LLM_BASE_URL / API_K
 mvn -pl a2a-t-corpus -am test -Dtest=TaskTFromTextWorkFlowTest
 mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario=private-line-complaint
 mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario='private-*' -Dcase.filter='TC0000000*'
+# Negotiation-T scenarios (RAN energy-saving)
+mvn -pl a2a-t-corpus test -Dtest=NegotiationTFromTextWorkFlowTest -Dcorpus.scenario='ran-energy-saving-*'
 ```
 
 - `-Dcorpus.scenario`: scenario name glob (`*` wildcard, comma-separated); `-Dcase.filter`: case id glob.
@@ -47,7 +56,7 @@ mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario='pr
   cases only).
 - `-Dcorpus.output.dir=<dir>`: redirect outputs instead of writing back into the scenario directories
   (summaries default to `target/corpus/`).
-- Structure-only gate without an LLM: `mvn -pl a2a-t-corpus test -Dtest=CorpusSelfGuardTest`.
+- Structure-only gates without an LLM: `mvn -pl a2a-t-corpus test -Dtest=TaskSelfGuardTest,NegotiationSelfGuardTest`.
 
 ## Case JSON contract (v1, first-hand definitions in `schemas/`)
 
@@ -98,10 +107,10 @@ mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario='pr
 python a2a-t-corpus/tools/inputCsvToJson.py --template --out my-cases.csv   # design table (with an example row)
 # fill the table, then convert with structural validation on by default
 python a2a-t-corpus/tools/inputCsvToJson.py --csv my-cases.csv \
-    --out a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/task/resources/<scenario>/input_case_from_text.json
+    --out a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/suites/task/resources/<scenario>/input_case_from_text.json
 # run a suite, then review (one row per case, full per-step request/response)
 python a2a-t-corpus/tools/outputJsonToCsv.py \
-    --json a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/task/resources/<scenario>/output_result_from_text.json \
+    --json a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/suites/task/resources/<scenario>/output_result_from_text.json \
     --out review.csv
 # optional: fill input JSON back into the design table
 python a2a-t-corpus/tools/inputCsvToJson.py --reverse --csv <input_case_from_text.json> --out back.csv
@@ -125,10 +134,10 @@ Python interpreter is installed.
 
 ## Adding a scenario (zero Java changes)
 
-Create `task/resources/<scenario>/` with the two input JSON files - the `@TestFactory` suites discover scenarios at
-runtime. Run `CorpusSelfGuardTest` (no LLM) as the structural gate first.
+Create `suites/<extension>/resources/<scenario>/` with the two input JSON files - the `@TestFactory` suites discover
+scenarios at runtime. Run the matching `*SelfGuardTest` (no LLM) as the structural gate first.
 
-## Later phases (after Task-T stabilizes)
+## Later phases (after the reference scenarios stabilize)
 
-For Notification-T / Negotiation-T / Authorization-T: add `corpus/<extension>/<XXWorkFlowTest>` suites plus their
-`resources/`, register the extension facade methods in `ApiRegistry`, and reuse the framework and tools as-is.
+For Notification-T / Authorization-T: add `suites/<extension>/<XXWorkFlowTest>` suites plus their `resources/`,
+register the extension facade methods in `ApiRegistry`, and reuse the framework and tools as-is.

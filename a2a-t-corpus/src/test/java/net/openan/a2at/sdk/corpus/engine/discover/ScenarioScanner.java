@@ -17,7 +17,7 @@ import java.util.List;
  * {@code resources/} folder that carries the requested case file ({@code input_case_from_text.json} or
  * {@code input_case_from_data.json}). New scenarios therefore require zero Java changes.
  *
- * <p>Discovery prefers the source tree ({@code src/test/java/.../<extension>/resources/}), which is where Maven
+ * <p>Discovery prefers the source tree ({@code src/test/java/.../suites/<extension>/resources/}), which is where Maven
  * runs surefire ({@code user.dir} is the module base directory); it falls back to the test classpath for IDE runs.
  */
 public final class ScenarioScanner {
@@ -31,7 +31,7 @@ public final class ScenarioScanner {
     }
 
     private static final String RESOURCE_PATH_PREFIX =
-            "net/openan/a2at/sdk/corpus/";
+            "net/openan/a2at/sdk/corpus/suites/";
 
     private ScenarioScanner() {}
 
@@ -47,6 +47,7 @@ public final class ScenarioScanner {
                         "a2at",
                         "sdk",
                         "corpus",
+                        "suites",
                         extensionFolder,
                         "resources")
                 .toAbsolutePath()
