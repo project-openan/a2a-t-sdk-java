@@ -60,6 +60,9 @@ public final class A2ATConfigKeys {
         /** Whether to verify the TLS certificate chain and hostname of the LLM endpoint (default true). */
         public static final String SSL_VERIFY = "A2AT_LLM_SSL_VERIFY";
 
+        /** Whether to print the full LLM request and response payloads (no truncation). Default false. */
+        public static final String DETAIL_LOG_ENABLED = "A2AT_LLM_DETAIL_LOG_ENABLED";
+
         /** Optional reasoning effort level for reasoning models (none/minimal/low/medium/high/xhigh). */
         public static final String REASONING_EFFORT = "A2AT_LLM_REASONING_EFFORT";
 

@@ -21,6 +21,7 @@ class LLMClientConfigTest {
                 100,
                 true,
                 false,
+                false,
                 "none");
 
         assertEquals("openai", config.provider());
@@ -33,6 +34,7 @@ class LLMClientConfigTest {
         assertEquals(15.5d, config.timeoutSeconds());
         assertEquals(true, config.disableSystemProxy());
         assertEquals(false, config.sslVerify());
+        assertEquals(false, config.detailLogEnabled());
         assertEquals(300, config.sessionMaxTotal());
         assertEquals(100, config.sessionMaxPerProvider());
         assertEquals("none", config.reasoningEffort());
@@ -55,5 +57,6 @@ class LLMClientConfigTest {
                 "none");
 
         assertEquals(true, config.sslVerify());
+        assertEquals(false, config.detailLogEnabled());
     }
 }

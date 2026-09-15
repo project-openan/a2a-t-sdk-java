@@ -1658,7 +1658,123 @@ After starting the client or server, confirm and troubleshoot as follows:
 2. **Content not updated**: changes to local files do not take effect without restarting the process; restart the SDK process and construct again.
 3. **Negotiation and LLM resources are not customizable**: `Negotiation-T` templates support only the built-in fixed set; negotiation template URIs outside the set are skipped with a warning.
 
-## 1.6 Configuration Item List
+## 1.6 Logging Configuration and Integration Guide
+
+### 1.6.1 Logging Mechanism Overview
+
+The SDK's LLM call logs are emitted through SLF4J on a **dedicated logger** `net.openan.a2at.sdk.llm.call`, decoupled from the application's other logs so the level can be controlled and filtered independently:
+
+| Log category | Level | Content | Controlled by the switch? |
+| --- | --- | --- | --- |
+| Call summary logs (`llm_call event=request` / `event=response` / `event=error`) | DEBUG | Timestamp, model, message count/character count, elapsed time (`elapsed_ms`), input/output/total tokens (`prompt_tokens`/`completion_tokens`/`total_tokens`), response content length (`content_chars`), `response_id`; **no payload content** | No; emitted at DEBUG level regardless |
+| Full payload logs (`llm_call event=request_body` / `event=response_body`) | DEBUG | Full request messages and response content, **no truncation** | Yes; controlled by `A2AT_LLM_DETAIL_LOG_ENABLED`, default off |
+
+Summary log example:
+
+```text
+llm_call event=response ts=2026-09-14T08:12:36.012Z provider=openai model=deepseek-v3 elapsed_ms=2556.4 prompt_tokens=512 completion_tokens=120 total_tokens=632 content_chars=344 response_id=chatcmpl-abc123
+```
+
+Key points:
+
+1. **No payload is printed by default**: `A2AT_LLM_DETAIL_LOG_ENABLED` defaults to `false`; summary logs are only visible when the embedding application enables DEBUG for the dedicated logger, so production INFO/WARN defaults produce no new output from the SDK.
+2. **Two-level control**: first set the level of `net.openan.a2at.sdk.llm.call` to DEBUG through the application's logging framework (controls whether summary logs are visible), then optionally set `A2AT_LLM_DETAIL_LOG_ENABLED=true` (controls whether full payloads are printed).
+3. **Risk warning**: enabling the switch prints detailed LLM interaction content, which may expose sensitive information (business templates, slots, negotiation messages, model responses, etc.) or consume large amounts of log space. Use it **only during the project DEBUG phase and keep it disabled in production**.
+
+### 1.6.2 Configuration
+
+Add the following to `client.env` / `server.env`:
+
+```properties
+# Whether to print the full LLM request and response payloads (no truncation). Defaults to
+# false. WARNING: enabling this prints detailed LLM interaction content, which may expose
+# sensitive information and consume large amounts of log space; use ONLY during project
+# debugging and keep it disabled in production.
+A2AT_LLM_DETAIL_LOG_ENABLED=false
+```
+
+| Value | Behavior |
+| --- | --- |
+| `false` (default, unset, or blank) | Full request/response payloads are not printed |
+| `true` | Full payloads are appended to the DEBUG-level logs, without truncation |
+
+Values are case-insensitive; any other invalid value is recorded as a configuration parse error and the SDK construction throws `LLMConfigError`.
+
+### 1.6.3 Integration Configuration Guide
+
+Viewing the LLM call logs requires the embedding application's cooperation (recommended only in debugging environments). The log level (logger) and the output destination/rotation (appender) are two layers of the logging configuration: the level decides which log events are produced, and the appender decides which file the events are written to and how they roll. Complete examples for common frameworks (level + output path + rotation):
+
+**logback (logback.xml / logback-spring.xml)**
+
+```xml
+<configuration>
+    <!-- 1. Dedicated file output for LLM call logs: path + size/time-based rotation -->
+    <appender name="LLM_CALL_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- Output path -->
+        <file>logs/llm-call.log</file>
+        <!-- Rotation: 100MB per file, roll by day and index, keep 7 days, 2GB total cap -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/llm-call.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 2. Dedicated logger: DEBUG (summary and payload lines are both DEBUG); additivity=false
+         keeps the lines out of the console appender -->
+    <logger name="net.openan.a2at.sdk.llm.call" level="DEBUG" additivity="false">
+        <appender-ref ref="LLM_CALL_FILE"/>
+    </logger>
+
+    <!-- 3. Keep the application root level at INFO; the console only carries business logs -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
+```
+
+**Spring Boot (application.yml, Spring Boot 2.4+)**
+
+```yaml
+logging:
+  level:
+    net.openan.a2at.sdk.llm.call: DEBUG
+  # Output path and rotation (applies to Spring Boot's default file appender)
+  file:
+    name: logs/llm-call.log
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 7
+      total-size-cap: 2GB
+```
+
+Note: this configuration writes **all** application logs (including LLM call logs) to `logs/llm-call.log` and rotates them per the policy above; `application.yml` cannot assign a dedicated file per logger. To keep LLM call logs in a separate file, add a `logback-spring.xml` (Spring Boot integrates logback by default) and reuse the logback example above.
+
+**Quarkus (application.properties)**
+
+```properties
+# Level
+quarkus.log.category."net.openan.a2at.sdk.llm.call".level=DEBUG
+# Write only to the dedicated file handler; do not bubble up to the console
+quarkus.log.category."net.openan.a2at.sdk.llm.call".use-parent-handlers=false
+# Dedicated file handler: output path
+quarkus.log.handler.file.llm-call.enable=true
+quarkus.log.handler.file.llm-call.path=logs/llm-call.log
+# Rotation: roll daily, keep the latest 7 files
+quarkus.log.handler.file.llm-call.rotation.file-suffix=.yyyy-MM-dd
+quarkus.log.handler.file.llm-call.rotation.max-backup-index=7
+# Bind the logger to the dedicated file handler
+quarkus.log.category."net.openan.a2at.sdk.llm.call".handlers=llm-call
+```
+
+> Note: the SDK only produces log events and never configures output destinations; both the output path and the rotation policy are entirely decided by the embedding application's appender (the examples above are recommendations). When `A2AT_LLM_DETAIL_LOG_ENABLED` is enabled, every LLM call prints full payloads — set a per-file size cap and a retention window as shown to avoid filling up the disk. If the application provides no SLF4J binding (e.g. logback/log4j2), the log events are discarded with only a single "No SLF4J providers were found" warning.
+
+## 1.7 Configuration Item List
 
 The sample configuration file provided by the SDK is `env.example`. When constructing the A2A-T Client and the A2A-T Server, copy the file to the corresponding `client.env` / `server.env`. The configuration items are described below:
 
@@ -1682,6 +1798,6 @@ The sample configuration file provided by the SDK is `env.example`. When constru
 | `A2AT_LLM_SESSION_MAX_TOTAL` | Maximum total number of tracked sessions, default `300` |
 | `A2AT_LLM_SESSION_MAX_PER_PROVIDER` | Maximum number of tracked sessions per provider, default `100` |
 | `A2AT_LLM_MAX_ATTEMPTS` | Maximum number of attempts for retryable LLM steps; range 1-10 (out-of-range values are clamped), default `3` |
+| `A2AT_LLM_DETAIL_LOG_ENABLED` | Whether to print the full LLM request/response payloads (no truncation), default `false`; enabling it may expose sensitive information or consume log space — use only in the DEBUG phase and keep disabled in production; timestamp/token/latency summary logs are emitted at DEBUG level on the dedicated logger `net.openan.a2at.sdk.llm.call`, see 1.6 |
 | `A2AT_NEGOTIATION_STATE_STORE_TYPE` | Negotiation state storage; currently supports `in_memory` |
-
 
