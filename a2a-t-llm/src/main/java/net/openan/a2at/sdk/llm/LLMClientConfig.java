@@ -23,6 +23,8 @@ import org.apache.commons.lang3.StringUtils;
  * @param sessionMaxPerProvider reserved per-provider session limit
  * @param disableSystemProxy whether to bypass the JVM or operating-system HTTP proxy
  * @param sslVerify whether to verify the TLS certificate chain and hostname of the LLM endpoint
+ * @param detailLogEnabled whether to print the full LLM request and response payloads (no truncation); summary logs
+ *     (timestamp, token usage, elapsed time) are recorded at DEBUG level independently of this flag
  * @param reasoningEffort optional reasoning effort for reasoning models (none/minimal/low/medium/high/xhigh); null
  *     leaves the parameter unset
  * @since 2026-06
@@ -40,6 +42,7 @@ public record LLMClientConfig(
         int sessionMaxPerProvider,
         boolean disableSystemProxy,
         boolean sslVerify,
+        boolean detailLogEnabled,
         String reasoningEffort) {
 
     private static final int MAX_HISTORY_WINDOW = 100;
@@ -78,6 +81,7 @@ public record LLMClientConfig(
                 sessionMaxPerProvider,
                 disableSystemProxy,
                 true,
+                false,
                 reasoningEffort);
     }
 
@@ -111,6 +115,7 @@ public record LLMClientConfig(
                 llmConfig.sessionMaxPerProvider(),
                 llmConfig.disableSystemProxy(),
                 llmConfig.sslVerify(),
+                llmConfig.detailLogEnabled(),
                 reasoningEffort);
     }
 

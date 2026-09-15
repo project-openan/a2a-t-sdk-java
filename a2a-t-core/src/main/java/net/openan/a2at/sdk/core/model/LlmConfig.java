@@ -27,6 +27,7 @@ public record LlmConfig(
         int sessionMaxPerProvider,
         boolean disableSystemProxy,
         boolean sslVerify,
+        boolean detailLogEnabled,
         @Nullable String reasoningEffort,
         int maxAttempts,
         List<String> parseErrors) {
@@ -82,6 +83,7 @@ public record LlmConfig(
                 sessionMaxPerProvider,
                 disableSystemProxy,
                 true,
+                false,
                 reasoningEffort,
                 maxAttempts,
                 parseErrors);
@@ -100,22 +102,48 @@ public record LlmConfig(
                 StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.Llm.MODEL), ""),
                 StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.Llm.API_KEY), ""),
                 StringUtils.defaultIfBlank(values.get(A2ATConfigKeys.Llm.BASE_URL), ""),
-                parseInt(values.get(A2ATConfigKeys.Llm.HISTORY_WINDOW),
-                        A2ATConfigKeys.Llm.HISTORY_WINDOW, DEFAULT_HISTORY_WINDOW, parseErrors),
-                parseOptionalNumeric(values.get(A2ATConfigKeys.Llm.MAX_TOKENS),
-                        A2ATConfigKeys.Llm.MAX_TOKENS, parseErrors, Integer::parseInt),
-                parseOptionalNumeric(values.get(A2ATConfigKeys.Llm.TEMPERATURE),
-                        A2ATConfigKeys.Llm.TEMPERATURE, parseErrors, Double::parseDouble),
-                parseOptionalNumeric(values.get(A2ATConfigKeys.Llm.TIMEOUT_SECONDS),
-                        A2ATConfigKeys.Llm.TIMEOUT_SECONDS, parseErrors, Double::parseDouble),
-                parseInt(values.get(A2ATConfigKeys.Llm.SESSION_MAX_TOTAL),
-                        A2ATConfigKeys.Llm.SESSION_MAX_TOTAL, DEFAULT_SESSION_MAX_TOTAL, parseErrors),
-                parseInt(values.get(A2ATConfigKeys.Llm.SESSION_MAX_PER_PROVIDER),
-                        A2ATConfigKeys.Llm.SESSION_MAX_PER_PROVIDER, DEFAULT_SESSION_MAX_PER_PROVIDER, parseErrors),
-                parseBoolean(values.get(A2ATConfigKeys.Llm.DISABLE_SYSTEM_PROXY),
-                        A2ATConfigKeys.Llm.DISABLE_SYSTEM_PROXY, false, parseErrors),
-                parseBoolean(values.get(A2ATConfigKeys.Llm.SSL_VERIFY),
-                        A2ATConfigKeys.Llm.SSL_VERIFY, true, parseErrors),
+                parseInt(
+                        values.get(A2ATConfigKeys.Llm.HISTORY_WINDOW),
+                        A2ATConfigKeys.Llm.HISTORY_WINDOW,
+                        DEFAULT_HISTORY_WINDOW,
+                        parseErrors),
+                parseOptionalNumeric(
+                        values.get(A2ATConfigKeys.Llm.MAX_TOKENS),
+                        A2ATConfigKeys.Llm.MAX_TOKENS,
+                        parseErrors,
+                        Integer::parseInt),
+                parseOptionalNumeric(
+                        values.get(A2ATConfigKeys.Llm.TEMPERATURE),
+                        A2ATConfigKeys.Llm.TEMPERATURE,
+                        parseErrors,
+                        Double::parseDouble),
+                parseOptionalNumeric(
+                        values.get(A2ATConfigKeys.Llm.TIMEOUT_SECONDS),
+                        A2ATConfigKeys.Llm.TIMEOUT_SECONDS,
+                        parseErrors,
+                        Double::parseDouble),
+                parseInt(
+                        values.get(A2ATConfigKeys.Llm.SESSION_MAX_TOTAL),
+                        A2ATConfigKeys.Llm.SESSION_MAX_TOTAL,
+                        DEFAULT_SESSION_MAX_TOTAL,
+                        parseErrors),
+                parseInt(
+                        values.get(A2ATConfigKeys.Llm.SESSION_MAX_PER_PROVIDER),
+                        A2ATConfigKeys.Llm.SESSION_MAX_PER_PROVIDER,
+                        DEFAULT_SESSION_MAX_PER_PROVIDER,
+                        parseErrors),
+                parseBoolean(
+                        values.get(A2ATConfigKeys.Llm.DISABLE_SYSTEM_PROXY),
+                        A2ATConfigKeys.Llm.DISABLE_SYSTEM_PROXY,
+                        false,
+                        parseErrors),
+                parseBoolean(
+                        values.get(A2ATConfigKeys.Llm.SSL_VERIFY), A2ATConfigKeys.Llm.SSL_VERIFY, true, parseErrors),
+                parseBoolean(
+                        values.get(A2ATConfigKeys.Llm.DETAIL_LOG_ENABLED),
+                        A2ATConfigKeys.Llm.DETAIL_LOG_ENABLED,
+                        false,
+                        parseErrors),
                 parseReasoningEffort(values.get(A2ATConfigKeys.Llm.REASONING_EFFORT)),
                 parseMaxAttempts(values.get(A2ATConfigKeys.Llm.MAX_ATTEMPTS)),
                 parseErrors);
@@ -130,18 +158,18 @@ public record LlmConfig(
             if (parsed < MAX_ATTEMPTS_LOWER_BOUND) {
                 log.atWarn()
                         .log(
-                        "LLM max attempts value is below the allowed minimum, clamped to bound. key={} raw_value={} clamped_value={}",
-                        A2ATConfigKeys.Llm.MAX_ATTEMPTS,
-                        rawValue.trim(),
+                                "LLM max attempts value is below the allowed minimum, clamped to bound. key={} raw_value={} clamped_value={}",
+                                A2ATConfigKeys.Llm.MAX_ATTEMPTS,
+                                rawValue.trim(),
                                 MAX_ATTEMPTS_LOWER_BOUND);
                 return MAX_ATTEMPTS_LOWER_BOUND;
             }
             if (parsed > MAX_ATTEMPTS_UPPER_BOUND) {
                 log.atWarn()
                         .log(
-"LLM max attempts value is above the allowed maximum, clamped to bound. key={} raw_value={} clamped_value={}",
-                        A2ATConfigKeys.Llm.MAX_ATTEMPTS,
-                        rawValue.trim(),
+                                "LLM max attempts value is above the allowed maximum, clamped to bound. key={} raw_value={} clamped_value={}",
+                                A2ATConfigKeys.Llm.MAX_ATTEMPTS,
+                                rawValue.trim(),
                                 MAX_ATTEMPTS_UPPER_BOUND);
                 return MAX_ATTEMPTS_UPPER_BOUND;
             }
@@ -149,9 +177,9 @@ public record LlmConfig(
         } catch (NumberFormatException error) {
             log.atWarn()
                     .log(
-"LLM max attempts value is not a valid integer, falling back to default. key={} raw_value={} default_value={}",
-                        A2ATConfigKeys.Llm.MAX_ATTEMPTS,
-                        rawValue.trim(),
+                            "LLM max attempts value is not a valid integer, falling back to default. key={} raw_value={} default_value={}",
+                            A2ATConfigKeys.Llm.MAX_ATTEMPTS,
+                            rawValue.trim(),
                             DEFAULT_MAX_ATTEMPTS);
             return DEFAULT_MAX_ATTEMPTS;
         }

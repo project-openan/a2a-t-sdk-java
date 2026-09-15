@@ -14,6 +14,9 @@ import java.net.Proxy;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,6 +44,13 @@ public class OpenAIClient implements LLMClient {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final Logger log = LoggerFactory.getLogger(OpenAIClient.class);
+
+    /**
+     * Dedicated logger for structured {@code llm_call} request/response logging (DEBUG level). Separate from the module
+     * logger so embedding applications can filter LLM call logs independently, e.g.
+     * {@code logging.level.net.openan.a2at.sdk.llm.call=DEBUG}.
+     */
+    private static final Logger CALL_LOG = LoggerFactory.getLogger("net.openan.a2at.sdk.llm.call");
 
     private static final String JSON_MODE_INSTRUCTION =
             "Return a valid JSON object string. The output must be valid json. "
@@ -73,12 +83,33 @@ public class OpenAIClient implements LLMClient {
         if (config.baseUrl() == null || config.baseUrl().isBlank()) {
             throw new LLMConfigError(config.provider() + " client requires a non-empty base_url");
         }
+        ChatCompletionCreateParams params = buildStructuredParams(messages, jsonSchema, temperature, maxTokens);
+        long startNanos = System.nanoTime();
+        boolean debugEnabled = CALL_LOG.isDebugEnabled();
+        if (debugEnabled) {
+            logRequest(
+                    messages,
+                    jsonSchema,
+                    params.messages().size(),
+                    temperature == null ? config.temperature() : temperature,
+                    maxTokens == null ? config.maxTokens() : maxTokens);
+        }
         try {
-            return parseResponse(
-                    executor.apply(config, buildStructuredParams(messages, jsonSchema, temperature, maxTokens)));
+            ChatCompletion response = executor.apply(config, params);
+            LLMResponse parsed = parseResponse(response);
+            if (debugEnabled) {
+                logResponse(startNanos, response);
+            }
+            return parsed;
         } catch (LLMConfigError | LLMRuntimeError error) {
+            if (debugEnabled) {
+                logError(startNanos, error);
+            }
             throw error;
         } catch (Exception error) {
+            if (debugEnabled) {
+                logError(startNanos, error);
+            }
             throw new LLMRuntimeError(config.provider() + " invocation failed: " + error.getMessage(), error);
         }
     }
@@ -130,9 +161,9 @@ public class OpenAIClient implements LLMClient {
                 ChatCompletionSystemMessageParam.builder().content(content).build());
     }
 
-    private static String toJson(Map<String, Object> jsonSchema) {
+    private static String toJson(Object value) {
         try {
-            return OBJECT_MAPPER.writeValueAsString(jsonSchema);
+            return OBJECT_MAPPER.writeValueAsString(value);
         } catch (JsonProcessingException error) {
             throw new LLMRuntimeError("Failed to serialize JSON schema", error);
         }
@@ -180,10 +211,9 @@ public class OpenAIClient implements LLMClient {
                 .get(0)
                 .message()
                 .content()
-                .orElseThrow(
-                        () -> new LLMRuntimeError(config.provider()
-                                + " response did not include message content (finish_reason="
-                                + extractFinishReason(response) + ")"));
+                .orElseThrow(() -> new LLMRuntimeError(config.provider()
+                        + " response did not include message content (finish_reason="
+                        + extractFinishReason(response) + ")"));
     }
 
     private static Map<String, Integer> mapUsage(ChatCompletion response) {
@@ -207,6 +237,80 @@ public class OpenAIClient implements LLMClient {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("responseId", response.id());
         return metadata;
+    }
+
+    private void logRequest(
+            List<Map<String, String>> messages,
+            Map<String, Object> jsonSchema,
+            int messageCount,
+            Double resolvedTemperature,
+            Integer resolvedMaxTokens) {
+        String schemaText = "Return JSON that conforms to this JSON schema: " + toJson(jsonSchema);
+        List<Map<String, String>> fullMessages = new ArrayList<>(messages.size() + 2);
+        fullMessages.add(Map.of("role", "system", "content", JSON_MODE_INSTRUCTION));
+        fullMessages.add(Map.of("role", "system", "content", schemaText));
+        fullMessages.addAll(messages);
+        String messagesJson = toJson(fullMessages);
+        CALL_LOG.debug(
+                "llm_call event=request ts={} provider={} model={} messages={} chars={} temperature={} max_tokens={}",
+                utcNow(),
+                config.provider(),
+                config.model(),
+                messageCount,
+                messagesJson.length(),
+                resolvedTemperature == null ? "-" : resolvedTemperature,
+                resolvedMaxTokens == null ? "-" : resolvedMaxTokens);
+        if (config.detailLogEnabled()) {
+            CALL_LOG.debug(
+                    "llm_call event=request_body ts={} provider={} model={} messages_json={}",
+                    utcNow(),
+                    config.provider(),
+                    config.model(),
+                    messagesJson);
+        }
+    }
+
+    private void logResponse(long startNanos, ChatCompletion response) {
+        String contentText = extractMessageText(response);
+        Map<String, Integer> usage = mapUsage(response);
+        CALL_LOG.debug(
+                "llm_call event=response ts={} provider={} model={} elapsed_ms={} prompt_tokens={} completion_tokens={} total_tokens={} content_chars={} response_id={}",
+                utcNow(),
+                config.provider(),
+                response.model(),
+                elapsedMs(startNanos),
+                usage.get("prompt_tokens"),
+                usage.get("completion_tokens"),
+                usage.get("total_tokens"),
+                contentText.length(),
+                response.id());
+        if (config.detailLogEnabled()) {
+            CALL_LOG.debug(
+                    "llm_call event=response_body ts={} provider={} model={} content={}",
+                    utcNow(),
+                    config.provider(),
+                    response.model(),
+                    contentText);
+        }
+    }
+
+    private void logError(long startNanos, Throwable error) {
+        CALL_LOG.debug(
+                "llm_call event=error ts={} provider={} model={} elapsed_ms={} error_code={} error={}",
+                utcNow(),
+                config.provider(),
+                config.model(),
+                elapsedMs(startNanos),
+                error.getClass().getSimpleName(),
+                error.getMessage());
+    }
+
+    private static String elapsedMs(long startNanos) {
+        return String.format(Locale.ROOT, "%.1f", (System.nanoTime() - startNanos) / 1_000_000.0d);
+    }
+
+    private static String utcNow() {
+        return DateTimeFormatter.ISO_INSTANT.format(Instant.now().truncatedTo(ChronoUnit.MILLIS));
     }
 
     @SuppressWarnings("deprecation")
@@ -240,19 +344,18 @@ public class OpenAIClient implements LLMClient {
      * Everything else on the connection keeps the OpenAI SDK defaults.
      */
     private static void applyInsecureTls(OpenAIOkHttpClient.Builder builder) {
-        X509TrustManager trustAllManager =
-                new X509TrustManager() {
-                    @Override
-                    public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+        X509TrustManager trustAllManager = new X509TrustManager() {
+            @Override
+            public void checkClientTrusted(X509Certificate[] chain, String authType) {}
 
-                    @Override
-                    public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+            @Override
+            public void checkServerTrusted(X509Certificate[] chain, String authType) {}
 
-                    @Override
-                    public X509Certificate[] getAcceptedIssuers() {
-                        return new X509Certificate[0];
-                    }
-                };
+            @Override
+            public X509Certificate[] getAcceptedIssuers() {
+                return new X509Certificate[0];
+            }
+        };
         try {
             SSLContext sslContext = SSLContext.getInstance("TLS");
             sslContext.init(null, new TrustManager[] {trustAllManager}, new SecureRandom());
@@ -262,8 +365,7 @@ public class OpenAIClient implements LLMClient {
         }
         builder.trustManager(trustAllManager);
         builder.hostnameVerifier((hostname, session) -> true);
-        log.warn(
-                "[A2AT-LLM] TLS certificate chain and hostname verification are disabled; "
-                        + "use only in controlled environments with trusted networks");
+        log.warn("[A2AT-LLM] TLS certificate chain and hostname verification are disabled; "
+                + "use only in controlled environments with trusted networks");
     }
 }

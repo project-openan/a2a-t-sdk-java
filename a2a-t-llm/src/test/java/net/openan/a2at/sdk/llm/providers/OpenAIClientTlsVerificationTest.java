@@ -22,8 +22,8 @@ import net.openan.a2at.sdk.llm.LLMRuntimeError;
 import org.junit.jupiter.api.Test;
 
 /**
- * Behavioral TLS tests against a local HTTPS server that presents a self-signed certificate for {@code localhost}
- * while the client connects to {@code 127.0.0.1}, so the default path fails on both trust and hostname checks.
+ * Behavioral TLS tests against a local HTTPS server that presents a self-signed certificate for {@code localhost} while
+ * the client connects to {@code 127.0.0.1}, so the default path fails on both trust and hostname checks.
  */
 class OpenAIClientTlsVerificationTest {
 
@@ -54,7 +54,10 @@ class OpenAIClientTlsVerificationTest {
             LLMRuntimeError error = assertThrows(
                     LLMRuntimeError.class,
                     () -> client.structured(
-                            List.of(Map.of("role", "user", "content", "extract")), Map.of("type", "object"), null, null));
+                            List.of(Map.of("role", "user", "content", "extract")),
+                            Map.of("type", "object"),
+                            null,
+                            null));
 
             assertTrue(
                     hasSslFailureInCauseChain(error),
@@ -77,6 +80,7 @@ class OpenAIClientTlsVerificationTest {
                 100,
                 false,
                 sslVerify,
+                false,
                 null);
     }
 

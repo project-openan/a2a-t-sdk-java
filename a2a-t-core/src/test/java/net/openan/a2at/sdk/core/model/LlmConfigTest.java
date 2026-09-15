@@ -47,6 +47,7 @@ class LlmConfigTest {
         assertNull(config.temperature());
         assertNull(config.timeoutSeconds());
         assertEquals(false, config.disableSystemProxy());
+        assertEquals(false, config.detailLogEnabled());
         assertNull(config.reasoningEffort());
         assertEquals(300, config.sessionMaxTotal());
         assertEquals(100, config.sessionMaxPerProvider());
@@ -246,5 +247,45 @@ class LlmConfigTest {
         assertEquals(false, falseConfig.disableSystemProxy());
         assertTrue(trueConfig.parseErrors().isEmpty());
         assertTrue(falseConfig.parseErrors().isEmpty());
+    }
+
+    /** Verifies that {@code A2AT_LLM_DETAIL_LOG_ENABLED} resolves to {@code false} when the key is missing or blank. */
+    @Test
+    void should_defaultDetailLogEnabledToFalse_When_keyIsMissingOrBlank() {
+        LlmConfig absent = LlmConfig.fromMap(Map.of());
+        LlmConfig blank = LlmConfig.fromMap(Map.of("A2AT_LLM_DETAIL_LOG_ENABLED", ""));
+
+        assertEquals(false, absent.detailLogEnabled());
+        assertEquals(false, blank.detailLogEnabled());
+        assertTrue(absent.parseErrors().isEmpty());
+        assertTrue(blank.parseErrors().isEmpty());
+    }
+
+    /**
+     * Verifies that {@code A2AT_LLM_DETAIL_LOG_ENABLED} is parsed case-insensitively without recording parse errors.
+     */
+    @Test
+    void should_parseDetailLogEnabledCaseInsensitive() {
+        LlmConfig trueConfig = LlmConfig.fromMap(Map.of("A2AT_LLM_DETAIL_LOG_ENABLED", "TRUE"));
+        LlmConfig falseConfig = LlmConfig.fromMap(Map.of("A2AT_LLM_DETAIL_LOG_ENABLED", "False"));
+
+        assertEquals(true, trueConfig.detailLogEnabled());
+        assertEquals(false, falseConfig.detailLogEnabled());
+        assertTrue(trueConfig.parseErrors().isEmpty());
+        assertTrue(falseConfig.parseErrors().isEmpty());
+    }
+
+    /**
+     * Verifies that an invalid {@code A2AT_LLM_DETAIL_LOG_ENABLED} value records a parse error and falls back to
+     * {@code false}.
+     */
+    @Test
+    void should_recordParseError_When_detailLogEnabledIsInvalid() {
+        LlmConfig config = LlmConfig.fromMap(Map.of("A2AT_LLM_DETAIL_LOG_ENABLED", "maybe"));
+
+        List<String> errors = config.parseErrors();
+        assertEquals(1, errors.size());
+        assertTrue(errors.contains("A2AT_LLM_DETAIL_LOG_ENABLED: invalid boolean value 'maybe'"));
+        assertEquals(false, config.detailLogEnabled());
     }
 }

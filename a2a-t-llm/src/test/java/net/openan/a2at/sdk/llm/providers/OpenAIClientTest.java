@@ -5,6 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.openai.core.JsonValue;
 import com.openai.models.chat.completions.ChatCompletion;
@@ -25,9 +29,28 @@ import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMConfigError;
 import net.openan.a2at.sdk.llm.LLMResponse;
 import net.openan.a2at.sdk.llm.LLMRuntimeError;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 class OpenAIClientTest {
+
+    private final ListAppender<ILoggingEvent> callLogAppender = new ListAppender<>();
+
+    private final Logger callLogger = (Logger) LoggerFactory.getLogger("net.openan.a2at.sdk.llm.call");
+
+    @BeforeEach
+    void attachCallLogAppender() {
+        callLogAppender.start();
+        callLogger.addAppender(callLogAppender);
+    }
+
+    @AfterEach
+    void detachCallLogAppender() {
+        callLogger.detachAppender(callLogAppender);
+        callLogger.setLevel(null);
+    }
 
     @Test
     void rejectsBlankApiKeyOnConstruction() {
@@ -98,7 +121,20 @@ class OpenAIClientTest {
     void structuredFallsBackToConfigTemperatureAndMaxTokens() {
         AtomicReference<ChatCompletionCreateParams> capturedParams = new AtomicReference<>();
         LLMClientConfig config = new LLMClientConfig(
-                "openai", "gpt-4o-mini", "sk-test", "https://api.example.test/v1", 10, 128, 0.4d, null, 300, 100, false, true, null);
+                "openai",
+                "gpt-4o-mini",
+                "sk-test",
+                "https://api.example.test/v1",
+                10,
+                128,
+                0.4d,
+                null,
+                300,
+                100,
+                false,
+                true,
+                false,
+                null);
         OpenAIClient client = new OpenAIClient(config, (runtimeConfig, requestParams) -> {
             capturedParams.set(requestParams);
             return chatCompletion("{}");
@@ -203,7 +239,155 @@ class OpenAIClientTest {
     }
 
     private static LLMClientConfig config(String apiKey, String baseUrl) {
-        return new LLMClientConfig("openai", "gpt-4o-mini", apiKey, baseUrl, 10, null, null, null, 300, 100, false, true, null);
+        return new LLMClientConfig(
+                "openai", "gpt-4o-mini", apiKey, baseUrl, 10, null, null, null, 300, 100, false, true, false, null);
+    }
+
+    private static LLMClientConfig config(String apiKey, String baseUrl, boolean detailLogEnabled) {
+        return new LLMClientConfig(
+                "openai",
+                "gpt-4o-mini",
+                apiKey,
+                baseUrl,
+                10,
+                null,
+                null,
+                null,
+                300,
+                100,
+                false,
+                true,
+                detailLogEnabled,
+                null);
+    }
+
+    // ---- Detailed call logging (dedicated logger net.openan.a2at.sdk.llm.call at DEBUG) ----
+
+    @Test
+    void summaryLogsRecordedAtDebugWithoutPayloadWhenDetailLogDisabled() {
+        OpenAIClient client = new OpenAIClient(
+                config("sk-secret-summary", "https://api.example.test/v1", false),
+                (runtimeConfig, requestParams) -> chatCompletion("{\"device_type\":\"router\"}"));
+
+        client.structured(
+                List.of(Map.of("role", "user", "content", "extract router")), Map.of("type", "object"), 0.25d, 9);
+
+        List<String> messages = recordedMessages();
+        assertTrue(messages.stream().anyMatch(line -> line.startsWith("llm_call event=request ")));
+        assertTrue(messages.stream().anyMatch(line -> line.startsWith("llm_call event=response ")));
+        assertTrue(messages.stream().noneMatch(line -> line.contains("event=request_body")));
+        assertTrue(messages.stream().noneMatch(line -> line.contains("event=response_body")));
+
+        String requestLine = messages.stream()
+                .filter(line -> line.startsWith("llm_call event=request "))
+                .findFirst()
+                .orElseThrow();
+        assertContains(
+                requestLine,
+                "provider=openai",
+                "model=gpt-4o-mini",
+                "messages=3",
+                "chars=",
+                "temperature=0.25",
+                "max_tokens=9");
+
+        String responseLine = messages.stream()
+                .filter(line -> line.startsWith("llm_call event=response "))
+                .findFirst()
+                .orElseThrow();
+        assertContains(
+                responseLine,
+                "provider=openai",
+                "model=gpt-4o-mini",
+                "elapsed_ms=",
+                "prompt_tokens=7",
+                "completion_tokens=2",
+                "total_tokens=9",
+                "content_chars=",
+                "response_id=chatcmpl_123");
+
+        assertTrue(
+                messages.stream().noneMatch(line -> line.contains("sk-secret-summary")),
+                "logs must not leak the API key");
+    }
+
+    @Test
+    void payloadLinesRecordedWithoutTruncationWhenDetailLogEnabled() {
+        OpenAIClient client = new OpenAIClient(
+                config("sk-test", "https://api.example.test/v1", true),
+                (runtimeConfig, requestParams) -> chatCompletion("{\"device_type\":\"router\"}"));
+
+        client.structured(
+                List.of(Map.of("role", "user", "content", "extract the device type here please")),
+                Map.of("type", "object", "properties", Map.of("device_type", Map.of("type", "string"))),
+                null,
+                null);
+
+        List<String> messages = recordedMessages();
+        String requestBodyLine = messages.stream()
+                .filter(line -> line.contains("event=request_body"))
+                .findFirst()
+                .orElseThrow();
+        assertContains(
+                requestBodyLine,
+                "extract the device type here please",
+                "device_type",
+                "Return a valid JSON object string");
+        String responseBodyLine = messages.stream()
+                .filter(line -> line.contains("event=response_body"))
+                .findFirst()
+                .orElseThrow();
+        assertContains(responseBodyLine, "{\"device_type\":\"router\"}");
+    }
+
+    @Test
+    void errorLineRecordedOnProviderFailure() {
+        OpenAIClient client = new OpenAIClient(
+                config("sk-test", "https://api.example.test/v1", false), (runtimeConfig, requestParams) -> {
+                    throw new IllegalStateException("provider unavailable");
+                });
+
+        assertThrows(
+                LLMRuntimeError.class,
+                () -> client.structured(
+                        List.of(Map.of("role", "user", "content", "extract")), Map.of("type", "object"), null, null));
+
+        List<String> messages = recordedMessages();
+        String errorLine = messages.stream()
+                .filter(line -> line.startsWith("llm_call event=error "))
+                .findFirst()
+                .orElseThrow();
+        assertContains(errorLine, "elapsed_ms=", "error_code=IllegalStateException", "error=provider unavailable");
+        assertTrue(!errorLine.contains("prompt_tokens"), "token fields must not appear on the error line");
+        assertTrue(messages.stream().noneMatch(line -> line.contains("event=response")));
+    }
+
+    @Test
+    void noCallLogsWhenDedicatedLoggerNotEnabledForDebug() {
+        callLogger.setLevel(Level.INFO);
+
+        OpenAIClient client = new OpenAIClient(
+                config("sk-test", "https://api.example.test/v1", true), (runtimeConfig, requestParams) -> {
+                    return chatCompletion("{}");
+                });
+
+        client.structured(List.of(Map.of("role", "user", "content", "extract")), Map.of("type", "object"), null, null);
+
+        assertTrue(
+                recordedMessages().isEmpty(),
+                "no llm_call logs expected when the dedicated logger is not enabled for DEBUG");
+    }
+
+    private List<String> recordedMessages() {
+        return callLogAppender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .toList();
+    }
+
+    private static void assertContains(String message, String... fragments) {
+        for (String fragment : fragments) {
+            assertTrue(message.contains(fragment), "expected [" + message + "] to contain [" + fragment + "]");
+        }
     }
 
     private static ChatCompletion chatCompletion(String content) {
