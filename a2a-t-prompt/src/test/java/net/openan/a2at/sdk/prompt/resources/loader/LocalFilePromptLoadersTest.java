@@ -4,25 +4,52 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import net.openan.a2at.sdk.core.exception.A2ATError;
 import net.openan.a2at.sdk.core.exception.ResourceNotFoundException;
 import net.openan.a2at.sdk.core.model.PromptRuntimeConfig;
 import net.openan.a2at.sdk.prompt.resources.model.PromptSlotSchema;
 import net.openan.a2at.sdk.prompt.resources.model.ScenarioDefinition;
+import net.openan.a2at.sdk.resources.ClasspathPromptResourceLoader;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.LoggerFactory;
 
 class LocalFilePromptLoadersTest {
 
+    private final ClasspathPromptResourceLoader resourceLoader = new ClasspathPromptResourceLoader();
+
     @TempDir
     Path promptRootDir;
+
+    private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+
+    private final Logger logger = (Logger) LoggerFactory.getLogger(BuiltinFallbackWarnings.class);
+
+    @BeforeEach
+    void attachAppender() {
+        appender.start();
+        logger.addAppender(appender);
+    }
+
+    @AfterEach
+    void detachAppender() {
+        logger.detachAppender(appender);
+        appender.stop();
+    }
 
     @Test
     void loadScenarioCatalogMapsJacksonAnnotatedRecords() throws IOException {
@@ -48,7 +75,8 @@ class LocalFilePromptLoadersTest {
                 """);
 
         List<ScenarioDefinition> scenarios =
-                new LocalFilePromptScenarioCatalogLoader(snapshot(), promptRootDir).load("en");
+                new LocalFilePromptScenarioCatalogLoader(snapshot(), scenarioLoader(), promptRootDir, warnedPaths())
+                        .load("en");
 
         assertEquals(2, scenarios.size());
         assertEquals("incident_triage", scenarios.get(0).scenarioCode());
@@ -59,7 +87,10 @@ class LocalFilePromptLoadersTest {
     void loadScenarioCatalogTreatsMissingScenariosArrayAsEmptyCatalog() throws IOException {
         write(promptRootDir.resolve("scenarios").resolve("en").resolve("scenarios.json"), "{}");
 
-        assertEquals(List.of(), new LocalFilePromptScenarioCatalogLoader(snapshot(), promptRootDir).load("en"));
+        assertEquals(
+                List.of(),
+                new LocalFilePromptScenarioCatalogLoader(snapshot(), scenarioLoader(), promptRootDir, warnedPaths())
+                        .load("en"));
     }
 
     @Test
@@ -81,7 +112,7 @@ class LocalFilePromptLoadersTest {
                 """);
 
         String template =
-                new LocalFilePromptTemplateLoader(snapshot(), promptRootDir).loadTemplate("incident_triage", "en");
+                new LocalFilePromptTemplateLoader(snapshot(), templateLoader(), warnedPaths()).loadTemplate("incident_triage", "en");
 
         assertEquals(
                 """
@@ -91,6 +122,49 @@ class LocalFilePromptLoadersTest {
                 Summary: {{summary}}
                 """,
                 template);
+    }
+
+    @Test
+    void loadTemplateResolvesPathFormScenarioCodeFromLocalSnapshot() throws IOException {
+        write(
+                promptRootDir
+                        .resolve("templates")
+                        .resolve("Task-T/network-layer/ran-energy-saving/v1")
+                        .resolve("en-US")
+                        .resolve("template.md"),
+                "Local path-form template body.");
+
+        String template = new LocalFilePromptTemplateLoader(snapshot(), templateLoader(), warnedPaths())
+                .loadTemplate("Task-T/network-layer/ran-energy-saving/v1", "en-US");
+
+        assertEquals("Local path-form template body.", template);
+        assertEquals(0, warningMessages().size(), "a local path-form hit must not fall back to the builtin template");
+    }
+
+    @Test
+    void loadSlotSchemaResolvesPathFormScenarioCodeFromLocalSnapshot() throws IOException {
+        write(
+                promptRootDir
+                        .resolve("slots")
+                        .resolve("Task-T/network-layer/ran-energy-saving/v1")
+                        .resolve("en-US")
+                        .resolve("slot.json"),
+                """
+                {
+                  "required": ["service"],
+                  "properties": {
+                    "service": {"type": "string", "description": "Affected service name"}
+                  }
+                }
+                """);
+
+        PromptSlotSchema schema = new LocalFilePromptSlotSchemaLoader(snapshot(), slotLoader(), promptRootDir, warnedPaths())
+                .loadSlotSchema("Task-T/network-layer/ran-energy-saving/v1", "en-US");
+
+        assertEquals("Task-T/network-layer/ran-energy-saving/v1", schema.scenarioCode());
+        assertEquals(1, schema.slotDefinitions().size());
+        assertEquals("service", schema.slotDefinitions().get(0).name());
+        assertEquals(0, warningMessages().size(), "a local path-form hit must not fall back to the builtin schema");
     }
 
     @Test
@@ -125,8 +199,8 @@ class LocalFilePromptLoadersTest {
                 }
                 """);
 
-        PromptSlotSchema schema =
-                new LocalFilePromptSlotSchemaLoader(snapshot(), promptRootDir).loadSlotSchema("incident_triage", "en");
+        PromptSlotSchema schema = new LocalFilePromptSlotSchemaLoader(snapshot(), slotLoader(), promptRootDir, warnedPaths())
+                .loadSlotSchema("incident_triage", "en");
 
         assertEquals("incident_triage", schema.scenarioCode());
         assertEquals(3, schema.slotDefinitions().size());
@@ -141,16 +215,64 @@ class LocalFilePromptLoadersTest {
     }
 
     @Test
-    void missingTemplateIncludesResolvedLocalPathInResourceNotFoundException() {
-        ResourceNotFoundException exception = assertThrows(
-                ResourceNotFoundException.class, () -> new LocalFilePromptTemplateLoader(snapshot(), promptRootDir)
-                        .loadTemplate("incident_triage", "en"));
+    void loadTemplateFallsBackToBuiltinWhenMissingLocally() {
+        Set<String> warnedPaths = warnedPaths();
 
-        String expected = (promptRootDir.resolve("templates").toString()
-                        + "/*/network-layer/incident_triage/v1/en/template.md"
-                        + " (or the layout without the network-layer segment)")
-                .replace('\\', '/');
-        assertEquals(expected, exception.resourcePath().replace('\\', '/'));
+        String template =
+                new LocalFilePromptTemplateLoader(snapshot(), templateLoader(), warnedPaths)
+                        .loadTemplate("ran-energy-saving", "en-US");
+
+        assertEquals(templateLoader().loadTemplate("ran-energy-saving", "en-US"), template);
+        List<String> warnings = warningMessages();
+        assertEquals(1, warnings.size());
+        assertTrueWarning(warnings.get(0), "prompt_resource_builtin_fallback path=prompt_resources/templates/ran-energy-saving/en-US/template.md");
+    }
+
+    @Test
+    void loadSlotSchemaFallsBackToBuiltinWhenMissingLocally() {
+        Set<String> warnedPaths = warnedPaths();
+
+        PromptSlotSchema schema = new LocalFilePromptSlotSchemaLoader(snapshot(), slotLoader(), promptRootDir, warnedPaths)
+                .loadSlotSchema("ran-energy-saving", "en-US");
+
+        assertEquals(slotLoader().loadSlotSchema("ran-energy-saving", "en-US").slotDefinitions(), schema.slotDefinitions());
+        assertEquals(1, warningMessages().size());
+    }
+
+    @Test
+    void loadScenarioCatalogFallsBackToBuiltinWhenMissingLocally() {
+        Set<String> warnedPaths = warnedPaths();
+
+        List<ScenarioDefinition> scenarios =
+                new LocalFilePromptScenarioCatalogLoader(snapshot(), scenarioLoader(), promptRootDir, warnedPaths)
+                        .load("en-US");
+
+        assertEquals(scenarioLoader().load("en-US").size(), scenarios.size());
+        assertEquals(1, warningMessages().size());
+    }
+
+    @Test
+    void builtinFallbackWarnsOnlyOncePerResourcePath() {
+        Set<String> warnedPaths = warnedPaths();
+        LocalFilePromptTemplateLoader loader = new LocalFilePromptTemplateLoader(snapshot(), templateLoader(), warnedPaths);
+
+        loader.loadTemplate("ran-energy-saving", "en-US");
+        loader.loadTemplate("ran-energy-saving", "en-US");
+
+        assertEquals(1, warningMessages().size(), "the same resource path must warn about its builtin fallback only once");
+    }
+
+    @Test
+    void missingTemplateFallsBackToClasspathThenThrowsNotFound() {
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> new LocalFilePromptTemplateLoader(snapshot(), templateLoader(), warnedPaths())
+                        .loadTemplate("incident_triage", "en-US"));
+
+        assertEquals(
+                "prompt_resources/templates/*/network-layer/incident_triage/v1/en-US/template.md"
+                        + " (or the layout without the network-layer segment)",
+                exception.resourcePath());
     }
 
     @Test
@@ -166,12 +288,13 @@ class LocalFilePromptLoadersTest {
                         .resolve("slot.json"),
                 "{ \"required\": [\"severity\"], \"properties\": ");
 
-        A2ATError exception =
-                assertThrows(A2ATError.class, () -> new LocalFilePromptSlotSchemaLoader(snapshot(), promptRootDir)
+        A2ATError exception = assertThrows(
+                A2ATError.class,
+                () -> new LocalFilePromptSlotSchemaLoader(snapshot(), slotLoader(), promptRootDir, warnedPaths())
                         .loadSlotSchema("incident_triage", "en"));
 
         assertEquals("infra.resource_read_failed", exception.getCode());
-        assertTrue(exception.getMessage().startsWith("Failed to read resource '"));
+        assertEquals(0, warningMessages().size(), "a malformed local slot schema must fail-fast without a builtin fallback WARN");
     }
 
     @Test
@@ -268,21 +391,26 @@ class LocalFilePromptLoadersTest {
 
     @Test
     void loadTemplateRejectsTraversalOrBlankScenarioPathSegments() {
-        assertThrows(IllegalArgumentException.class, () -> new LocalFilePromptTemplateLoader(snapshot(), promptRootDir)
-                .loadTemplate("../etc/passwd", "en"));
-        assertThrows(IllegalArgumentException.class, () -> new LocalFilePromptTemplateLoader(snapshot(), promptRootDir)
-                .loadTemplate("Task-T//network-layer/x", "en"));
-        assertThrows(IllegalArgumentException.class, () -> new LocalFilePromptTemplateLoader(snapshot(), promptRootDir)
-                .loadTemplate("incident_triage", "en/../admin"));
+        assertThrows(
+                IllegalArgumentException.class, () -> new LocalFilePromptTemplateLoader(snapshot(), templateLoader(), warnedPaths())
+                        .loadTemplate("../etc/passwd", "en"));
+        assertThrows(
+                IllegalArgumentException.class, () -> new LocalFilePromptTemplateLoader(snapshot(), templateLoader(), warnedPaths())
+                        .loadTemplate("Task-T//network-layer/x", "en"));
+        assertThrows(
+                IllegalArgumentException.class, () -> new LocalFilePromptTemplateLoader(snapshot(), templateLoader(), warnedPaths())
+                        .loadTemplate("incident_triage", "en/../admin"));
     }
 
     @Test
     void loadSlotSchemaRejectsNonSimpleLanguage() {
         assertThrows(
-                IllegalArgumentException.class, () -> new LocalFilePromptSlotSchemaLoader(snapshot(), promptRootDir)
+                IllegalArgumentException.class,
+                () -> new LocalFilePromptSlotSchemaLoader(snapshot(), slotLoader(), promptRootDir, warnedPaths())
                         .loadSlotSchema("incident_triage", "../en"));
         assertThrows(
-                IllegalArgumentException.class, () -> new LocalFilePromptSlotSchemaLoader(snapshot(), promptRootDir)
+                IllegalArgumentException.class,
+                () -> new LocalFilePromptSlotSchemaLoader(snapshot(), slotLoader(), promptRootDir, warnedPaths())
                         .loadSlotSchema("Task-T/network-layer/..", "en"));
     }
 
@@ -290,10 +418,12 @@ class LocalFilePromptLoadersTest {
     void loadScenarioCatalogRejectsNonSimpleLanguage() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new LocalFilePromptScenarioCatalogLoader(snapshot(), promptRootDir).load("en/../admin"));
+                () -> new LocalFilePromptScenarioCatalogLoader(snapshot(), scenarioLoader(), promptRootDir, warnedPaths())
+                        .load("en/../admin"));
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new LocalFilePromptScenarioCatalogLoader(snapshot(), promptRootDir).load("   "));
+                () -> new LocalFilePromptScenarioCatalogLoader(snapshot(), scenarioLoader(), promptRootDir, warnedPaths())
+                        .load("   "));
     }
 
     @Test
@@ -318,6 +448,36 @@ class LocalFilePromptLoadersTest {
 
     private Map<String, String> snapshot() {
         return LocalFileResourceSnapshot.capture(promptRootDir);
+    }
+
+    private ClasspathPromptTemplateLoader templateLoader() {
+        return new ClasspathPromptTemplateLoader(resourceLoader);
+    }
+
+    private ClasspathPromptSlotSchemaLoader slotLoader() {
+        return new ClasspathPromptSlotSchemaLoader(resourceLoader);
+    }
+
+    private ClasspathPromptScenarioCatalogLoader scenarioLoader() {
+        return new ClasspathPromptScenarioCatalogLoader(resourceLoader);
+    }
+
+    private static Set<String> warnedPaths() {
+        return ConcurrentHashMap.newKeySet();
+    }
+
+    private List<String> warningMessages() {
+        return appender.list.stream()
+                .filter(event -> event.getLevel() == Level.WARN)
+                .map(ILoggingEvent::getFormattedMessage)
+                .toList();
+    }
+
+    private static void assertTrueWarning(String message, String... fragments) {
+        for (String fragment : fragments) {
+            org.junit.jupiter.api.Assertions.assertTrue(
+                    message.contains(fragment), "expected [" + message + "] to contain [" + fragment + "]");
+        }
     }
 
     private static void write(Path file, String content) throws IOException {

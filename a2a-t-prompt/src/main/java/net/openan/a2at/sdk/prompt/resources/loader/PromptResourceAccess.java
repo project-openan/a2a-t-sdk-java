@@ -5,6 +5,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import net.openan.a2at.sdk.core.model.A2ATConfigKeys;
 import net.openan.a2at.sdk.core.model.PromptRuntimeConfig;
 import net.openan.a2at.sdk.prompt.resources.model.ScenarioDefinition;
@@ -100,15 +102,29 @@ public interface PromptResourceAccess {
         }
     }
 
+    /**
+     * Local-file backing store for one prompt resource root.
+     *
+     * <p>The {@code warnedFallbackPaths} set is backed by a {@link ConcurrentHashMap} and is shared by the template,
+     * slot schema and scenario catalog loaders of this access, so each resource path is warned about its built-in
+     * fallback at most once even under concurrent access.
+     */
     final class LocalFileAccess implements PromptResourceAccess {
         private final Path promptRootDir;
         private final ClasspathPromptResourceLoader resourceLoader;
         private final Map<String, String> snapshot;
+        private final Set<String> warnedFallbackPaths = ConcurrentHashMap.newKeySet();
+        private final ClasspathPromptTemplateLoader classpathTemplateLoader;
+        private final ClasspathPromptSlotSchemaLoader classpathSlotSchemaLoader;
+        private final ClasspathPromptScenarioCatalogLoader classpathScenarioCatalogLoader;
 
         private LocalFileAccess(Path promptRootDir, ClasspathPromptResourceLoader resourceLoader) {
             this.promptRootDir = promptRootDir;
             this.resourceLoader = resourceLoader;
             this.snapshot = LocalFileResourceSnapshot.capture(promptRootDir);
+            this.classpathTemplateLoader = new ClasspathPromptTemplateLoader(resourceLoader);
+            this.classpathSlotSchemaLoader = new ClasspathPromptSlotSchemaLoader(resourceLoader);
+            this.classpathScenarioCatalogLoader = new ClasspathPromptScenarioCatalogLoader(resourceLoader);
         }
 
         @Override
@@ -128,17 +144,20 @@ public interface PromptResourceAccess {
 
         @Override
         public List<ScenarioDefinition> loadScenarios(String language) {
-            return new LocalFilePromptScenarioCatalogLoader(snapshot, promptRootDir).load(language);
+            return new LocalFilePromptScenarioCatalogLoader(
+                            snapshot, classpathScenarioCatalogLoader, promptRootDir, warnedFallbackPaths)
+                    .load(language);
         }
 
         @Override
         public PromptTemplateTextLoader templateLoader() {
-            return new LocalFilePromptTemplateLoader(snapshot, promptRootDir);
+            return new LocalFilePromptTemplateLoader(snapshot, classpathTemplateLoader, warnedFallbackPaths);
         }
 
         @Override
         public PromptSlotSchemaLoader slotSchemaLoader() {
-            return new LocalFilePromptSlotSchemaLoader(snapshot, promptRootDir);
+            return new LocalFilePromptSlotSchemaLoader(
+                    snapshot, classpathSlotSchemaLoader, promptRootDir, warnedFallbackPaths);
         }
 
         @Override

@@ -40,9 +40,10 @@ import org.slf4j.LoggerFactory;
  * {@code Negotiation-T/information-negotiation/propose/v1} or {@code Task-T/network-layer/ran-energy-saving/v1}.
  *
  * <p>The catalog builds the effective set at assembly time according to the configured {@code sourceType}: the
- * {@code classpath} mode enumerates the full built-in template tree; the {@code local_file} mode enumerates only the
- * local business content (Task-T, Notification-T and Authorization-T) plus the classpath-fixed Negotiation-T templates,
- * without unioning the built-in business content. Every template record carries its effective origin ({@code classpath}
+ * {@code classpath} mode enumerates the full built-in template tree; the {@code local_file} mode enumerates the local
+ * business content (Task-T, Notification-T and Authorization-T) union the built-in business content (Task-T,
+ * Notification-T and Authorization-T) plus the classpath-fixed Negotiation-T templates, with the local copy winning when
+ * the same path exists both locally and built-in. Every template record carries its effective origin ({@code classpath}
  * or {@code local}). Negotiation-T templates are filtered to the closed set of seven shapes; a Negotiation-T template
  * outside the closed set is ignored with a warning. Both query methods never throw: a template or a root that cannot be
  * loaded is skipped or answered with an empty result and a warning log.
@@ -116,7 +117,8 @@ final class PromptTemplateCatalog {
                     + "' but is not set; configure " + A2ATConfigKeys.PromptRuntime.LOCAL_ROOT_DIR
                     + " to the local prompt resource root.");
         }
-        this.localRootDir = localRootDir == null || localRootDir.isBlank() ? null : Path.of(localRootDir);
+        this.localRootDir =
+                PromptRuntimeConfig.SOURCE_TYPE_LOCAL_FILE.equals(this.sourceType) ? Path.of(localRootDir) : null;
         if (this.localRootDir != null && !Files.isDirectory(this.localRootDir)) {
             throw new IllegalArgumentException("Prompt resource local root directory configured via "
                     + A2ATConfigKeys.PromptRuntime.LOCAL_ROOT_DIR
@@ -143,8 +145,9 @@ final class PromptTemplateCatalog {
      * Lists every loadable template of the configured language across all extensions of the effective set.
      *
      * <p>The effective set depends on the configured {@code sourceType}: {@code classpath} lists the full built-in
-     * tree, {@code local_file} lists the local business content plus the classpath-fixed Negotiation-T templates.
-     * Negotiation-T templates outside the closed set are ignored with a warning. The result is sorted by template URI.
+     * tree, {@code local_file} lists the local business content union the built-in business content plus the
+     * classpath-fixed Negotiation-T templates, with the local copy winning on a path collision. Negotiation-T
+     * templates outside the closed set are ignored with a warning. The result is sorted by template URI.
      *
      * @return loadable templates of the configured language sorted by URI; empty when none can be loaded
      */
@@ -188,7 +191,8 @@ final class PromptTemplateCatalog {
      *
      * <p>A Negotiation-T template outside the closed set is answered with an empty result and a warning. Business
      * content follows the configured {@code sourceType}: {@code local_file} reads the addressed template from the local
-     * root only (no classpath fallback), {@code classpath} reads it from the classpath.
+     * root first and falls back to the classpath when it is missing locally, {@code classpath} reads it from the
+     * classpath.
      *
      * @param templateUri template URI such as {@code Negotiation-T/information-negotiation/propose/v1} or
      *     {@code Task-T/network-layer/ran-energy-saving/v1}
@@ -209,8 +213,13 @@ final class PromptTemplateCatalog {
             source = PromptTemplate.SOURCE_CLASSPATH;
             content = classpathSnapshot.get(classpathPath);
         } else {
-            source = PromptTemplate.SOURCE_LOCAL;
             content = localSnapshot.get(classpathPath);
+            if (content != null) {
+                source = PromptTemplate.SOURCE_LOCAL;
+            } else {
+                content = classpathSnapshot.get(classpathPath);
+                source = PromptTemplate.SOURCE_CLASSPATH;
+            }
         }
         if (content == null) {
             return Optional.empty();
@@ -220,9 +229,6 @@ final class PromptTemplateCatalog {
 
     private void collectClasspathEntries(Map<String, TemplateSource> entriesByPath) {
         for (Map.Entry<String, String> entry : classpathSnapshot.entrySet()) {
-            if (PromptRuntimeConfig.SOURCE_TYPE_LOCAL_FILE.equals(sourceType) && !isNegotiationPath(entry.getKey())) {
-                continue;
-            }
             entriesByPath.put(entry.getKey(), new TemplateSource(entry.getValue(), PromptTemplate.SOURCE_CLASSPATH));
         }
     }

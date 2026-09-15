@@ -87,7 +87,7 @@ flowchart TD
 
 1. JDK 17+ is required, and the build tool must be Maven 3.8+.
 2. Full multi-agent protocol interaction development requires the A2A official Java SDK (a2a-java, `org.a2aproject.sdk`) as well, with a version no lower than `1.0.0.Beta1`.
-3. Prompt resources support two sources: `classpath` (default; loads the resources bundled in the `a2a-t-resources` jar) and `local_file` (local file resources).
+3. Prompt resources support two sources: `classpath` (default; loads the resources bundled in the `a2a-t-resources` jar) and `local_file` (local file resources); in `local_file` mode business content is local-first and falls back to the built-in copy when missing (overlay).
 4. Negotiation state storage provides only `in_memory`; the state is lost when the process exits.
 5. The A2A-T SDK does not provide an agent HTTP service framework, a registry center client, authentication, or key management capabilities; these must be integrated by the business system.
 
@@ -1535,7 +1535,7 @@ When generating and validating A2A-T prompts, the SDK relies on three kinds of p
 
 | Resource | `local_file` mode | `classpath` mode |
 | --- | --- | --- |
-| Business templates/slots/scenarios (templates/slots/scenarios of Task-T, Notification-T, Authorization-T) | Read from the local root directory | Built-in resources |
+| Business templates/slots/scenarios (templates/slots/scenarios of Task-T, Notification-T, Authorization-T) | Local-first, falls back to built-in when missing (overlay) | Built-in resources |
 | Negotiation templates (fixed Negotiation-T set) and the negotiation vocabulary (negotiation-vocabulary) | Loaded from the classpath; not customizable | Built-in resources |
 | LLM instruction prompts (prompts directory) | Loaded from the classpath; not customizable | Built-in resources |
 
@@ -1543,6 +1543,7 @@ When generating and validating A2A-T prompts, the SDK relies on three kinds of p
 
 1. **Construction-time validation**: `A2ATClient` and `A2ATServer` validate the prompt-resource configuration at construction time. In `local_file` mode, construction fails immediately with a clear error message when `A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR` is unset, the path does not exist, or the path is not a directory.
 2. **Initialization loading**: at construction time, the SDK reads all content under `templates/`, `slots/`, and `scenarios/` of the local root directory once into a read-only snapshot and no longer accesses the file system at runtime; after modifying local files, the SDK process must be restarted for the changes to take effect.
+3. **Local-first overlay with built-in fallback**: in `local_file` mode, business content (templates/slots/scenarios of Task-T/Notification-T/Authorization-T) is read from the local root when present and falls back to the built-in classpath copy when missing; an error is only raised when both are missing. Customers therefore only place the templates they override or add — no need to copy the whole built-in tree — and `scenarios/{language}/scenarios.json` is no longer required (a local root without a scenario catalog falls back to the built-in one). Each resource path warns once (deduplicated by path) the first time it falls back to a built-in copy.
 
 ### 1.5.2 Implementation Steps
 
@@ -1626,6 +1627,7 @@ Notes:
 2. In `local_file` mode, `A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR` is required: when unset, an error is reported prompting you to set `A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR`; assembly also fails when the path does not exist or is not a directory.
 3. Relative paths of the local root directory are resolved against the directory of the `.env` file; absolute paths are recommended.
 4. In `classpath` mode, a configured local root directory is ignored with a warning log.
+5. Business content is local-first with built-in fallback: a `template.md`, `slot.json` or `scenarios.json` missing from the local root falls back to the built-in classpath copy (each resource path warns once about the fallback); `scenarios.json` may be omitted entirely.
 
 **templateUri mapping**
 
@@ -1649,7 +1651,7 @@ MetadataContent metadata = client.generateTaskPromptFromText(
 
 Facade failure policy for `templateUri`: a null template URI throws `NullPointerException`; a blank or malformed URI (fewer than three segments, or a segment that is not simple) throws `IllegalArgumentException` with the message `Unparseable template URI: <input>`.
 
-To override a built-in template (e.g. `StandardTemplates.PRIVATE_LINE_COMPLAINT_URI`), place `template.md` and `slot.json` at the same relative path under the local root directory and keep using the original constant in the code. Note that in `local_file` mode business templates are read only from the local root directory without classpath fallback; when the file for a `templateUri` is missing, the API throws `PromptGenerationException` with the error code `template.not_found`.
+To override a built-in template (e.g. `StandardTemplates.PRIVATE_LINE_COMPLAINT_URI`), place `template.md` and `slot.json` at the same relative path under the local root directory and keep using the original constant in the code. In `local_file` mode business templates are local-first with built-in fallback: the local copy is read when present, otherwise the built-in classpath copy is used; the API throws `PromptGenerationException` with the error code `template.not_found` only when a `templateUri` exists neither locally nor built-in.
 
 #### Step4 Verification and troubleshooting
 
@@ -1667,7 +1669,7 @@ The sample configuration file provided by the SDK is `env.example`. When constru
 | --- | --- |
 | `A2AT_LANGUAGE` | Prompt resource language; built-in `zh-CN` and `en-US`, default `en-US` |
 | `A2AT_PROMPT_SOURCE_TYPE` | Prompt resource source; supports `classpath` and `local_file`, default `classpath` |
-| `A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR` | Local prompt resource root directory; required in `local_file` mode — unset or non-existent paths fail fast at assembly time; only business content (templates/slots/scenarios of Task-T/Notification-T/Authorization-T) is read from this root, while negotiation resources and LLM prompts are loaded from the classpath |
+| `A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR` | Local prompt resource root directory; required in `local_file` mode — unset or non-existent paths fail fast at assembly time; business content (templates/slots/scenarios of Task-T/Notification-T/Authorization-T) is loaded from this root local-first with built-in fallback (`scenarios.json` may be omitted locally), while negotiation resources and LLM prompts are loaded from the classpath |
 | `A2AT_INPUT_TEXT_MAX_CHARS` | Maximum number of characters for free-text inputs (FromText generation and message validation entry points); exceeding the limit fails fast with error code `input.text_too_long`, default `16384`; structured data that involves no LLM calls is not subject to this limit |
 | `A2AT_LLM_PROVIDER` | LLM protocol type; currently only `openai` is supported |
 | `A2AT_LLM_MODEL` | Model name |
