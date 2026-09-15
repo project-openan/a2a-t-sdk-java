@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 import net.openan.a2at.sdk.core.exception.ResourceNotFoundException;
 import net.openan.a2at.sdk.core.model.PromptRuntimeConfig;
 import net.openan.a2at.sdk.prompt.resources.model.PromptSlotSchema;
@@ -21,6 +22,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.LoggerFactory;
 
 class PromptResourceAccessTest {
@@ -48,6 +52,7 @@ class PromptResourceAccessTest {
     void detachAppender() {
         accessLogger.detachAppender(accessAppender);
         fallbackLogger.detachAppender(fallbackAppender);
+        accessAppender.stop();
         fallbackAppender.stop();
     }
 
@@ -63,33 +68,22 @@ class PromptResourceAccessTest {
                 warnings.get(0), "prompt_resource_local_root_ignored", "root=" + promptRootDir, "source=classpath");
     }
 
-    @Test
-    void localFileModeFailsFastWhenLocalRootIsNull() {
+    @ParameterizedTest(name = "local-file mode fails fast for an invalid root [{0}]")
+    @MethodSource("invalidLocalRoots")
+    void localFileModeFailsFastForInvalidRoot(String localRoot) {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> PromptResourceAccess.create(new PromptRuntimeConfig("en-US", "local_file", null)));
+                () -> PromptResourceAccess.create(new PromptRuntimeConfig("en-US", "local_file", localRoot)));
 
         assertContains(exception.getMessage(), "A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR");
     }
 
-    @Test
-    void localFileModeFailsFastWhenLocalRootIsBlank() {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> PromptResourceAccess.create(new PromptRuntimeConfig("en-US", "local_file", "   ")));
-
-        assertContains(exception.getMessage(), "A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR");
-    }
-
-    @Test
-    void localFileModeFailsFastWhenLocalRootDoesNotExist() {
-        Path missing = promptRootDir.resolve("missing");
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> PromptResourceAccess.create(new PromptRuntimeConfig("en-US", "local_file", missing.toString())));
-
-        assertContains(exception.getMessage(), "A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR");
+    static Stream<Arguments> invalidLocalRoots() {
+        Path missing = Path.of(System.getProperty("java.io.tmpdir"), "a2a-t-prompt", "missing-" + System.nanoTime());
+        return Stream.of(
+                Arguments.of((String) null),
+                Arguments.of("   "),
+                Arguments.of(missing.toString()));
     }
 
     @Test
@@ -182,7 +176,7 @@ class PromptResourceAccessTest {
         assertContains(
                 warnings.get(0),
                 "prompt_resource_builtin_fallback",
-                "path=prompt_resources/templates/ran-energy-saving/en-US/template.md",
+                "path=prompt_resources/templates/*/network-layer/ran-energy-saving/v1/en-US/template.md",
                 "source=classpath");
     }
 
@@ -195,7 +189,13 @@ class PromptResourceAccessTest {
 
         assertEquals("ran-energy-saving", schema.scenarioCode());
         assertFalse(schema.slotDefinitions().isEmpty());
-        assertEquals(1, warningMessages(fallbackAppender).size());
+        List<String> warnings = warningMessages(fallbackAppender);
+        assertEquals(1, warnings.size());
+        assertContains(
+                warnings.get(0),
+                "prompt_resource_builtin_fallback",
+                "path=prompt_resources/slots/*/network-layer/ran-energy-saving/v1/en-US/slot.json",
+                "source=classpath");
     }
 
     @Test
@@ -206,7 +206,13 @@ class PromptResourceAccessTest {
         List<ScenarioDefinition> scenarios = access.loadScenarios("en-US");
 
         assertFalse(scenarios.isEmpty(), "a missing local scenarios.json must fall back to the built-in scenario catalog");
-        assertEquals(1, warningMessages(fallbackAppender).size());
+        List<String> warnings = warningMessages(fallbackAppender);
+        assertEquals(1, warnings.size());
+        assertContains(
+                warnings.get(0),
+                "prompt_resource_builtin_fallback",
+                "path=prompt_resources/scenarios/en-US/scenarios.json",
+                "source=classpath");
     }
 
     @Test

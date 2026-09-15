@@ -48,9 +48,21 @@ public final class LocalFilePromptSlotSchemaLoader implements PromptSlotSchemaLo
         if (pathKey != null && snapshot.containsKey(pathKey)) {
             return parse(snapshot.get(pathKey), scenarioCode, promptRootDir.resolve(pathKey).toString(), language);
         }
-        BuiltinFallbackWarnings.warnOnce(
-                warnedFallbackPaths, "prompt_resources/slots/" + scenarioCode + "/" + language + "/slot.json");
-        return classpathLoader.loadSlotSchema(scenarioCode, language);
+        PromptSlotSchema schema = classpathLoader.loadSlotSchema(scenarioCode, language);
+        BuiltinFallbackWarnings.warnOnce(warnedFallbackPaths, fallbackPath(scenarioCode, language));
+        return schema;
+    }
+
+    /**
+     * Builds the resource path reported by the fallback warning: exact for path-form scenario codes, and the same
+     * wildcard locator the classpath loader uses for a bare scenario code.
+     */
+    private static String fallbackPath(String scenarioCode, String language) {
+        if (scenarioCode.contains("/")) {
+            return "prompt_resources/slots/" + scenarioCode + "/" + language + "/slot.json";
+        }
+        return "prompt_resources/slots/*/network-layer/" + scenarioCode + "/v1/" + language
+                + "/slot.json (or the layout without the network-layer segment)";
     }
 
     private static PromptSlotSchema parse(String payload, String scenarioCode, String resourcePath, String language) {

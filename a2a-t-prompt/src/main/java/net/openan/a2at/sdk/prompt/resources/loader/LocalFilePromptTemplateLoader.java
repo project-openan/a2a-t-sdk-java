@@ -41,8 +41,20 @@ public final class LocalFilePromptTemplateLoader implements PromptTemplateTextLo
         if (pathKey != null && snapshot.containsKey(pathKey)) {
             return snapshot.get(pathKey);
         }
-        BuiltinFallbackWarnings.warnOnce(
-                warnedFallbackPaths, "prompt_resources/templates/" + scenarioCode + "/" + language + "/template.md");
-        return classpathLoader.loadTemplate(scenarioCode, language);
+        String text = classpathLoader.loadTemplate(scenarioCode, language);
+        BuiltinFallbackWarnings.warnOnce(warnedFallbackPaths, fallbackPath(scenarioCode, language));
+        return text;
+    }
+
+    /**
+     * Builds the resource path reported by the fallback warning: exact for path-form scenario codes, and the same
+     * wildcard locator the classpath loader uses for a bare scenario code.
+     */
+    private static String fallbackPath(String scenarioCode, String language) {
+        if (scenarioCode.contains("/")) {
+            return "prompt_resources/templates/" + scenarioCode + "/" + language + "/template.md";
+        }
+        return "prompt_resources/templates/*/network-layer/" + scenarioCode + "/v1/" + language
+                + "/template.md (or the layout without the network-layer segment)";
     }
 }
