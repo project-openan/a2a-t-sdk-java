@@ -40,7 +40,8 @@ public final class ClasspathPromptSlotSchemaLoader implements PromptSlotSchemaLo
     public PromptSlotSchema loadSlotSchema(String scenarioCode, String language) {
         java.util.Optional<TemplateUri> parsed = TemplateUri.parse(scenarioCode);
         if (parsed.isPresent()) {
-            return load(parsed.orElseThrow(), scenarioCode, language);
+            TemplateUri uri = parsed.orElseThrow();
+            return load(uri, scenarioCode, language);
         }
         for (String slotType : SLOT_TYPES) {
             for (TemplateUri candidate : bareCodeCandidates(slotType, scenarioCode)) {

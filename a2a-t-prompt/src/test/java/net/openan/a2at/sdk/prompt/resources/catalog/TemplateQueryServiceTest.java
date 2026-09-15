@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import net.openan.a2at.sdk.core.model.PromptTemplate;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
 import net.openan.a2at.sdk.core.model.TemplateUri;
@@ -23,6 +24,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.LoggerFactory;
 
 class TemplateQueryServiceTest {
@@ -213,31 +217,21 @@ class TemplateQueryServiceTest {
         assertEquals("Unsupported prompt source type: database", exception.getMessage());
     }
 
-    @Test
-    void localFileSourceTypeWithoutRootFailsFast() {
+    @ParameterizedTest(name = "local-file source fails fast for an invalid root [{0}]")
+    @MethodSource("invalidLocalRoots")
+    void localFileSourceTypeWithInvalidRootFailsFast(String localRoot) {
         IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class, () -> new TemplateQueryService(LANGUAGE, "local_file", null));
+                IllegalArgumentException.class, () -> new TemplateQueryService(LANGUAGE, "local_file", localRoot));
 
         assertTrue(exception.getMessage().contains("A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR"));
     }
 
-    @Test
-    void localFileSourceTypeWithBlankRootFailsFast() {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class, () -> new TemplateQueryService(LANGUAGE, "local_file", "   "));
-
-        assertTrue(exception.getMessage().contains("A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR"));
-    }
-
-    @Test
-    void localFileSourceTypeWithNonexistentRootFailsFast() {
-        Path missing = localRootDir.resolve("missing");
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> new TemplateQueryService(LANGUAGE, "local_file", missing.toString()));
-
-        assertTrue(exception.getMessage().contains("A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR"));
+    static Stream<Arguments> invalidLocalRoots() {
+        Path missing = Path.of(System.getProperty("java.io.tmpdir"), "a2a-t-prompt", "missing-" + System.nanoTime());
+        return Stream.of(
+                Arguments.of((String) null),
+                Arguments.of("   "),
+                Arguments.of(missing.toString()));
     }
 
     @Test

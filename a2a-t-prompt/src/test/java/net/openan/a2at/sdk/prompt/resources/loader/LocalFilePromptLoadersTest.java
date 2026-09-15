@@ -225,7 +225,10 @@ class LocalFilePromptLoadersTest {
         assertEquals(templateLoader().loadTemplate("ran-energy-saving", "en-US"), template);
         List<String> warnings = warningMessages();
         assertEquals(1, warnings.size());
-        assertTrueWarning(warnings.get(0), "prompt_resource_builtin_fallback path=prompt_resources/templates/ran-energy-saving/en-US/template.md");
+        assertTrueWarning(
+                warnings.get(0),
+                "prompt_resource_builtin_fallback path=prompt_resources/templates/*/network-layer/ran-energy-saving/v1/en-US/template.md"
+                        + " (or the layout without the network-layer segment)");
     }
 
     @Test
@@ -236,7 +239,12 @@ class LocalFilePromptLoadersTest {
                 .loadSlotSchema("ran-energy-saving", "en-US");
 
         assertEquals(slotLoader().loadSlotSchema("ran-energy-saving", "en-US").slotDefinitions(), schema.slotDefinitions());
-        assertEquals(1, warningMessages().size());
+        List<String> warnings = warningMessages();
+        assertEquals(1, warnings.size());
+        assertTrueWarning(
+                warnings.get(0),
+                "prompt_resource_builtin_fallback path=prompt_resources/slots/*/network-layer/ran-energy-saving/v1/en-US/slot.json"
+                        + " (or the layout without the network-layer segment)");
     }
 
     @Test
@@ -252,17 +260,6 @@ class LocalFilePromptLoadersTest {
     }
 
     @Test
-    void builtinFallbackWarnsOnlyOncePerResourcePath() {
-        Set<String> warnedPaths = warnedPaths();
-        LocalFilePromptTemplateLoader loader = new LocalFilePromptTemplateLoader(snapshot(), templateLoader(), warnedPaths);
-
-        loader.loadTemplate("ran-energy-saving", "en-US");
-        loader.loadTemplate("ran-energy-saving", "en-US");
-
-        assertEquals(1, warningMessages().size(), "the same resource path must warn about its builtin fallback only once");
-    }
-
-    @Test
     void missingTemplateFallsBackToClasspathThenThrowsNotFound() {
         ResourceNotFoundException exception = assertThrows(
                 ResourceNotFoundException.class,
@@ -273,6 +270,32 @@ class LocalFilePromptLoadersTest {
                 "prompt_resources/templates/*/network-layer/incident_triage/v1/en-US/template.md"
                         + " (or the layout without the network-layer segment)",
                 exception.resourcePath());
+        assertEquals(0, warningMessages().size(), "a double-missing template must not emit a builtin fallback WARN");
+    }
+
+    @Test
+    void missingSlotSchemaFallsBackToClasspathThenThrowsNotFound() {
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> new LocalFilePromptSlotSchemaLoader(snapshot(), slotLoader(), promptRootDir, warnedPaths())
+                        .loadSlotSchema("incident_triage", "en-US"));
+
+        assertEquals(
+                "prompt_resources/slots/*/network-layer/incident_triage/v1/en-US/slot.json"
+                        + " (or the layout without the network-layer segment)",
+                exception.resourcePath());
+        assertEquals(0, warningMessages().size(), "a double-missing slot schema must not emit a builtin fallback WARN");
+    }
+
+    @Test
+    void missingScenarioCatalogFallsBackToClasspathThenThrowsNotFound() {
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> new LocalFilePromptScenarioCatalogLoader(snapshot(), scenarioLoader(), promptRootDir, warnedPaths())
+                        .load("xx"));
+
+        assertEquals("prompt_resources/scenarios/xx/scenarios.json", exception.resourcePath());
+        assertEquals(0, warningMessages().size(), "a double-missing scenario catalog must not emit a builtin fallback WARN");
     }
 
     @Test

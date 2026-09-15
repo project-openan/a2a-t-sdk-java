@@ -1626,7 +1626,7 @@ Notes:
 1. `A2AT_PROMPT_SOURCE_TYPE` takes `classpath` (default) or `local_file`; any other value reports `Unsupported prompt source type` at construction time.
 2. In `local_file` mode, `A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR` is required: when unset, an error is reported prompting you to set `A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR`; assembly also fails when the path does not exist or is not a directory.
 3. Relative paths of the local root directory are resolved against the directory of the `.env` file; absolute paths are recommended.
-4. In `classpath` mode, a configured local root directory is ignored with a warning log.
+4. In `classpath` mode, a configured local root directory is ignored: the generation/validation path logs a warning, while the template-query path ignores it silently.
 5. Business content is local-first with built-in fallback: a `template.md`, `slot.json` or `scenarios.json` missing from the local root falls back to the built-in classpath copy (each resource path warns once about the fallback); `scenarios.json` may be omitted entirely.
 
 **templateUri mapping**

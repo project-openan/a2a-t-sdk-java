@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 import net.openan.a2at.sdk.core.resources.PathSegments;
 import net.openan.a2at.sdk.prompt.resources.model.ScenarioDefinition;
+import net.openan.a2at.sdk.resources.PromptResourceKey;
 
 /**
  * Loads shared scenario catalogs from one local prompt resource root.
@@ -43,9 +44,10 @@ public final class LocalFilePromptScenarioCatalogLoader {
         if (snapshot.containsKey(pathKey)) {
             return parse(snapshot.get(pathKey), pathKey, language);
         }
+        List<ScenarioDefinition> scenarios = classpathLoader.load(language);
         BuiltinFallbackWarnings.warnOnce(
-                warnedFallbackPaths, "prompt_resources/scenarios/" + language + "/scenarios.json");
-        return classpathLoader.load(language);
+                warnedFallbackPaths, PromptResourceKey.scenario(language, "scenarios.json").relativePath());
+        return scenarios;
     }
 
     private List<ScenarioDefinition> parse(String payload, String pathKey, String language) {
