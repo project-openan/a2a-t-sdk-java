@@ -64,13 +64,13 @@ jobs:
           EOF
 
       - name: Verify
-        run: mvn -B verify
+        run: mvn -B verify -pl '!a2a-t-corpus'
 
       - name: Publish
         env:
           SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.SIGNING_PASSWORD }}
         run: >
-          mvn -B -Prelease deploy
+          mvn -B -Prelease deploy -pl '!a2a-t-corpus'
           -Dgpg.executable=gpg
           -Dgpg.keyname="${SIGNING_KEY_ID}"
