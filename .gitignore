@@ -19,3 +19,7 @@ eval-run*.log
 eval-smoke.json
 .jqwik-database
 __pycache__/
+
+# Accuracy-verification corpus (a2a-t-corpus): transcripts written back into the scenario
+# directories by each run are regenerated artifacts, never committed.
+a2a-t-corpus/src/test/java/**/suites/*/resources/*/output_result_*.json

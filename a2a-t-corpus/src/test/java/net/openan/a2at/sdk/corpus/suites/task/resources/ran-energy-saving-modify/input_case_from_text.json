@@ -1,0 +1,199 @@
+[
+  {
+    "id": "TC00000001",
+    "caseDimension": "01-意图清晰参数完整",
+    "caseDesc": "修改档-无线网络节能-标准修改诉求（区域+量化目标+制式+时段，北京时间输入→期望UTC归一化HH:mm:ssZ）",
+    "caseCategory": "正常",
+    "input": [
+      {
+        "api": "generateTaskPromptFromText",
+        "args": {
+          "text": "把东莞松山湖片区的无线网络节能任务调整为修改：节能的小区制式：NR，需要节能的时间范围（北京时间，UTC+8）：起始时间“00:00:00”，结束时间“12:00:00”，能耗目标：总功耗降低30%",
+          "templateUri": "Task-T/network-layer/ran-energy-saving/v1"
+        }
+      },
+      {
+        "api": "validateTaskPromptAndDataFilling",
+        "args": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "operationType": {
+                "type": "string",
+                "description": "Operation type of the RAN energy-saving task; allowed values are listed in the enum",
+                "enum": ["create", "modify"]
+              },
+              "region": {
+                "type": "string",
+                "description": "Coverage region of the energy-saving task; must be a specific physical area name, e.g. Songshan Lake Management Committee"
+              },
+              "energyTarget": {
+                "type": "string",
+                "description": "Energy-saving target, exactly one of two mutually exclusive legal forms: (1) quantitative - a pure percentage number, e.g. 30% (direction is expressed by energyTargetDirection); (2) qualitative - 在满足任务上下文的条件下进行最大化节能. When composing the task target, keep the user stated value verbatim. When extracting or validating: if a target value is stated but matches neither legal form (e.g. vague statements like 再往下压一压), report a format error; if no target is stated at all, extract null without error (the field is optional). Example: user text 总功耗降低30% maps to energyTarget=30%."
+              },
+              "energyTargetDirection": {
+                "type": "string",
+                "description": "Direction of the energy target, derived from user wording: 降低/下降/压降 → reduce; 提升/上升 → increase. If no direction word appears in the task, default to reduce (energy-saving tasks reduce the metric by definition).",
+                "enum": ["reduce", "increase"]
+              },
+              "cellMode": {
+                "type": "string",
+                "description": "Cell mode the energy saving applies to; one of LTE, NR, or 全部 (all)"
+              },
+              "startTime": {
+                "type": "string",
+                "description": "Daily start time of the energy-saving window. Values carry an explicit UTC offset (e.g. 00:00:00+08:00, 北京时间). When composing the task context, state the time together with its timezone (e.g. 起始时间00:00:00+08:00) and never strip the timezone; when extracting, normalize to UTC in 24-hour HH:mm:ssZ format (e.g. 00:00:00 stated as 北京时间 (UTC+8) → 16:00:00Z) and report a format error when no timezone is stated."
+              },
+              "endTime": {
+                "type": "string",
+                "description": "Daily end time of the energy-saving window. Values carry an explicit UTC offset (e.g. 12:00:00+08:00, 北京时间). When composing the task context, state the time together with its timezone (e.g. 结束时间12:00:00+08:00) and never strip the timezone; when extracting, normalize to UTC in 24-hour HH:mm:ssZ format (e.g. 12:00:00 stated as 北京时间 (UTC+8) → 04:00:00Z) and report a format error when no timezone is stated."
+              }
+            },
+            "required": ["operationType", "region"]
+          },
+          "templateUri": "Task-T/network-layer/ran-energy-saving/v1",
+          "promptText": {
+            "$fromStep": 1,
+            "$field": "promptText"
+          }
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "success",
+        "data": {},
+        "error": { "errCode": "", "errMessage": "" }
+      },
+      {
+        "result": "success",
+        "data": {
+          "operationType": "modify",
+          "region": "东莞松山湖片区",
+          "startTime": "16:00:00Z",
+          "endTime": "04:00:00Z",
+          "energyTarget": "30%",
+          "energyTargetDirection": "reduce"
+        },
+        "error": { "errCode": "", "errMessage": "" }
+      }
+    ]
+  },
+  {
+    "id": "TC00000002",
+    "caseDimension": "04-关键信息缺失",
+    "caseDesc": "修改诉求缺少节能区域，校验required应拦截",
+    "caseCategory": "异常",
+    "input": [
+      {
+        "api": "generateTaskPromptFromText",
+        "args": {
+          "text": "修改无线网络节能任务，节能的小区制式：NR，需要节能的时间范围（北京时间，UTC+8）：起始时间“00:00:00”，结束时间“12:00:00”",
+          "templateUri": "Task-T/network-layer/ran-energy-saving/v1"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "error",
+        "data": {},
+        "error": { "errCode": "slot.not_provided", "errMessage": "" }
+      }
+    ]
+  },
+  {
+    "id": "TC00000003",
+    "caseDimension": "05-意图描述模糊",
+    "caseDesc": "节能目标未按量化格式（百分比）提供（口语化模糊表述），服务端语义校验应拒绝",
+    "caseCategory": "异常",
+    "input": [
+      {
+        "api": "generateTaskPromptFromText",
+        "args": {
+          "text": "把松山湖管委会的无线网络节能任务调整为修改：节能的小区制式：NR，需要节能的时间范围（北京时间，UTC+8）：起始时间“00:00:00”，结束时间“12:00:00”，能耗目标：再往下压一压",
+          "templateUri": "Task-T/network-layer/ran-energy-saving/v1"
+        }
+      },
+      {
+        "api": "validateTaskPromptAndDataFilling",
+        "args": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "operationType": {
+                "type": "string",
+                "description": "Operation type of the RAN energy-saving task; allowed values are listed in the enum",
+                "enum": ["create", "modify"]
+              },
+              "region": {
+                "type": "string",
+                "description": "Coverage region of the energy-saving task; must be a specific physical area name, e.g. Songshan Lake Management Committee"
+              },
+              "energyTarget": {
+                "type": "string",
+                "description": "Energy-saving target, exactly one of two mutually exclusive legal forms: (1) quantitative - a pure percentage number, e.g. 30% (direction is expressed by energyTargetDirection); (2) qualitative - 在满足任务上下文的条件下进行最大化节能. When composing the task target, keep the user stated value verbatim. When extracting or validating: if a target value is stated but matches neither legal form (e.g. vague statements like 再往下压一压), report a format error; if no target is stated at all, extract null without error (the field is optional). Example: user text 总功耗降低30% maps to energyTarget=30%."
+              },
+              "energyTargetDirection": {
+                "type": "string",
+                "description": "Direction of the energy target, derived from user wording: 降低/下降/压降 → reduce; 提升/上升 → increase. If no direction word appears in the task, default to reduce (energy-saving tasks reduce the metric by definition).",
+                "enum": ["reduce", "increase"]
+              },
+              "cellMode": {
+                "type": "string",
+                "description": "Cell mode the energy saving applies to; one of LTE, NR, or 全部 (all)"
+              },
+              "startTime": {
+                "type": "string",
+                "description": "Daily start time of the energy-saving window. Values carry an explicit UTC offset (e.g. 00:00:00+08:00, 北京时间). When composing the task context, state the time together with its timezone (e.g. 起始时间00:00:00+08:00) and never strip the timezone; when extracting, normalize to UTC in 24-hour HH:mm:ssZ format (e.g. 00:00:00 stated as 北京时间 (UTC+8) → 16:00:00Z) and report a format error when no timezone is stated."
+              },
+              "endTime": {
+                "type": "string",
+                "description": "Daily end time of the energy-saving window. Values carry an explicit UTC offset (e.g. 12:00:00+08:00, 北京时间). When composing the task context, state the time together with its timezone (e.g. 结束时间12:00:00+08:00) and never strip the timezone; when extracting, normalize to UTC in 24-hour HH:mm:ssZ format (e.g. 12:00:00 stated as 北京时间 (UTC+8) → 04:00:00Z) and report a format error when no timezone is stated."
+              }
+            },
+            "required": ["operationType", "region"]
+          },
+          "templateUri": "Task-T/network-layer/ran-energy-saving/v1",
+          "promptText": {
+            "$fromStep": 1,
+            "$field": "promptText"
+          }
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "success",
+        "data": {},
+        "error": { "errCode": "", "errMessage": "" }
+      },
+      {
+        "result": "error",
+        "data": {},
+        "error": { "errCode": "negotiation.semantic_rejected", "errMessage": "" }
+      }
+    ]
+  },
+  {
+    "id": "TC00000004",
+    "caseDimension": "06-值域违规检测",
+    "caseDesc": "操作类型“删除”不在创建/修改取值范围内",
+    "caseCategory": "异常",
+    "input": [
+      {
+        "api": "generateTaskPromptFromText",
+        "args": {
+          "text": "删除东莞松山湖片区的无线网络节能任务，该任务已不再需要",
+          "templateUri": "Task-T/network-layer/ran-energy-saving/v1"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "error",
+        "data": {},
+        "error": { "errCode": "slot.constraint_violated", "errMessage": "" }
+      }
+    ]
+  }
+]

@@ -23,7 +23,7 @@ public final class LocalFilePromptSlotSchemaLoader implements PromptSlotSchemaLo
 
     private final Map<String, String> snapshot;
     private final Path promptRootDir;
-    private final ClasspathPromptSlotSchemaLoader classpathLoader;
+private final ClasspathPromptSlotSchemaLoader classpathLoader;
     private final Set<String> warnedFallbackPaths;
     private final List<String> slotTypes;
 
@@ -43,14 +43,26 @@ public final class LocalFilePromptSlotSchemaLoader implements PromptSlotSchemaLo
     public PromptSlotSchema loadSlotSchema(String scenarioCode, String language) {
         PathSegments.requireSimpleRelativePath(scenarioCode, "Prompt slot schema scenario code");
         PathSegments.requireSimpleSegment(language, "Prompt slot schema language");
-        String pathKey = LocalFileResourceSnapshot.resolveResourcePath(
-                snapshot, "slots", slotTypes, scenarioCode, language, "slot.json");
+        String pathKey = resolvePathKey(scenarioCode, language);
         if (pathKey != null && snapshot.containsKey(pathKey)) {
             return parse(snapshot.get(pathKey), scenarioCode, promptRootDir.resolve(pathKey).toString(), language);
         }
         PromptSlotSchema schema = classpathLoader.loadSlotSchema(scenarioCode, language);
         BuiltinFallbackWarnings.warnOnce(warnedFallbackPaths, fallbackPath(scenarioCode, language));
         return schema;
+    }
+
+    private String resolvePathKey(String scenarioCode, String language) {
+        if (scenarioCode.contains("/")) {
+            return "slots/" + scenarioCode + "/" + language + "/slot.json";
+        }
+        for (String slotType : slotTypes) {
+            String candidate = resolveBareCode(slotType, scenarioCode, language);
+            if (snapshot.containsKey(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     /**
@@ -72,5 +84,17 @@ public final class LocalFilePromptSlotSchemaLoader implements PromptSlotSchemaLo
         } catch (JsonProcessingException exception) {
             throw ResourceReadErrors.readFailed(resourcePath, language, exception);
         }
+    }
+
+    /**
+     * Resolves a bare scenario code under one slot type directory, preferring the {@code network-layer} domain layout
+     * over the plain layout.
+     */
+    private String resolveBareCode(String slotType, String scenarioCode, String language) {
+        String networkLayer = "slots/" + slotType + "/network-layer/" + scenarioCode + "/v1/" + language + "/slot.json";
+        if (snapshot.containsKey(networkLayer)) {
+            return networkLayer;
+        }
+        return "slots/" + slotType + "/" + scenarioCode + "/v1/" + language + "/slot.json";
     }
 }

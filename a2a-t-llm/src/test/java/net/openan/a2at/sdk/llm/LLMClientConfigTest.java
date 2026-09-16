@@ -20,6 +20,8 @@ class LLMClientConfigTest {
                 300,
                 100,
                 true,
+                false,
+                false,
                 "none");
 
         assertEquals("openai", config.provider());
@@ -31,8 +33,30 @@ class LLMClientConfigTest {
         assertEquals(0.2d, config.temperature());
         assertEquals(15.5d, config.timeoutSeconds());
         assertEquals(true, config.disableSystemProxy());
+        assertEquals(false, config.sslVerify());
+        assertEquals(false, config.detailLogEnabled());
         assertEquals(300, config.sessionMaxTotal());
         assertEquals(100, config.sessionMaxPerProvider());
         assertEquals("none", config.reasoningEffort());
+    }
+
+    @Test
+    void legacyConstructorDefaultsSslVerifyToTrue() {
+        LLMClientConfig config = new LLMClientConfig(
+                "openai",
+                "gpt-4o-mini",
+                "sk-test",
+                "https://api.example.test/v1",
+                10,
+                1024,
+                0.2d,
+                15.5d,
+                300,
+                100,
+                true,
+                "none");
+
+        assertEquals(true, config.sslVerify());
+        assertEquals(false, config.detailLogEnabled());
     }
 }

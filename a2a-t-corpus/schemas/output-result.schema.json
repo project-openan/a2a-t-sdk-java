@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openan.net/a2a-t-sdk/corpus/schemas/output-result.schema.json",
+  "title": "A2A-T corpus output result format",
+  "description": "Execution transcript written by the corpus engine for one scenario file. One file is a JSON array of result records; each record echoes the case metadata, aggregates per-case totals, and lists the full interaction transcript (SDK API steps interleaved with their underlying LLM calls). Content is always complete, never truncated.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "caseDimension", "caseDesc", "caseCategory", "result", "totalTime", "totalInputToken", "totalOutputToken", "totalToken", "output"],
+    "properties": {
+      "id": { "type": "string" },
+      "caseDimension": { "type": "string" },
+      "caseDesc": { "type": "string" },
+      "caseCategory": { "type": "string" },
+      "totalTime": { "type": "integer", "description": "Case total duration in milliseconds." },
+      "totalInputToken": { "type": "integer" },
+      "totalOutputToken": { "type": "integer" },
+      "totalToken": { "type": "integer" },
+      "result": {
+        "type": "string",
+        "enum": ["success", "failure", "error"],
+        "description": "success: every step matched its expectation; failure: at least one assertion did not match; error: the engine crashed on a step."
+      },
+      "failReason": {
+        "type": "string",
+        "description": "One-sentence pointer to the first unmet assertion, e.g. step2.data.accessPort."
+      },
+      "output": {
+        "type": "object",
+        "required": ["interactions"],
+        "properties": {
+          "interactions": {
+            "type": "array",
+            "description": "Globally numbered transcript mixing SDK API steps (type = API method name) with their underlying LLM calls (type = LLM).",
+            "items": {
+              "type": "object",
+              "required": ["step", "type", "result", "duration_ms", "request", "response", "inputToken", "outputToken"],
+              "properties": {
+                "step": { "type": "string" },
+                "type": { "type": "string" },
+                "result": { "type": "string", "enum": ["success", "error", "skipped"] },
+                "duration_ms": { "type": "integer" },
+                "request": { "type": "object" },
+                "response": { "type": "object" },
+                "inputToken": { "type": "integer" },
+                "outputToken": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,78 @@
+[
+  {
+    "id": "TC00000001",
+    "caseDimension": "01-结构化数据完整",
+    "caseDesc": "无线节能-可行性协商-propose-结构数据生成并校验",
+    "caseCategory": "正常",
+    "input": [
+      {
+        "api": "generateNegotiationProposePromptFromData",
+        "args": {
+          "data": {
+            "context": {
+              "id": "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+              "round": 1,
+              "maxRounds": 5,
+              "performative": "PROPOSE"
+            },
+            "content": {
+              "feasibility_negotiation_description": "已收到无线网络节能任务请求，请协助评估该节能目标能否达成，目标内容：区域松山湖管委会，分时段速率保障目标{00:00~06:00,2Mbps}、{06:00~18:00,10Mbps}，节能时段08:00~12:00，小区制式NR。请评估。",
+              "action": "REQUEST_FEASIBILITY_EVALUATION",
+              "contents_to_evaluate": [
+                {
+                  "name": "目标达成",
+                  "value": "松山湖管委会区域的NR小区在08:00~12:00时段执行节能，需保障分时段速率目标，评估目标是否可达成"
+                },
+                {
+                  "name": "资源现状",
+                  "value": "小区当前配置：NR制式，节能时段内可关闭的载波频点1650/1600"
+                }
+              ],
+              "infeasibility_details_and_proposal": null,
+              "feasibility_confirm_request": null
+            }
+          },
+          "templateUri": "Negotiation-T/feasibility-negotiation/propose/v1"
+        }
+      },
+      {
+        "api": "validateProposePromptAndDataFilling",
+        "args": {
+          "promptText": {
+            "$fromStep": 1,
+            "$field": "promptText"
+          },
+          "context": {
+            "id": "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3",
+            "round": 1,
+            "maxRounds": 5,
+            "performative": "PROPOSE"
+          },
+          "schema": {
+            "type": "object",
+            "properties": {}
+          },
+          "templateUri": "Negotiation-T/feasibility-negotiation/propose/v1"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "success",
+        "data": {},
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
+      },
+      {
+        "result": "success",
+        "data": {},
+        "error": {
+          "errCode": "",
+          "errMessage": ""
+        }
+      }
+    ]
+  }
+]

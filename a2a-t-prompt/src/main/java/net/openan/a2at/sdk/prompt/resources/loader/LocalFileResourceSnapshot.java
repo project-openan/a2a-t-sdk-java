@@ -63,40 +63,6 @@ final class LocalFileResourceSnapshot {
         return List.copyOf(types);
     }
 
-    /**
-     * Resolves the snapshot key a scenario code addresses under one category, without reading the filesystem.
-     *
-     * <p>A path-form code that contains a slash is resolved as-is under {@code category/<code>/<language>/<fileName>}. A
-     * bare code is searched across the type directories, preferring the {@code network-layer} domain layout over the
-     * plain layout for each type. Returns {@code null} when a bare code matches no type directory.
-     */
-    static String resolveResourcePath(
-            Map<String, String> snapshot,
-            String category,
-            List<String> typeDirectories,
-            String scenarioCode,
-            String language,
-            String fileName) {
-        if (scenarioCode.contains(SEPARATOR)) {
-            return category + SEPARATOR + scenarioCode + SEPARATOR + language + SEPARATOR + fileName;
-        }
-        for (String type : typeDirectories) {
-            String networkLayer = category
-                    + SEPARATOR + type + SEPARATOR + "network-layer" + SEPARATOR + scenarioCode + SEPARATOR + "v1"
-                    + SEPARATOR + language + SEPARATOR + fileName;
-            if (snapshot.containsKey(networkLayer)) {
-                return networkLayer;
-            }
-            String plain = category
-                    + SEPARATOR + type + SEPARATOR + scenarioCode + SEPARATOR + "v1" + SEPARATOR + language
-                    + SEPARATOR + fileName;
-            if (snapshot.containsKey(plain)) {
-                return plain;
-            }
-        }
-        return null;
-    }
-
     private static void captureTree(Path root, String category, Map<String, String> content) {
         if (!Files.isDirectory(root)) {
             return;
