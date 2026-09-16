@@ -2,8 +2,9 @@ name: CI
 
 on:
   push:
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 jobs:
   build-and-test:
@@ -29,4 +30,5 @@ jobs:
         run: python tools/template_lint.py --resource-root a2a-t-resources/src/main/resources/prompt_resources
 
       - name: Build and run tests
-        run: mvn -B clean verify
+        # a2a-t-corpus is the accuracy-verification test module: it must run against a real LLM, which CI does not provide, so exclude it.
+        run: mvn -B clean verify -pl '!a2a-t-corpus'
