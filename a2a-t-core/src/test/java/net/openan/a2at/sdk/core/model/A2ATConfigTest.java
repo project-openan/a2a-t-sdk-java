@@ -212,8 +212,7 @@ class A2ATConfigTest {
                         loaded.prompt().language(), loaded.prompt().sourceType(), "   "),
                 loaded.llm(),
                 loaded.inputLimits(),
-                loaded.negotiation(),
-                loaded.promptCompliance());
+                loaded.negotiation());
 
         A2ATConfig resolved = A2ATConfig.resolvePromptResourceLocalRootDir(config, envFile);
 
@@ -242,8 +241,7 @@ class A2ATConfigTest {
                 new PromptRuntimeConfig(loaded.prompt().language(), "local_file", "prompt_resources"),
                 loaded.llm(),
                 loaded.inputLimits(),
-                loaded.negotiation(),
-                loaded.promptCompliance());
+                loaded.negotiation());
 
         A2ATConfig resolved = A2ATConfig.resolvePromptResourceLocalRootDir(config, Path.of(".env"));
 

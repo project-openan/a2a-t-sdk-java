@@ -13,7 +13,6 @@ import net.openan.a2at.sdk.core.model.A2ATConfig;
 import net.openan.a2at.sdk.core.model.InputLimitConfig;
 import net.openan.a2at.sdk.core.model.LlmConfig;
 import net.openan.a2at.sdk.core.model.NegotiationConfig;
-import net.openan.a2at.sdk.core.model.PromptComplianceConfig;
 import net.openan.a2at.sdk.core.model.PromptRuntimeConfig;
 import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
@@ -103,8 +102,7 @@ class DefaultA2ATServerBuilderTest {
                         3,
                         List.of()),
                 new InputLimitConfig(InputLimitConfig.DEFAULT_MAX_TEXT_CHARS),
-                new NegotiationConfig("in_memory"),
-                new PromptComplianceConfig(false));
+                new NegotiationConfig("in_memory"));
 
         DefaultA2ATServerBuilder builder =
                 DefaultA2ATServerBuilder.builder().config(config).envPath(envFile);

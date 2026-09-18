@@ -14,8 +14,7 @@ public record A2ATConfig(
         PromptRuntimeConfig prompt,
         LlmConfig llm,
         InputLimitConfig inputLimits,
-        NegotiationConfig negotiation,
-        PromptComplianceConfig promptCompliance) {
+        NegotiationConfig negotiation) {
 
     /**
      * Loads one unified SDK config from one `.env` file path.
@@ -29,8 +28,7 @@ public record A2ATConfig(
                 PromptRuntimeConfig.fromMap(values),
                 LlmConfig.fromMap(values),
                 InputLimitConfig.fromMap(values),
-                NegotiationConfig.fromMap(values),
-                PromptComplianceConfig.fromMap(values));
+                NegotiationConfig.fromMap(values));
     }
 
     /**
@@ -62,8 +60,7 @@ public record A2ATConfig(
                         config.prompt().language(), config.prompt().sourceType(), resolvedLocalRootPath.toString()),
                 config.llm(),
                 config.inputLimits(),
-                config.negotiation(),
-                config.promptCompliance());
+                config.negotiation());
     }
 
     private static Path envBaseDir(Path envPath) {

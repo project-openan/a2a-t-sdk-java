@@ -135,7 +135,6 @@ class A2ATServerNegotiationApiTest {
                 A2AT_LLM_BASE_URL=https://llm.example.test/v1
                 A2AT_LLM_API_KEY=test-key
                 A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
-                A2AT_PROMPT_COMPLIANCE_ENABLED=false
                 """
                         .formatted(language));
         return envFile;
