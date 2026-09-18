@@ -13,9 +13,10 @@ import org.jspecify.annotations.Nullable;
  * Closed catalog of the machine-readable error codes exposed by the A2A-T SDK.
  *
  * <p>Each constant carries the layered {@code domain.semantic} code string (for example {@code content.param_missing}),
- * the {@link Category} that decides which exception family carries it, and the names of the fact parameters the message
- * template for the code renders. Message templates live in {@code prompt_resources/errors/{language}/errors.json}; use
- * {@link ErrorMessages} to render them.
+ * the {@link Category} that decides which exception family carries it, and the names of the fact parameters the code
+ * declares. A message template may render a subset of the declared facts: {@code template.not_found} keeps
+ * {@code language} in its facts for programmatic diagnosis while its message only reports the missing template. Message
+ * templates live in {@code prompt_resources/errors/{language}/errors.json}; use {@link ErrorMessages} to render them.
  *
  * <p>The catalog is closed: codes returned by an LLM step that are not in this catalog are mapped to the per-domain
  * {@code *.rule_violation} fallback constants by the callers, never surfaced raw.
@@ -222,7 +223,10 @@ public enum ErrorCatalog {
     }
 
     /**
-     * Returns the names of the fact parameters the message template of the code renders.
+     * Returns the names of the fact parameters the code declares.
+     *
+     * <p>A message template may render a subset of these facts; the remaining ones stay available for programmatic
+     * diagnosis.
      *
      * @return fact parameter names, possibly empty, never null
      */
