@@ -27,7 +27,7 @@ public enum ErrorCatalog {
 
     // domain: template (template resources)
 
-    /** The referenced template does not exist for the configured language. */
+    /** The referenced template is missing for the configured language; the message names the template URI. */
     TEMPLATE_NOT_FOUND("template.not_found", Category.BUSINESS, "template_uri", "language"),
 
     /** Rendering a template with its slot values failed. */
