@@ -1,6 +1,7 @@
 package net.openan.a2at.sdk.server.metadata;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -235,7 +236,11 @@ class LlmBackedPromptMetadataExtractorTest {
         assertEquals("template.not_found", error.getCode());
         assertEquals("generation", error.getStage());
         assertTrue(error.getMessage().contains("subscribe-incident"), "message must render the template URI");
-        assertTrue(error.getMessage().contains("zh-CN"), "message must render the language");
+        assertFalse(error.getMessage().contains("zh-CN"), "message must not echo the configured language");
+        assertEquals(
+                Map.of("template_uri", "subscribe-incident", "language", "zh-CN"),
+                error.getFacts(),
+                "facts must keep the language for programmatic diagnosis");
     }
 
     @Test

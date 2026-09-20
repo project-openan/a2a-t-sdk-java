@@ -1639,7 +1639,7 @@ result.failure() =
 
 | Code | Category | Message (en-US) | Message (zh-CN) |
 | ---- | -------- | ---------------- | --------------- |
-| `template.not_found` | BUSINESS | Template '{template_uri}' does not support language '{language}'; check the template URI and language setting | 模板「{template_uri}」不支持语言「{language}」,请检查模板标识与语言配置 |
+| `template.not_found` | BUSINESS | Template '{template_uri}' does not exist | 模板「{template_uri}」不存在 |
 | `template.render_failed` | BUSINESS | Failed to render template '{template_uri}': {reason} | 模板「{template_uri}」渲染失败:{reason} |
 | `template.load_failed` | INFRA | Failed to read template resource '{resource_path}' | 模板资源「{resource_path}」读取失败 |
 | `slot.schema_not_found` | BUSINESS | Template '{template_uri}' is missing its slot schema (language '{language}') | 模板「{template_uri}」缺少参数定义文件(语言「{language}」) |
