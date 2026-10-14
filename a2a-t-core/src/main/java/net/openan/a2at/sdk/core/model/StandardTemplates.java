@@ -56,6 +56,17 @@ public final class StandardTemplates {
     /** Raw template URI of {@link #PRIVATE_LINE_COMPLAINT}: {@code Task-T/network-layer/private-line-complaint/v1}. */
     public static final String PRIVATE_LINE_COMPLAINT_URI = PRIVATE_LINE_COMPLAINT.uri();
 
+    /** Task-T template for the ran-intelligent-backup-battery-endurance scenario. */
+    public static final TemplateUri RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE =
+            TemplateUri.of(TASK_EXTENSION_NAME, NETWORK_LAYER_SEGMENT, "ran-intelligent-backup-battery-endurance");
+
+    /**
+     * Raw template URI of {@link #RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE}:
+     * {@code Task-T/network-layer/ran-intelligent-backup-battery-endurance/v1}.
+     */
+    public static final String RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE_URI =
+            RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE.uri();
+
     /** Notification-T template for the subscribe-incident scenario. */
     public static final TemplateUri SUBSCRIBE_INCIDENT =
             TemplateUri.of(NOTIFICATION_EXTENSION_NAME, NETWORK_LAYER_SEGMENT, "subscribe-incident");
@@ -147,10 +158,12 @@ public final class StandardTemplates {
     public static final String NEGOTIATION_ABORT_URI = NEGOTIATION_ABORT.uri();
 
     /** All built-in Task-T templates. */
-    public static final List<TemplateUri> TASK = List.of(ENERGY_SAVING, PRIVATE_LINE_COMPLAINT);
+    public static final List<TemplateUri> TASK = List.of(
+            ENERGY_SAVING, PRIVATE_LINE_COMPLAINT, RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE);
 
     /** Raw template URIs of all built-in Task-T templates. */
-    public static final List<String> TASK_URIS = List.of(ENERGY_SAVING_URI, PRIVATE_LINE_COMPLAINT_URI);
+    public static final List<String> TASK_URIS = List.of(
+            ENERGY_SAVING_URI, PRIVATE_LINE_COMPLAINT_URI, RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE_URI);
 
     /** All built-in Notification-T templates. */
     public static final List<TemplateUri> NOTIFICATION = List.of(SUBSCRIBE_INCIDENT, SERVICE_RECOVERY);

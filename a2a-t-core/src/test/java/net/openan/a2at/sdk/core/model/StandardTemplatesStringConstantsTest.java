@@ -21,6 +21,9 @@ class StandardTemplatesStringConstantsTest {
     void should_keepTypedAndStringConstantsInLockstep() {
         assertEquals(StandardTemplates.ENERGY_SAVING.uri(), StandardTemplates.ENERGY_SAVING_URI);
         assertEquals(StandardTemplates.PRIVATE_LINE_COMPLAINT.uri(), StandardTemplates.PRIVATE_LINE_COMPLAINT_URI);
+        assertEquals(
+                StandardTemplates.RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE.uri(),
+                StandardTemplates.RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE_URI);
         assertEquals(StandardTemplates.SUBSCRIBE_INCIDENT.uri(), StandardTemplates.SUBSCRIBE_INCIDENT_URI);
         assertEquals(StandardTemplates.SERVICE_RECOVERY.uri(), StandardTemplates.SERVICE_RECOVERY_URI);
         assertEquals(
