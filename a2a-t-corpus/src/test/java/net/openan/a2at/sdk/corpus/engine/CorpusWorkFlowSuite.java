@@ -59,9 +59,15 @@ public abstract class CorpusWorkFlowSuite {
     public static final String API_VALIDATE_NEGOTIATION_REJECT = "validateRejectPromptAndDataFilling";
     public static final String API_VALIDATE_NEGOTIATION_ABORT = "validateAbortPromptAndDataFilling";
 
+    public static final String API_GENERATE_NOTIFICATION_FROM_TEXT = "generateNotificationPromptFromText";
+    public static final String API_GENERATE_NOTIFICATION_FROM_DATA = "generateNotificationPromptFromDataWithSchema";
+    public static final String API_VALIDATE_NOTIFICATION = "validateNotificationPromptAndDataFilling";
+
     private static volatile SdkRuntimeAssembler.Runtime taskRuntimeSingleton;
 
     private static volatile SdkRuntimeAssembler.NegotiationRuntime negotiationRuntimeSingleton;
+
+    private static volatile SdkRuntimeAssembler.NotificationRuntime notificationRuntimeSingleton;
 
     private final List<WorkflowEngine.CaseResult> results = new ArrayList<>();
 
@@ -76,7 +82,7 @@ public abstract class CorpusWorkFlowSuite {
     /** Flow type used for the transcript and summary file names: {@code from_text} or {@code from_data}. */
     protected abstract String flowType();
 
-    /** Runtime kind: {@code "task"} (default) or {@code "negotiation"}. */
+    /** Runtime kind: {@code "task"} (default), {@code "negotiation"} or {@code "notification"}. */
     protected String runtimeKind() {
         return "task";
     }
@@ -90,6 +96,9 @@ public abstract class CorpusWorkFlowSuite {
         if ("negotiation".equals(runtimeKind())) {
             SdkRuntimeAssembler.NegotiationRuntime rt = negotiationRuntime();
             registry = SdkRuntimeAssembler.buildNegotiationRegistry(rt);
+        } else if ("notification".equals(runtimeKind())) {
+            SdkRuntimeAssembler.NotificationRuntime rt = notificationRuntime();
+            registry = SdkRuntimeAssembler.buildNotificationRegistry(rt);
         } else {
             SdkRuntimeAssembler.Runtime rt = taskRuntime();
             registry = SdkRuntimeAssembler.buildTaskRegistry(rt);
@@ -151,9 +160,19 @@ public abstract class CorpusWorkFlowSuite {
         return negotiationRuntimeSingleton;
     }
 
+    private static synchronized SdkRuntimeAssembler.NotificationRuntime notificationRuntime() {
+        if (notificationRuntimeSingleton == null) {
+            notificationRuntimeSingleton = SdkRuntimeAssembler.notificationRuntime();
+        }
+        return notificationRuntimeSingleton;
+    }
+
     private RecordingMeteredLlmClient registryRecorder() {
         if ("negotiation".equals(runtimeKind())) {
             return negotiationRuntime().recorder();
+        }
+        if ("notification".equals(runtimeKind())) {
+            return notificationRuntime().recorder();
         }
         return taskRuntime().recorder();
     }
@@ -187,5 +206,13 @@ public abstract class CorpusWorkFlowSuite {
                 API_VALIDATE_NEGOTIATION_ACCEPT,
                 API_VALIDATE_NEGOTIATION_REJECT,
                 API_VALIDATE_NEGOTIATION_ABORT);
+    }
+
+    /** Notification-T phase-1 API names, used for load-time membership checks without touching the LLM runtime. */
+    public static Set<String> notificationApiNames() {
+        return Set.of(
+                API_GENERATE_NOTIFICATION_FROM_TEXT,
+                API_GENERATE_NOTIFICATION_FROM_DATA,
+                API_VALIDATE_NOTIFICATION);
     }
 }
