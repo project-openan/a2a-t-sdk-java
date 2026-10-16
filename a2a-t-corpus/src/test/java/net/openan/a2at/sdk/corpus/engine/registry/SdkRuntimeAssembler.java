@@ -39,6 +39,12 @@ public final class SdkRuntimeAssembler {
             RecordingMeteredLlmClient recorder,
             NegotiationGenerationOrchestrator orchestrator) {}
 
+    /** Fully assembled Notification-T runtime with the single shared recording LLM client. */
+    public record NotificationRuntime(
+            RecordingMeteredLlmClient recorder,
+            ClientPromptGenerationOrchestrator clientGeneration,
+            ContentValidator notificationValidator) {}
+
     private SdkRuntimeAssembler() {}
 
     private static RecordingMeteredLlmClient newRecorder(CorpusEnvConfig env) {
@@ -120,6 +126,51 @@ public final class SdkRuntimeAssembler {
     public static ApiRegistry buildNegotiationRegistry(NegotiationRuntime runtime) {
         ApiRegistry registry = new ApiRegistry();
         NegotiationApis.registerNegotiationApis(registry, runtime.orchestrator());
+        return registry;
+    }
+
+    public static NotificationRuntime notificationRuntime() {
+        CorpusEnvConfig env = CorpusEnvConfig.load();
+        RecordingMeteredLlmClient recorder = newRecorder(env);
+
+        LlmConfig llmConfig = new LlmConfig(
+                env.provider(),
+                env.model(),
+                env.apiKey(),
+                env.baseUrl(),
+                10,
+                env.maxTokens(),
+                env.temperature(),
+                env.timeoutSeconds(),
+                300,
+                100,
+                false,
+                null,
+                env.maxAttempts(),
+                List.of());
+        A2ATConfig config = new A2ATConfig(
+                new PromptRuntimeConfig("zh-CN", PromptRuntimeConfig.SOURCE_TYPE_CLASSPATH, null),
+                llmConfig,
+                new InputLimitConfig(InputLimitConfig.DEFAULT_MAX_TEXT_CHARS),
+                new NegotiationConfig("in_memory"));
+
+        ClientPromptGenerationOrchestrator clientGeneration = DefaultA2ATClientBuilder.builder()
+                .config(config)
+                .envPath(env.envPath())
+                .llmClient(recorder)
+                .buildPromptGenerationOrchestrator();
+        ContentValidator notificationValidator = DefaultA2ATServerBuilder.builder()
+                .config(config)
+                .envPath(env.envPath())
+                .llmClient(recorder)
+                .buildNotificationContentValidator();
+
+        return new NotificationRuntime(recorder, clientGeneration, notificationValidator);
+    }
+
+    public static ApiRegistry buildNotificationRegistry(NotificationRuntime runtime) {
+        ApiRegistry registry = new ApiRegistry();
+        NotificationApis.registerNotificationApis(registry, runtime.clientGeneration(), runtime.notificationValidator());
         return registry;
     }
 }

@@ -1,0 +1,199 @@
+[
+  {
+    "id": "TC00000001",
+    "caseDimension": "01-意图清晰参数完整",
+    "caseDesc": "业务抢通事件-订阅条件（子网名称）+完整上报通知数据格式（7个必选字段）",
+    "caseCategory": "正常",
+    "input": [
+      {
+        "api": "generateNotificationPromptFromText",
+        "args": {
+          "text": "我想订阅业务抢通事件，订阅条件为子网名称为珠江新城子网。上报通知数据格式如下：1. 业务抢通方案执行状态，取值范围：未启动、已结束；2. 投诉诊断任务流水号；3. OSS侧事件流水号；4. 接入端口名称；5. 是否已授权OMC自动抢通，取值范围：是、否；6. 业务抢通方案名称；7. 业务抢通方案详情。",
+          "templateUri": "Notification-T/network-layer/service-recovery/v1"
+        }
+      },
+      {
+        "api": "validateNotificationPromptAndDataFilling",
+        "args": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "topic": {
+                "type": "string",
+                "description": "订阅主题（必选）。订阅的事件主题名称，例如：业务抢通事件。"
+              },
+              "subscriptionCondition": {
+                "type": "string",
+                "description": "订阅条件（可选）。待订阅的条件描述，例如：子网名称为xx子网。"
+              },
+              "notificationDataFormat": {
+                "type": "string",
+                "description": "上报通知数据格式（必选）。待上报的通知数据格式描述，用于定义业务抢通事件的数据结构。"
+              }
+            },
+            "required": ["topic", "notificationDataFormat"]
+          },
+          "templateUri": "Notification-T/network-layer/service-recovery/v1",
+          "promptText": {
+            "$fromStep": 1,
+            "$field": "promptText"
+          }
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "success",
+        "data": {},
+        "error": { "errCode": "", "errMessage": "" }
+      },
+      {
+        "result": "success",
+        "data": {
+          "topic": "业务抢通事件",
+          "subscriptionCondition": "子网名称：珠江新城子网",
+          "notificationDataFormat": "业务抢通事件数据包含：业务抢通方案执行状态（未启动、已结束）、投诉诊断任务流水号、OSS侧事件流水号、接入端口名称、是否已授权OMC自动抢通（是、否）、业务抢通方案名称、业务抢通方案详情。"
+        },
+        "error": { "errCode": "", "errMessage": "" }
+      }
+    ]
+  },
+  {
+    "id": "TC00000002",
+    "caseDimension": "01-意图清晰参数完整",
+    "caseDesc": "业务抢通事件-无订阅条件（可选缺省）+完整上报通知数据格式",
+    "caseCategory": "正常",
+    "input": [
+      {
+        "api": "generateNotificationPromptFromText",
+        "args": {
+          "text": "我想订阅业务抢通事件。上报通知数据格式如下：1. 业务抢通方案执行状态，取值范围：未启动、已结束；2. 投诉诊断任务流水号；3. OSS侧事件流水号；4. 接入端口名称；5. 是否已授权OMC自动抢通，取值范围：是、否；6. 业务抢通方案名称；7. 业务抢通方案详情。",
+          "templateUri": "Notification-T/network-layer/service-recovery/v1"
+        }
+      },
+      {
+        "api": "validateNotificationPromptAndDataFilling",
+        "args": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "topic": {
+                "type": "string",
+                "description": "订阅主题（必选）。订阅的事件主题名称，例如：业务抢通事件。"
+              },
+              "subscriptionCondition": {
+                "type": "string",
+                "description": "订阅条件（可选）。待订阅的条件描述，例如：子网名称为xx子网。"
+              },
+              "notificationDataFormat": {
+                "type": "string",
+                "description": "上报通知数据格式（必选）。待上报的通知数据格式描述，用于定义业务抢通事件的数据结构。"
+              }
+            },
+            "required": ["topic", "notificationDataFormat"]
+          },
+          "templateUri": "Notification-T/network-layer/service-recovery/v1",
+          "promptText": {
+            "$fromStep": 1,
+            "$field": "promptText"
+          }
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "success",
+        "data": {},
+        "error": { "errCode": "", "errMessage": "" }
+      },
+      {
+        "result": "success",
+        "data": {
+          "topic": "业务抢通事件",
+          "notificationDataFormat": "业务抢通事件数据包含：业务抢通方案执行状态（未启动、已结束）、投诉诊断任务流水号、OSS侧事件流水号、接入端口名称、是否已授权OMC自动抢通（是、否）、业务抢通方案名称、业务抢通方案详情。"
+        },
+        "error": { "errCode": "", "errMessage": "" }
+      }
+    ]
+  },
+  {
+    "id": "TC00000003",
+    "caseDimension": "01-意图清晰参数完整",
+    "caseDesc": "业务抢通事件-订阅条件（子网名称）+精简上报通知数据格式（4个字段）",
+    "caseCategory": "正常",
+    "input": [
+      {
+        "api": "generateNotificationPromptFromText",
+        "args": {
+          "text": "我想订阅业务抢通事件，订阅条件为子网名称为珠江新城子网。上报通知数据格式如下：1. 业务抢通方案执行状态，取值范围：未启动、已结束；2. 投诉诊断任务流水号；3. 接入端口名称；4. 业务抢通方案名称。",
+          "templateUri": "Notification-T/network-layer/service-recovery/v1"
+        }
+      },
+      {
+        "api": "validateNotificationPromptAndDataFilling",
+        "args": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "topic": {
+                "type": "string",
+                "description": "订阅主题（必选）。订阅的事件主题名称，例如：业务抢通事件。"
+              },
+              "subscriptionCondition": {
+                "type": "string",
+                "description": "订阅条件（可选）。待订阅的条件描述，例如：子网名称为xx子网。"
+              },
+              "notificationDataFormat": {
+                "type": "string",
+                "description": "上报通知数据格式（必选）。待上报的通知数据格式描述，用于定义业务抢通事件的数据结构。"
+              }
+            },
+            "required": ["topic", "notificationDataFormat"]
+          },
+          "templateUri": "Notification-T/network-layer/service-recovery/v1",
+          "promptText": {
+            "$fromStep": 1,
+            "$field": "promptText"
+          }
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "success",
+        "data": {},
+        "error": { "errCode": "", "errMessage": "" }
+      },
+      {
+        "result": "success",
+        "data": {
+          "topic": "业务抢通事件",
+          "subscriptionCondition": "子网名称：珠江新城子网"
+        },
+        "error": { "errCode": "", "errMessage": "" }
+      }
+    ]
+  },
+  {
+    "id": "TC00000004",
+    "caseDimension": "04-关键信息缺失",
+    "caseDesc": "业务抢通事件-缺少必选的上报通知数据格式",
+    "caseCategory": "异常",
+    "input": [
+      {
+        "api": "generateNotificationPromptFromText",
+        "args": {
+          "text": "我想订阅业务抢通事件，订阅条件为子网名称为珠江新城子网。",
+          "templateUri": "Notification-T/network-layer/service-recovery/v1"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "result": "error",
+        "data": {},
+        "error": { "errCode": "slot.not_provided", "errMessage": "" }
+      }
+    ]
+  }
+]
