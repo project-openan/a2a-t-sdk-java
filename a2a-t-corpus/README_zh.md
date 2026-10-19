@@ -1,113 +1,302 @@
-# a2a-t-corpus — A2A-T 准确性验证语料
+# a2a-t-corpus — A2A-T 准确性验证语料模块
 
-A2A-T SDK 的数据驱动准确性验证：把 JSON 工作流用例经生产 SDK 装配链路对**真实 LLM** 执行，产出逐步 API/LLM 完整转录、时延与 Token 指标，并以 95%+ 准确率达标线支撑提示词调优。
+## 1. 模块介绍
 
-当前实现扩展：**Task-T**（专线投诉诊断）与 **Negotiation-T**（无线节能目标/信息/可行性协商），均为标杆迭代；Notification-T / Authorization-T 待参考场景稳定后按同结构扩展（套件类 + `resources/` + 注册表条目，零分叉）。
+a2a-t-corpus 是 A2A-T SDK 的数据驱动准确性验证模块。它按用例定义的步骤调用真实 SDK（对接真实 LLM），记录每一步的完整请求与响应、耗时和 Token，并按用例通过率统计准确率，用来判断提示词效果是否达到 95% 的目标。
 
-- **纯测试模块**：无 `src/main`，不进 BOM、不参与发布（`maven.deploy.skip/source.skip/javadoc.skip=true`），且从 CI 排除（`mvn ... -pl '!a2a-t-corpus'`）。
-- **必须配置真实 LLM**：缺少三个必填 `A2AT_LLM_*` 配置时 fail-fast 并给出配置指引。`.env` 键名与项目根 `env.example` 保持一致，corpus 模板即根模板的精调子集。
+当前覆盖 **Task-T**（专线业务投诉、无线节能修改、智能备电续航创建/修改）、**Negotiation-T**（无线节能目标 / 信息 / 可行性协商）与 **Notification-T**（业务抢通 / 故障事件订阅通知）。Authorization-T 等待参考场景稳定后按同样方式接入。
 
-## 目录
+使用前需了解三点：
+
+- **仅用于测试**：位于 `a2a-t-corpus/`，只有 `src/test`、无 `src/main`，不进 BOM、不参与发布（`maven.deploy.skip/source.skip/javadoc.skip=true`），CI 中以 `-pl '!a2a-t-corpus'` 排除。
+- **需要真实 LLM**：三个必填配置 `A2AT_LLM_BASE_URL` / `A2AT_LLM_API_KEY` / `A2AT_LLM_MODEL` 缺失时会直接报错并给出提示；`.env` 的键名与项目根 `env.example` 一致。
+- **用例格式与 Python 仓库共用**：用例文件、`schemas/` 下的 Schema、`tools/` 下的工具，在两个仓库中保持一致。
+
+## 2. 模块目录
 
 ```
 a2a-t-corpus/
-├── pom.xml / env.example / .env（密钥，gitignore）/ README.md / README_zh.md
-├── schemas/          input-case.schema.json、output-result.schema.json（格式一手定义）
-├── tools/            inputCsvToJson(.py/.sh)、outputJsonToCsv(.py/.sh)、csv-templates/
+├── pom.xml                         Maven 配置：纯测试模块，跳过发布、CI 排除
+├── env.example                     配置模板，含三个必填 A2AT_LLM_* 项
+├── .env                            本地配置（密钥，gitignore；由 env.example 复制）
+├── README.md                       英文说明
+├── README_zh.md                    中文说明
+├── schemas/
+│   ├── input-case.schema.json      用例格式定义
+│   └── output-result.schema.json   结果格式定义
+├── tools/
+│   ├── inputCsvToJson.py            CSV 设计表 <-> input 用例文件
+│   ├── outputJsonToCsv.py           结果文件 -> CSV 检视表
+│   └── csv-templates/
+│       └── input-case-template.csv  CSV 设计表模板（含一行示例）
 └── src/test/java/net/openan/a2at/sdk/corpus/
-    ├── engine/       框架核心：config/loader/registry/engine/llm/assertion/report/discover + CorpusWorkFlowSuite
-    └── suites/       各扩展的准确性验证套件
-        ├── task/             TaskTFromTextWorkFlowTest、TaskTFromDataWorkFlowTest、TaskSelfGuardTest、
-        │   └── resources/<场景>/   input_case_from_text.json 与 input_case_from_data.json
-        │                          （用例设计，人工构造）；output_result_*.json 由引擎每次运行写回
-        └── negotiation/      NegotiationTFromTextWorkFlowTest、NegotiationTFromDataWorkFlowTest、
-                              NegotiationSelfGuardTest
-            └── resources/<场景>/   ran-energy-saving-target-negotiation、
-                                    ran-energy-saving-information-negotiation、
-                                    ran-energy-saving-feasibility-negotiation
+    ├── engine/                      框架代码：config、loader、registry、engine、llm、
+    │                                 assertion、report、discover、util + CorpusWorkFlowSuite
+    └── suites/
+        ├── task/
+        │   ├── TaskTFromTextWorkFlowTest.java      自然语言用例套件
+        │   ├── TaskTFromDataWorkFlowTest.java      结构化输入用例套件
+        │   ├── TaskSelfGuardTest.java              结构自检（不调 LLM，进 CI）
+        │   └── resources/
+        │       ├── private-line-complaint/                 专线业务投诉
+        │       │   ├── input_case_from_text.json          自然语言用例，人工编写
+        │       │   └── input_case_from_data.json          结构化输入用例，人工编写
+        │       ├── ran-energy-saving-modify/               无线节能任务修改
+        │       │   ├── input_case_from_text.json
+        │       │   └── input_case_from_data.json
+        │       ├── ran-intelligent-backup-battery-endurance-create/   智能备电续航任务创建
+        │       │   ├── input_case_from_text.json
+        │       │   └── input_case_from_data.json
+        │       └── ran-intelligent-backup-battery-endurance-modify/   智能备电续航任务修改
+        │           ├── input_case_from_text.json
+        │           └── input_case_from_data.json
+        ├── negotiation/
+        │   ├── NegotiationTFromTextWorkFlowTest.java   自然语言用例套件（propose / accept / reject / abort）
+        │   ├── NegotiationTFromDataWorkFlowTest.java   结构化输入用例套件
+        │   ├── NegotiationSelfGuardTest.java           结构自检（不调 LLM，进 CI）
+        │   └── resources/
+        │       ├── ran-energy-saving-target-negotiation/      目标协商
+        │       │   ├── input_case_from_text.json
+        │       │   └── input_case_from_data.json
+        │       ├── ran-energy-saving-information-negotiation/ 信息协商
+        │       │   ├── input_case_from_text.json
+        │       │   └── input_case_from_data.json
+        │       └── ran-energy-saving-feasibility-negotiation/ 可行性协商
+        │           ├── input_case_from_text.json
+        │           └── input_case_from_data.json
+        └── notification/
+            ├── NotificationTFromTextWorkFlowTest.java   自然语言用例套件
+            ├── NotificationTFromDataWorkFlowTest.java   结构化输入用例套件
+            ├── NotificationSelfGuardTest.java           结构自检（不调 LLM，进 CI）
+            └── resources/
+                ├── service-recovery/        业务抢通通知
+                │   ├── input_case_from_text.json
+                │   └── input_case_from_data.json
+                └── subscribe-incident/      故障事件订阅通知
+                    ├── input_case_from_text.json
+                    └── input_case_from_data.json
 ```
 
-`suites/<扩展>/resources/<场景>/` 下为 `input_case_from_text.json` 与 `input_case_from_data.json`（用例设计，人工构造）；`output_result_*.json` 由引擎在每次运行后写回。
+各场景目录下的 `output_result_from_text.json` / `output_result_from_data.json` 为运行后写回的结果文件（gitignore），不需要手写；汇总报表写在 `a2a-t-corpus/target/corpus/`（gitignore）。
 
-## 快速开始
+## 3. 工具介绍
 
-```bash
-cp a2a-t-corpus/env.example a2a-t-corpus/.env   # 填写 A2AT_LLM_BASE_URL / API_KEY / MODEL
-mvn -pl a2a-t-corpus -am test -Dtest=TaskTFromTextWorkFlowTest
-mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario=private-line-complaint
-mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario='private-*' -Dcase.filter='TC0000000*'
-# 无线节能协商场景
-mvn -pl a2a-t-corpus test -Dtest=NegotiationTFromTextWorkFlowTest -Dcorpus.scenario='ran-energy-saving-*'
+用例用 CSV 设计、用 JSON 运行，两个脚本负责两者之间的转换。命令均在仓库根目录下执行（即包含 `pom.xml` 和 `a2a-t-corpus/` 的项目根目录）。
+
+**生成用例设计表模板**（含一行示例，Excel 可直接打开）：
+
+```
+python a2a-t-corpus/tools/inputCsvToJson.py --template --out my-cases.csv
 ```
 
-- `-Dcorpus.scenario`：场景名 glob（`*` 通配，逗号分隔）；`-Dcase.filter`：用例 id glob。
-- `-Dtest` 过滤在 `-am` 下作用于整个反应堆；父 POM 已配置 surefire `failIfNoSpecifiedTests=false`，上游模块无同名测试类不会导致构建失败。
-- 每条已执行用例完成即打印到控制台；失败/崩溃用例同时打印完整 interaction 轨迹；转录文件只反映本次执行（过滤运行会以命中的用例整体覆盖文件）。
-- `-Dcorpus.output.dir=<dir>`：把输出重定向到指定目录（缺省写回场景目录；summary 默认落 `target/corpus/`）。
-- 无 LLM 时先跑结构自守卫：`mvn -pl a2a-t-corpus test -Dtest=TaskSelfGuardTest,NegotiationSelfGuardTest`。
+**把 CSV 设计表转换为 input 用例文件**（默认做格式校验，产物写入 `input_case_from_text.json` 或 `input_case_from_data.json`）：
 
-## 用例 JSON 契约（v1，一手定义见 `schemas/`）
-
-```json
-{
-  "id": "TC00000001", "caseDimension": "01-意图清晰参数完整", "caseDesc": "标准专线业务中断投诉",
-  "caseCategory": "正常",
-  "input": [
-    { "api": "generateTaskPromptFromText",
-      "args": { "text": "发生专线业务中断，接入端口名称为P781-……", "templateUri": "Task-T/network-layer/private-line-complaint/v1" } },
-    { "api": "validateTaskPromptAndDataFilling",
-      "args": { "schema": { "…": "JSON Schema" }, "templateUri": "…", "promptText": { "$fromStep": 1, "$field": "promptText" } } }
-  ],
-  "expected": [
-    { "result": "success", "data": {}, "error": { "errCode": "", "errMessage": "" } },
-    { "result": "success", "data": { "accessPort": "P781-……" }, "error": { "errCode": "", "errMessage": "" } }
-  ]
-}
+```
+python a2a-t-corpus/tools/inputCsvToJson.py --csv my-cases.csv --out a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/suites/task/resources/<场景>/input_case_from_text.json
 ```
 
-- `id` 使用 `TC`（TestCase）前缀，如 `TC00000001`；id 在单个用例文件内唯一。
-- `input` / `expected` 为**等长数组**，顺序即执行序；步数不限，同一 API 可多次出现。
-- `expected.result`：`success` / `error`；`data` 为子集断言（可选 `dataExact` 收紧为全量相等）；`error.errCode` 必须位于 SDK 错误码目录。
-- `{"$fromStep": N, "$field": "promptText"}` 按步序（1-based）引用更早步骤响应中的字段；显式字面值优先。
-- `caseCategory` 为开放枚举：`正常` / `异常` / `边界` / `模糊语义` …（仅作统计与组织维度，断言与之间无耦合）。
-- 加载为严格解析：未知键、缺期望、数组不等长、api 未注册、errCode 不在目录 → 加载期汇总报错。
-- 业务载荷（输入文本、schema 描述、期望槽位值）与用例元数据（`caseDimension` / `caseDesc` / `caseCategory`）保留中文，因为它们描述的是面向 zh-CN 提示词资源的业务用例；其余（工具、消息、代码）一律英文。
+**把 input 用例文件回填为 CSV 设计表**（反向转换，用于对照检视，对应新增用例步骤 ⑧）：
 
-## 输出与指标
-
-- 每场景：`output_result_from_text.json` / `output_result_from_data.json`，每个用例一条记录，其 interactions 交错记录 **API 步与其底层 LLM 调用**，携带完整请求/响应（异常步 dump 每个属性 + cause 链）、时延、Token——**完整输出，不截断**。
-- `a2a-t-corpus/target/corpus/summary_report_<flow>.json` + 控制台表：总体/按场景/按维度/按分类/按 API 的准确率（**95% 达标线标注**）、时延 p50/p95、Token 合计。
-
-## 工具闭环
-
-```bash
-python a2a-t-corpus/tools/inputCsvToJson.py --template --out my-cases.csv   # 用例设计表（含一行示例）
-# 填表后转换（默认开启产物结构校验）
-python a2a-t-corpus/tools/inputCsvToJson.py --csv my-cases.csv \
-    --out a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/suites/task/resources/<场景>/input_case_from_text.json
-# 跑套件后审视（一行=一个用例，含每步完整请求/响应）
-python a2a-t-corpus/tools/outputJsonToCsv.py \
-    --json a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/suites/task/resources/<场景>/output_result_from_text.json \
-    --out review.csv
-# 可选：把 input JSON 回填为设计表
+```
 python a2a-t-corpus/tools/inputCsvToJson.py --reverse --csv <input_case_from_text.json> --out back.csv
 ```
 
-各平台直接运行 Python 脚本；`tools/*.sh` 为 bash 薄包装（Git Bash / WSL / Linux / macOS），参数 1:1 透传，把上面命令中的 `python a2a-t-corpus/tools/<名称>.py` 换成 `tools/<名称>.sh` 即可：
+**把运行结果文件转换为 CSV 检视表**（一行一个用例，含每一步完整请求 / 响应，对应新增用例步骤 ⑤）：
 
-```bash
-tools/inputCsvToJson.sh --template --out my-cases.csv
-tools/inputCsvToJson.sh --csv my-cases.csv --out <场景>/input_case_from_text.json
-tools/outputJsonToCsv.sh --json <场景>/output_result_from_text.json --out review.csv
-tools/inputCsvToJson.sh --reverse --csv <input_case_from_text.json> --out back.csv
+```
+python a2a-t-corpus/tools/outputJsonToCsv.py --json <output_result_from_text.json> --out review.csv
 ```
 
-两个 sh 脚本**不是双击直接运行的**：双击启动时没有参数，只会打印用法说明（且终端可能立刻关闭）。请在终端中带参数运行；没有 bash 环境时直接 `python a2a-t-corpus/tools/...` 运行 Python 脚本。脚本会从终端 PATH 中查找 `python3`（找不到则回退 `python`），两者都缺失时给出明确报错。
+CSV 设计表列：固定列 `id`、`caseDimension`、`caseDesc`、`caseCategory`、`scenario`，之后按步骤成组 `stepN_api`、`stepN_args`、`stepN_expect_result`、`stepN_expect_data`、`stepN_expect_errCode`、`stepN_expect_errMessageContains`，步数不限。
 
-## 新增场景（零 Java 改动）
+## 4. 新增用例步骤
 
-新建 `suites/<扩展>/resources/<场景>/` 并放入两个 input JSON 即可——`@TestFactory` 套件运行时扫描发现场景。结构门禁先用对应扩展的 `*SelfGuardTest`（无 LLM）跑一遍。
+整体流程如下，下面再以一个具体用例逐步展开。以下所有命令均在仓库根目录下执行。
 
-## 后续阶段（参考场景稳定后）
+```mermaid
+flowchart TD
+    S1["① 回填 CSV 设计表"]
+    S2{"② CSV 设计表评审"}
+    S3["③ 生成 input_case_*.json"]
+    S4["④ 执行用例"]
+    S5["⑤ 结果文件转换为 CSV"]
+    S6{"⑥ 检视用例结果"}
+    S7["⑦ 调整用例或代码"]
+    S8["⑧ 用例文件回填 CSV"]
+    S1 --> S2
+    S2 -- 评审通过 --> S3
+    S2 -- 评审不通过 --> S1
+    S3 --> S4
+    S4 --> S5
+    S5 --> S6
+    S6 -- 不符合预期 --> S7
+    S7 --> S8
+    S8 --> S1
+    S6 -- 符合预期 --> Done["用例完成"]
+```
 
-Notification-T / Authorization-T：新增 `suites/<扩展>/<XXWorkFlowTest>` 套件与对应 `resources/`，在 `ApiRegistry` 登记该扩展 facade 方法，框架与工具链原样复用。
+### 4.1 示例：在 private-line-complaint 场景新增一条 text 用例
+
+目标：在 Task-T 套件的 `private-line-complaint` 场景下，新增一条自然语言用例 `TC00000001`（“专线业务中断投诉”）。
+
+**① 回填 CSV 设计表**
+
+先生成模板：
+
+```
+python a2a-t-corpus/tools/inputCsvToJson.py --template --out my-cases.csv
+```
+
+模板每行是一个用例，本用例各列的填法：
+
+| 列名 | 含义 | 本用例取值 |
+| --- | --- | --- |
+| `id` | 用例编号，`TC` 前缀，文件内唯一 | `TC00000001` |
+| `caseDimension` | 用例维度，用于统计 | `01-意图清晰参数完整` |
+| `caseDesc` | 用例描述 | `基础档-专线业务中断-接入端口名称-标准` |
+| `caseCategory` | 用例分类：`正常` / `异常` / `边界` | `正常` |
+| `scenario` | 所属场景目录名 | `private-line-complaint` |
+| `step1_api` | 第 1 步调用的 API（Java 门面名） | `generateTaskPromptFromText` |
+| `step1_args` | 第 1 步入参（JSON） | `{"text":"发生专线业务中断，接入端口名称为P781-……","templateUri":"Task-T/network-layer/private-line-complaint/v1"}` |
+| `step1_expect_result` | 第 1 步期望结果：`success` / `error` | `success` |
+| `step1_expect_data` | 第 1 步期望数据（子集断言，可留空） | `{}` |
+| `step1_expect_errCode` | 期望错误码（`error` 时必填） | 空 |
+| `step1_expect_errMessageContains` | 期望错误信息包含的子串（可选） | 空 |
+| `step2_api` | 第 2 步调用的 API | `validateTaskPromptAndDataFilling` |
+| `step2_args` | 第 2 步入参：要把第 1 步响应中的字段传进来，用 `{"$fromStep":1,"$field":"promptText"}` | `{"schema":{…},"templateUri":"Task-T/network-layer/private-line-complaint/v1","promptText":{"$fromStep":1,"$field":"promptText"}}` |
+| `step2_expect_result` | 第 2 步期望结果 | `success` |
+| `step2_expect_data` | 第 2 步期望抽出的字段（响应子集） | `{"accessPort":"P781-……"}` |
+| `step2_expect_errCode` | 期望错误码（`error` 时必填） | 空 |
+| `step2_expect_errMessageContains` | 期望错误信息包含的子串（可选） | 空 |
+
+步骤多于两步时，继续补 `step3_*`、`step4_*` …即可，同一 API 也可以重复出现。
+
+**② 评审 CSV 设计表**
+
+人工评审这条用例的设计是否覆盖目标场景、期望值是否合理。评审通过后进入 ③；不通过则回到 ① 继续修改。
+
+**③ 生成 input 用例文件**
+
+把设计表转换为用例文件：
+
+```
+python a2a-t-corpus/tools/inputCsvToJson.py --csv my-cases.csv --out a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/suites/task/resources/private-line-complaint/input_case_from_text.json
+```
+
+转换时会做格式校验（编号唯一、期望与步骤等长、api 与错误码合法等），不通过会直接报错。生成的用例文件即可直接运行。
+
+**④ 执行用例**
+
+用套件执行这条用例（执行命令详解见「运行用例步骤」）：
+
+```
+mvn -pl a2a-t-corpus -am test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario=private-line-complaint -Dcase.filter=TC00000001
+```
+
+**⑤ 把运行结果转换为 CSV**
+
+用上一步写回的 `output_result_from_text.json` 生成检视表：
+
+```
+python a2a-t-corpus/tools/outputJsonToCsv.py --json a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/suites/task/resources/private-line-complaint/output_result_from_text.json --out review.csv
+```
+
+**⑥ 检视用例结果**
+
+打开 `review.csv`，逐条对照每一步的期望与实际结果（`result`、`response`、错误码等）。符合预期则用例完成；不符合预期进入 ⑦。
+
+**⑦ 调整用例或代码**
+
+判断问题出在用例还是实现：用例设计或期望写错了就改用例，实现有问题就改代码。
+
+**⑧ 用例文件回填 CSV**
+
+如果改了用例文件，用反向转换把它导回设计表，保持两边一致，再回到 ①：
+
+```
+python a2a-t-corpus/tools/inputCsvToJson.py --reverse --csv a2a-t-corpus/src/test/java/net/openan/a2at/sdk/corpus/suites/task/resources/private-line-complaint/input_case_from_text.json --out my-cases.csv
+```
+
+### 4.2 新增用例注意
+
+- **代码仓库只提交 `input_case_*.json`**：CSV 设计表供人评审用，`input_case_*.json` 供代码运行用，两者内容一致，但只需要提交 JSON。
+- **新增用例不需要新增代码**：只需新建测试场景目录（`suites/<扩展>/resources/<场景>/`，即 `src/test/java/net/openan/a2at/sdk/corpus/suites/<扩展>/resources/<场景>/`）并放入 `input_case_*.json`，套件在收集阶段（`ScenarioScanner` + `@TestFactory`）会自动发现场景。新增后可用对应扩展的 `*SelfGuardTest` 做一次结构检查。
+
+### 4.3 用例文件格式
+
+```json
+[
+  {
+    "id": "TC00000001", "caseDimension": "01-意图清晰参数完整", "caseDesc": "标准专线业务中断投诉",
+    "caseCategory": "正常",
+    "input": [
+      { "api": "generateTaskPromptFromText",
+        "args": { "text": "发生专线业务中断，接入端口名称为P781-……", "templateUri": "Task-T/network-layer/private-line-complaint/v1" } },
+      { "api": "validateTaskPromptAndDataFilling",
+        "args": { "schema": { "…": "JSON Schema" }, "templateUri": "…", "promptText": { "$fromStep": 1, "$field": "promptText" } } }
+    ],
+    "expected": [
+      { "result": "success", "data": {}, "error": { "errCode": "", "errMessage": "" } },
+      { "result": "success", "data": { "accessPort": "P781-……" }, "error": { "errCode": "", "errMessage": "" } }
+    ]
+  }
+]
+```
+
+- 一个文件是一个 JSON 数组，数组元素即用例；`id` 使用 `TC` 前缀（如 `TC00000001`），在单个用例文件内唯一。
+- `input` 与 `expected` 等长，顺序就是执行顺序，同一 API 可多次出现，步数不限。
+- `expected.result` 为 `success` / `error`；`data` 为子集断言（可选 `dataExact` 收紧为全量相等）；`error.errCode` 必须是 SDK 已定义的错误码。
+- `{"$fromStep": N, "$field": "promptText"}` 按步骤序号（从 1 开始）引用更早步骤响应中的字段；显式字面值优先。
+- 加载时严格校验：未知字段、缺期望、数组不等长、api 未注册、错误码未定义、`$fromStep` 非法都会在加载阶段统一报错。
+
+## 5. 运行用例步骤
+
+以下命令均在仓库根目录下执行。先准备 LLM 配置（三个必填项 `A2AT_LLM_BASE_URL` / `A2AT_LLM_API_KEY` / `A2AT_LLM_MODEL`）：
+
+```
+cp a2a-t-corpus/env.example a2a-t-corpus/.env
+```
+
+配置值按 系统属性（`-Da2at.llm.*`）> 模块根 `.env`（`A2AT_LLM_*`）> 进程环境变量（`A2AT_LLM_*`）的优先级解析。
+
+**执行全部用例**（三个扩展的全部 work flow 套件 + 结构自检；上游模块尚未安装到本地仓库时需带 `-am` 一并构建）：
+
+```
+mvn -pl a2a-t-corpus -am test
+```
+
+**执行指定场景用例**（`-Dcorpus.scenario` 为场景名，支持 glob 通配符 `*`，可用逗号分隔多个）：
+
+```
+mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario=ran-energy-saving-modify
+```
+
+**执行指定场景下的全部 text 用例**：
+
+```
+mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario=private-line-complaint
+```
+
+**执行指定场景下的全部 data 用例**：
+
+```
+mvn -pl a2a-t-corpus test -Dtest=TaskTFromDataWorkFlowTest -Dcorpus.scenario=private-line-complaint
+```
+
+**执行指定场景下指定用例编号的用例**（`-Dcase.filter` 为用例编号，支持 glob 通配符 `*`）：
+
+```
+mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario=ran-energy-saving-modify -Dcase.filter=TC00000001
+```
+
+- 用例的测试编号形如 `<场景名>/<用例编号>`，也可以直接在 IDE 里按 `@TestFactory` 的动态测试名定位单条用例。
+- Negotiation-T / Notification-T 只需把 `-Dtest` 换成对应套件类（`NegotiationTFromTextWorkFlowTest`、`NotificationTFromTextWorkFlowTest` 等），场景名同样支持通配符。
+- `-Dtest` 过滤在 `-am` 下作用于整个反应堆；父 POM 已配置 surefire `failIfNoSpecifiedTests=false`，上游模块无同名测试类不会导致构建失败。
+- 每条用例执行完成会立即打印到控制台；失败或崩溃的用例会额外打印完整的调用记录。结果文件只反映本次运行，过滤运行时只覆盖命中的用例（整体覆写）。
+- `-Dcorpus.output.dir=<目录>` 可把结果文件和汇总报表写到指定目录；默认结果文件写回各场景目录，汇总报表写到 `a2a-t-corpus/target/corpus/`。
+- 每个场景生成 `output_result_from_text.json` / `output_result_from_data.json`，并汇总为 `summary_report_<flow>.json` 与控制台表格（总体 / 按场景 / 按维度 / 按分类 / 按 API 步的通过率，标注 95% 目标，含耗时 p50/p95 与 Token 合计）。
+- 未配置 LLM 时，可先运行结构自检（此测试进 CI）：
+
+```
+mvn -pl a2a-t-corpus test -Dtest=TaskSelfGuardTest,NegotiationSelfGuardTest,NotificationSelfGuardTest
+```
