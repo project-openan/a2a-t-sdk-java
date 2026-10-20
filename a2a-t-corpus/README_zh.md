@@ -283,7 +283,7 @@ mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario=pri
 mvn -pl a2a-t-corpus test -Dtest=TaskTFromDataWorkFlowTest -Dcorpus.scenario=private-line-complaint
 ```
 
-**执行指定场景下指定用例编号的用例**（`-Dcase.filter` 为用例编号，支持 glob 通配符 `*`）：
+**执行指定场景下 text 中指定用例编号的用例**（`-Dcase.filter` 为用例编号，支持 glob 通配符 `*`）：
 
 ```
 mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario=ran-energy-saving-modify -Dcase.filter=TC00000001
