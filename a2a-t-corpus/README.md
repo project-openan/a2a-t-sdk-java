@@ -283,7 +283,7 @@ mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario=pri
 mvn -pl a2a-t-corpus test -Dtest=TaskTFromDataWorkFlowTest -Dcorpus.scenario=private-line-complaint
 ```
 
-**Run a given case id of a given scenario** (`-Dcase.filter` is a case id, supports the `*` glob wildcard):
+**Run a given text case id of a given scenario** (`-Dcase.filter` is a case id, supports the `*` glob wildcard):
 
 ```
 mvn -pl a2a-t-corpus test -Dtest=TaskTFromTextWorkFlowTest -Dcorpus.scenario=ran-energy-saving-modify -Dcase.filter=TC00000001
