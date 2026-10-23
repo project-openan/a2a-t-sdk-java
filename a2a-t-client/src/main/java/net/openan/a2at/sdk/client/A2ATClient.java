@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 import net.openan.a2at.sdk.client.model.PromptGenerationResult;
 import net.openan.a2at.sdk.client.prompt.assembly.DefaultA2ATClientBuilder;
 import net.openan.a2at.sdk.client.prompt.orchestration.ClientPromptGenerationOrchestrator;
@@ -13,6 +14,8 @@ import net.openan.a2at.sdk.core.model.FilledParamData;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.PromptTemplate;
 import net.openan.a2at.sdk.core.model.TemplateUri;
+import net.openan.a2at.sdk.core.telemetry.TelemetryHook;
+import net.openan.a2at.sdk.core.telemetry.TelemetryOperation;
 import net.openan.a2at.sdk.negotiation.content.NegotiationAbortData;
 import net.openan.a2at.sdk.negotiation.content.NegotiationEndingData;
 import net.openan.a2at.sdk.negotiation.content.NegotiationProposeData;
@@ -23,6 +26,9 @@ import net.openan.a2at.sdk.negotiation.types.model.NegotiationStatus;
 import net.openan.a2at.sdk.negotiation.types.model.NegotiationType;
 import net.openan.a2at.sdk.prompt.resources.catalog.TemplateQueryService;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * High-level client facade for prompt generation and negotiation APIs. The caller provides the {@code .env} file path
@@ -32,6 +38,8 @@ import org.jspecify.annotations.NonNull;
  */
 public final class A2ATClient {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(A2ATClient.class);
+
     private final ClientPromptGenerationOrchestrator promptGenerationOrchestrator;
 
     private final RoleBoundNegotiationOrchestrator negotiationOrchestrator;
@@ -40,22 +48,82 @@ public final class A2ATClient {
 
     private final TemplateQueryService templateQueryService;
 
+    private final TelemetryHook hook;
+
     /**
-     * Creates a client facade from one user-supplied {@code .env} path.
+     * Creates a client facade from one user-supplied {@code .env} path without telemetry observation.
      *
      * @param envPath user-supplied {@code .env} file path
      */
     public A2ATClient(Path envPath) {
+        this(envPath, null);
+    }
+
+    /**
+     * Creates a client facade from one user-supplied {@code .env} path with an optional telemetry hook observing every
+     * facade operation.
+     *
+     * @param envPath user-supplied {@code .env} file path
+     * @param hook telemetry hook receiving the SDK operation events; {@code null} disables observation
+     */
+    public A2ATClient(Path envPath, @Nullable TelemetryHook hook) {
         Path resolvedEnvPath = envPath.toAbsolutePath().normalize();
         A2ATConfig config =
                 A2ATConfig.resolvePromptResourceLocalRootDir(A2ATConfig.load(resolvedEnvPath), resolvedEnvPath);
         DefaultA2ATClientBuilder builder =
                 DefaultA2ATClientBuilder.builder().envPath(resolvedEnvPath).config(config);
+        this.hook = hook == null ? TelemetryHook.NO_OP : hook;
         this.promptGenerationOrchestrator = builder.buildPromptGenerationOrchestrator();
         this.negotiationOrchestrator = builder.buildNegotiationOrchestrator();
         this.negotiationContentService =
                 new NegotiationContentService(builder.buildNegotiationGenerationOrchestrator());
         this.templateQueryService = builder.buildTemplateQueryService();
+    }
+
+    private <T> T observed(String method, Supplier<T> action) {
+        TelemetryOperation started;
+        try {
+            started = hook.startSdkOperation("client", method);
+        } catch (RuntimeException error) {
+            LOGGER.warn("a2at: startSdkOperation failed; telemetry disabled for this call", error);
+            started = TelemetryOperation.NO_OP;
+        }
+        try (TelemetryOperation operation = started) {
+            try {
+                T result = action.get();
+                try {
+                    operation.markSuccess();
+                } catch (RuntimeException callbackError) {
+                    LOGGER.warn("a2at: telemetry hook callback failed", callbackError);
+                }
+                return result;
+            } catch (RuntimeException error) {
+                try {
+                    operation.markError(error);
+                } catch (RuntimeException callbackError) {
+                    LOGGER.warn("a2at: telemetry hook callback failed", callbackError);
+                }
+                throw error;
+            }
+        }
+    }
+
+    static @Nullable String terminalOutcome(NegotiationStatus status) {
+        if (status == NegotiationStatus.AGREED) {
+            return "accept";
+        }
+        return status == NegotiationStatus.REJECTED ? "reject" : null;
+    }
+
+    private void reportNegotiationRounds(NegotiationContext context, NegotiationStatus status) {
+        try {
+            String outcome = terminalOutcome(status);
+            if (outcome != null) {
+                hook.reportNegotiationRounds(context.negotiationId(), outcome, context.round());
+            }
+        } catch (RuntimeException error) {
+            LOGGER.warn("a2at: negotiation metric report failed", error);
+        }
     }
 
     /**
@@ -68,7 +136,7 @@ public final class A2ATClient {
      *     the limit yields the failure code {@code input.text_too_long}
      */
     public PromptGenerationResult generateTaskPrompt(Object userInput) {
-        return promptGenerationOrchestrator.generateTaskPrompt(userInput);
+        return observed("generateTaskPrompt", () -> promptGenerationOrchestrator.generateTaskPrompt(userInput));
     }
 
     /**
@@ -87,9 +155,11 @@ public final class A2ATClient {
      *     {@code input.text_too_long} when the text exceeds the configured maximum length
      */
     public MetadataContent generateTaskPromptFromText(@NonNull String text, @NonNull String templateUri) {
-        Objects.requireNonNull(text, "text");
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return promptGenerationOrchestrator.generateTaskPromptFromText(text, parsedTemplateUri);
+        return observed("generateTaskPromptFromText", () -> {
+            Objects.requireNonNull(text, "text");
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return promptGenerationOrchestrator.generateTaskPromptFromText(text, parsedTemplateUri);
+        });
     }
 
     /**
@@ -109,10 +179,12 @@ public final class A2ATClient {
      */
     public MetadataContent generateTaskPromptFromDataWithSchema(
             @NonNull Map<String, Object> data, @NonNull Map<String, Object> schema, @NonNull String templateUri) {
-        Objects.requireNonNull(data, "data");
-        Objects.requireNonNull(schema, "schema");
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return promptGenerationOrchestrator.generateTaskPromptFromDataWithSchema(data, schema, parsedTemplateUri);
+        return observed("generateTaskPromptFromDataWithSchema", () -> {
+            Objects.requireNonNull(data, "data");
+            Objects.requireNonNull(schema, "schema");
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return promptGenerationOrchestrator.generateTaskPromptFromDataWithSchema(data, schema, parsedTemplateUri);
+        });
     }
 
     /**
@@ -134,9 +206,11 @@ public final class A2ATClient {
      *     {@code input.text_too_long} when the text exceeds the configured maximum length
      */
     public MetadataContent generateAuthPromptFromText(@NonNull String text, @NonNull String templateUri) {
-        Objects.requireNonNull(text, "text");
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return promptGenerationOrchestrator.generateAuthPromptFromText(text, parsedTemplateUri);
+        return observed("generateAuthPromptFromText", () -> {
+            Objects.requireNonNull(text, "text");
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return promptGenerationOrchestrator.generateAuthPromptFromText(text, parsedTemplateUri);
+        });
     }
 
     /**
@@ -159,10 +233,12 @@ public final class A2ATClient {
      */
     public MetadataContent generateAuthPromptFromDataWithSchema(
             @NonNull Map<String, Object> data, @NonNull Map<String, Object> schema, @NonNull String templateUri) {
-        Objects.requireNonNull(data, "data");
-        Objects.requireNonNull(schema, "schema");
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return promptGenerationOrchestrator.generateAuthPromptFromDataWithSchema(data, schema, parsedTemplateUri);
+        return observed("generateAuthPromptFromDataWithSchema", () -> {
+            Objects.requireNonNull(data, "data");
+            Objects.requireNonNull(schema, "schema");
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return promptGenerationOrchestrator.generateAuthPromptFromDataWithSchema(data, schema, parsedTemplateUri);
+        });
     }
 
     /**
@@ -181,9 +257,11 @@ public final class A2ATClient {
      *     {@code input.text_too_long} when the text exceeds the configured maximum length
      */
     public MetadataContent generateNotificationPromptFromText(@NonNull String text, @NonNull String templateUri) {
-        Objects.requireNonNull(text, "text");
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return promptGenerationOrchestrator.generateNotificationPromptFromText(text, parsedTemplateUri);
+        return observed("generateNotificationPromptFromText", () -> {
+            Objects.requireNonNull(text, "text");
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return promptGenerationOrchestrator.generateNotificationPromptFromText(text, parsedTemplateUri);
+        });
     }
 
     /**
@@ -203,10 +281,13 @@ public final class A2ATClient {
      */
     public MetadataContent generateNotificationPromptFromDataWithSchema(
             @NonNull Map<String, Object> data, @NonNull Map<String, Object> schema, @NonNull String templateUri) {
-        Objects.requireNonNull(data, "data");
-        Objects.requireNonNull(schema, "schema");
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return promptGenerationOrchestrator.generateNotificationPromptFromDataWithSchema(data, schema, parsedTemplateUri);
+        return observed("generateNotificationPromptFromDataWithSchema", () -> {
+            Objects.requireNonNull(data, "data");
+            Objects.requireNonNull(schema, "schema");
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return promptGenerationOrchestrator.generateNotificationPromptFromDataWithSchema(
+                    data, schema, parsedTemplateUri);
+        });
     }
 
     /**
@@ -218,7 +299,7 @@ public final class A2ATClient {
      * @return transport payload representing the initial negotiation turn
      */
     public Map<String, Object> startNegotiation(NegotiationType type, String contentText, Map<String, Object> facts) {
-        return negotiationOrchestrator.startNegotiation(type, contentText, facts);
+        return observed("startNegotiation", () -> negotiationOrchestrator.startNegotiation(type, contentText, facts));
     }
 
     /**
@@ -229,7 +310,7 @@ public final class A2ATClient {
      * @return normalized payload describing the receive result
      */
     public Map<String, Object> receiveNegotiation(String message, Map<String, Object> context) {
-        return negotiationOrchestrator.receiveNegotiation(message, context);
+        return observed("receiveNegotiation", () -> negotiationOrchestrator.receiveNegotiation(message, context));
     }
 
     /**
@@ -242,7 +323,11 @@ public final class A2ATClient {
      */
     public Map<String, Object> continueNegotiation(
             NegotiationContext context, NegotiationStatus status, String contentText) {
-        return negotiationOrchestrator.continueNegotiation(context, status, contentText);
+        return observed("continueNegotiation", () -> {
+            Map<String, Object> result = negotiationOrchestrator.continueNegotiation(context, status, contentText);
+            reportNegotiationRounds(context, status);
+            return result;
+        });
     }
 
     /**
@@ -266,8 +351,10 @@ public final class A2ATClient {
      */
     public MetadataContent generateNegotiationProposePromptFromData(
             @NonNull NegotiationProposeData data, @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.generateProposeFromData(data, parsedTemplateUri);
+        return observed("generateNegotiationProposePromptFromData", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.generateProposeFromData(data, parsedTemplateUri);
+        });
     }
 
     /**
@@ -291,8 +378,10 @@ public final class A2ATClient {
      */
     public MetadataContent generateNegotiationAcceptPromptFromData(
             @NonNull NegotiationEndingData data, @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.generateAcceptFromData(data, parsedTemplateUri);
+        return observed("generateNegotiationAcceptPromptFromData", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.generateAcceptFromData(data, parsedTemplateUri);
+        });
     }
 
     /**
@@ -316,8 +405,10 @@ public final class A2ATClient {
      */
     public MetadataContent generateNegotiationRejectPromptFromData(
             @NonNull NegotiationEndingData data, @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.generateRejectFromData(data, parsedTemplateUri);
+        return observed("generateNegotiationRejectPromptFromData", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.generateRejectFromData(data, parsedTemplateUri);
+        });
     }
 
     /**
@@ -339,8 +430,10 @@ public final class A2ATClient {
      */
     public MetadataContent generateNegotiationAbortPromptFromData(
             @NonNull NegotiationAbortData data, @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.generateAbortFromData(data, parsedTemplateUri);
+        return observed("generateNegotiationAbortPromptFromData", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.generateAbortFromData(data, parsedTemplateUri);
+        });
     }
 
     /**
@@ -370,8 +463,10 @@ public final class A2ATClient {
             @NonNull String text,
             net.openan.a2at.sdk.core.model.@NonNull NegotiationContext context,
             @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.generateProposeFromText(text, context, parsedTemplateUri);
+        return observed("generateNegotiationProposePromptFromText", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.generateProposeFromText(text, context, parsedTemplateUri);
+        });
     }
 
     /**
@@ -401,8 +496,10 @@ public final class A2ATClient {
             @NonNull String text,
             net.openan.a2at.sdk.core.model.@NonNull NegotiationContext context,
             @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.generateAcceptFromText(text, context, parsedTemplateUri);
+        return observed("generateNegotiationAcceptPromptFromText", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.generateAcceptFromText(text, context, parsedTemplateUri);
+        });
     }
 
     /**
@@ -432,8 +529,10 @@ public final class A2ATClient {
             @NonNull String text,
             net.openan.a2at.sdk.core.model.@NonNull NegotiationContext context,
             @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.generateRejectFromText(text, context, parsedTemplateUri);
+        return observed("generateNegotiationRejectPromptFromText", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.generateRejectFromText(text, context, parsedTemplateUri);
+        });
     }
 
     /**
@@ -463,8 +562,10 @@ public final class A2ATClient {
             @NonNull String text,
             net.openan.a2at.sdk.core.model.@NonNull NegotiationContext context,
             @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.generateAbortFromText(text, context, parsedTemplateUri);
+        return observed("generateNegotiationAbortPromptFromText", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.generateAbortFromText(text, context, parsedTemplateUri);
+        });
     }
 
     /**
@@ -478,7 +579,7 @@ public final class A2ATClient {
      *     none can be loaded
      */
     public List<PromptTemplate> getPrompts() {
-        return templateQueryService.getPrompts();
+        return observed("getPrompts", () -> templateQueryService.getPrompts());
     }
 
     /**
@@ -494,8 +595,10 @@ public final class A2ATClient {
      * @throws IllegalArgumentException if the template URI is blank or malformed
      */
     public Optional<PromptTemplate> getPrompt(@NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return templateQueryService.getPrompt(parsedTemplateUri);
+        return observed("getPrompt", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return templateQueryService.getPrompt(parsedTemplateUri);
+        });
     }
 
     /**
@@ -534,9 +637,11 @@ public final class A2ATClient {
             net.openan.a2at.sdk.core.model.NegotiationContext context,
             @NonNull Map<String, Object> schema,
             @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.validateProposePromptAndDataFilling(
-                prompt, context, schema, parsedTemplateUri);
+        return observed("validateProposePromptAndDataFilling", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.validateProposePromptAndDataFilling(
+                    prompt, context, schema, parsedTemplateUri);
+        });
     }
 
     /**
@@ -573,8 +678,11 @@ public final class A2ATClient {
             net.openan.a2at.sdk.core.model.NegotiationContext context,
             @NonNull Map<String, Object> schema,
             @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.validateAcceptPromptAndDataFilling(prompt, context, schema, parsedTemplateUri);
+        return observed("validateAcceptPromptAndDataFilling", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.validateAcceptPromptAndDataFilling(
+                    prompt, context, schema, parsedTemplateUri);
+        });
     }
 
     /**
@@ -611,8 +719,11 @@ public final class A2ATClient {
             net.openan.a2at.sdk.core.model.NegotiationContext context,
             @NonNull Map<String, Object> schema,
             @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.validateRejectPromptAndDataFilling(prompt, context, schema, parsedTemplateUri);
+        return observed("validateRejectPromptAndDataFilling", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.validateRejectPromptAndDataFilling(
+                    prompt, context, schema, parsedTemplateUri);
+        });
     }
 
     /**
@@ -648,8 +759,11 @@ public final class A2ATClient {
             net.openan.a2at.sdk.core.model.NegotiationContext context,
             @NonNull Map<String, Object> schema,
             @NonNull String templateUri) {
-        TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
-        return negotiationContentService.validateAbortPromptAndDataFilling(prompt, context, schema, parsedTemplateUri);
+        return observed("validateAbortPromptAndDataFilling", () -> {
+            TemplateUri parsedTemplateUri = parseTemplateUri(templateUri);
+            return negotiationContentService.validateAbortPromptAndDataFilling(
+                    prompt, context, schema, parsedTemplateUri);
+        });
     }
 
     private static TemplateUri parseTemplateUri(String templateUri) {
