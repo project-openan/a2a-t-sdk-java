@@ -42,6 +42,7 @@ class SdkOperationSpansTest {
     void tearDown() {
         System.getProperties().remove(ObservabilityRuntime.ENV_MASTER);
         System.getProperties().remove(ObservabilityRuntime.ENV_TRACE);
+        System.clearProperty(ObservabilityRuntime.ENV_METRIC);
         provider.close();
         GlobalOpenTelemetry.resetForTest();
     }
@@ -124,6 +125,7 @@ class SdkOperationSpansTest {
 
     @Test
     void reportNegotiationRoundsAbsorbsExtremeRoundCounts() {
+        System.setProperty(ObservabilityRuntime.ENV_METRIC, "false");
         TelemetryHook hook = new SdkOperationSpans();
         assertDoesNotThrow(() -> hook.reportNegotiationRounds("neg-1", "accept", Long.MAX_VALUE));
         assertDoesNotThrow(() -> hook.reportNegotiationRounds("neg-2", "reject", -1L));
