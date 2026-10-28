@@ -41,12 +41,13 @@ Python 版可观测模块（参照 `a2a-t-sdk-python/observity.md` 与 `src/a2a_
 a2a-t-observability            核心：配置/装配/手动 API/传播/日志/指标/LLM 装饰器
   依赖: a2a-t-core, a2a-t-llm,
         io.opentelemetry:opentelemetry-api (compile),
-        opentelemetry-sdk + opentelemetry-exporter-otlp-grpc
-        + opentelemetry-exporter-otlp-http + opentelemetry-exporter-logging (<optional>true</optional>)
+        opentelemetry-sdk + opentelemetry-exporter-otlp
+        + opentelemetry-exporter-logging (<optional>true</optional>)
 
 a2a-t-observability-a2a        协议层装饰器（可选模块）
   依赖: a2a-t-observability,
-        org.a2aproject.sdk:a2a-java-sdk-client-transport-spi / -server-common / -spec / -jsonrpc-common (1.1.0.Final)
+        org.a2aproject.sdk:a2a-java-sdk-client-transport-spi / -server-common / -spec / -jsonrpc-common
+        / -transport-rest (1.1.0.Final，RestContextKeys.HEADERS_KEY 提取 headers)
 ```
 
 - 两模块登记进根 `pom.xml` `<modules>` 与 `a2a-t-bom`
@@ -71,16 +72,16 @@ a2a-t-observability-a2a        协议层装饰器（可选模块）
 | Python | Java 类 | 要点 |
 |---|---|---|
 | `config.py` | `A2ATObservabilityConfig` | record + builder + `fromMap(DotEnvConfigSource)`；显式 > 环境变量 > 默认 |
-| `setup.py` | `ObservabilitySetup` | `ensureConfigured()`：自动装配 `SdkTracerProvider`/`SdkMeterProvider` + `BatchSpanProcessor`/`PeriodicExportingMetricReader`；OTLP gRPC（默认）或 HTTP/protobuf（endpoint 自动拼 `/v1/traces`、`/v1/metrics`）；无 endpoint 降级 Console（`opentelemetry-exporter-logging` 的 `LoggingSpanExporter`/`LoggingMetricExporter`）；幂等（已注册非 Proxy/空 provider 则跳过）；`sdk` 类缺失时 `Class.forName` 探测跳过自动装配 |
-| `_otel_compat.py` | `ObservabilityRuntime` | 总开关 `OTEL_INSTRUMENTATION_A2AT_SDK_ENABLED`、tracer/meter 访问器（scope `a2at-observability`/`1.0.0`）、trace/metric/log 三信号独立开关 |
+| `setup.py` | `ObservabilitySetup` | `ensureConfigured()`：自动装配 `SdkTracerProvider`/`SdkMeterProvider`/`SdkLoggerProvider` + `BatchSpanProcessor`/`PeriodicExportingMetricReader`/`BatchLogRecordProcessor`（**三信号**，对齐 Python）；OTLP gRPC（默认）或 HTTP/protobuf（endpoint 自动拼 `/v1/traces`、`/v1/metrics`、`/v1/logs`；Java `opentelemetry-exporter-otlp` 单 artifact 含三种 exporter）；无 endpoint 降级 Console（`opentelemetry-exporter-logging` 的 `LoggingSpanExporter`/`LoggingMetricExporter`/`LoggingLogRecordExporter`）；幂等（已注册非 Proxy/空 provider 则跳过）；`sdk` 类缺失时 `Class.forName` 探测跳过自动装配 |
+| `_otel_compat.py` | `ObservabilityRuntime` | 总开关 `OTEL_INSTRUMENTATION_A2AT_SDK_ENABLED`、tracer/meter 访问器（scope `a2at-observability`/`1.0.0`）、trace/metric/log 三信号独立开关、`sameTraceOrphanContext`（同 trace 随机 span_id 无父上下文 + 0 值守卫） |
 | `span.py` | `A2ATSpan implements AutoCloseable` | try-with-resources；kind 枚举 `INTERNAL/CLIENT/SERVER/PRODUCER/CONSUMER`；`setAttribute`/`addLink(A2ATSpan)`；close 时记录异常 + OK/ERROR 状态 |
 | `current_span.py` | `CurrentSpans.current()` → `A2ATCurrentSpan` | 只读视图：`traceId()`/`spanId()`/`isValid()`/`setAttribute()`；非 recording 时返回空 |
 | `attributes.py` | `A2ATAttributes` + `AttributeExtractors` | 全部属性常量 + 提取器（§5 命名注册表） |
 | `propagation.py` | `TracePropagation` | `inject(Map<String,String>)` / `extract(Map<String,String>)`；W3C traceparent；key 小写容错；extract 返回 null 当 span context 无效 |
 | `payload.py` | `PayloadSanitizer` | **先脱敏后截断**（安全顺序）；默认 4096 + `[truncated]` 后缀；自定义 redactor 函数接口 |
-| `logs.py` | `ObservabilityLogs` | SLF4J logger `net.openan.a2at.sdk.observability`；**JSON 行**（Jackson 序列化）：`{"event": ..., <业务字段>, "trace_id", "span_id", "payload"?}`；事件名沿用 Python |
-| `llm_decorator.py` + `llm_stash.py` | `ObservabilityLLMClient implements LLMClient` + `LlmUsageStash` | `structured()` 返回后：记 `gen_ai.client.token.usage` 直方图（unit `{token}`，按 `gen_ai.token.type`=input/output 各一样本）+ `LlmUsageStash`（ThreadLocal）暂存（input/output tokens、request model）供协议层入口 Span 取用（**取后清空**） |
-| `negotiation_metrics.py` | `NegotiationMetrics` | `a2at.negotiation.total_rounds` 直方图（unit `{round}`）；属性 `gen_ai.agent.a2at.extension.name="Negotiation-T"`、`negotiation.id`、`outcome`(accept/reject/abort)；仅终态触发 |
+| `logs.py` | `ObservabilityLogs` | SLF4J logger `net.openan.a2at.sdk.observability`；**JSON 行**（Jackson 序列化，`ensure_ascii=false` 等价）：`{"event": ..., <业务字段>, "trace_id", "span_id", "payload"?}`；事件名沿用 Python；log_enabled 双门控（运行时开关 + config）；**OTel 日志信号**：log_enabled 时同步写入 OTel `Logger` API（`SdkLoggerProvider` + OTLP/Console exporter），SLF4J 与 OTel 双通道共享同一 JSON 语义，对齐 Python LoggingHandler 桥接 |
+| `llm_decorator.py` + `llm_stash.py` | `ObservabilityLLMClient implements LLMClient` + `LlmUsageStash` | `structured()` 返回后：从 `LLMResponse.usage`（键 `prompt_tokens`/`completion_tokens`，与 Python stash 读法一致）+ `model()` 取数；记 `gen_ai.client.token.usage` 直方图（unit `{token}`，按 `gen_ai.token.type`=input/output 各一样本）+ `LlmUsageStash`（ThreadLocal）暂存（input/output tokens、request model）供协议层入口 Span 取用（**取后清空**；trace 关闭时入口侧直接丢弃 stash） |
+| `negotiation_metrics.py` | `NegotiationMetrics` | `a2at.negotiation.total_rounds` 直方图（unit `{round}`）；属性 `gen_ai.agent.a2at.extension.name="Negotiation-T"`、`negotiation.id`、`outcome`(accept/reject/abort)；仅终态触发；**数据路径差异**：Python 从返回的 `MetadataContent.negotiation_context` 取，Java 从门面入参/结果的 `NegotiationContext(type, negotiationId, round, NegotiationStatus)` 取（终态 status 映射 outcome），结果等价 |
 | `sdk_trace.py` | `SdkOperationSpans` | `TelemetryHook` 的 OTel 实现：`a2at.sdk.{role}.{method}` INTERNAL Span |
 
 指标 instrument 缓存沿用 Python 的惰性单例模式（`ConcurrentHashMap<String, LongHistogram>`）。
@@ -123,8 +124,9 @@ public interface TelemetryHook {
 ### 5.2 属性
 
 - A2A-T 扩展（前缀 `gen_ai.agent.a2at.`）：`extension.name`（由扩展 URI 解析，基址 `https://projects.tmforum.org/a2aproject/telecommunication/extensions/` → `Negotiation-T` 等）、`task.id`、`task.status`、`task.type`、`negotiation.id/round/max_rounds/performative/total_rounds`、`notification.topic`、`streaming.event.kind`、`push.notification.url`、`authorization.policy.operation.type`
+- 预授权（无前缀，对齐 Python）：`authorization.policy.id`、`authorization.operation_type`、`authorization.operation_risk_level`
 - a2a-java 仪表盘双写（前缀 `gen_ai.agent.a2a.`，与 `A2AObservabilityNames` 对齐）：`operation.name`、`context_id`、`task_id`、`message_id`、`role`、`extensions`、`parts.number`、`protocol`、`request`、`response`
-- GenAI semconv：`gen_ai.operation.name`、`gen_ai.conversation.id`、`gen_ai.usage.input_tokens/output_tokens`、`gen_ai.request.model`、`gen_ai.response.model`、`gen_ai.token.type`、`streaming`、`error.type`
+- GenAI semconv：`gen_ai.operation.name`、`gen_ai.conversation.id`、`gen_ai.usage.input_tokens/output_tokens`、`gen_ai.request.model`、`gen_ai.response.model`、`gen_ai.token.type`、`gen_ai.provider.name`、`streaming`、`error.type`
 - 侧别：`a2at.span.side` = `client` | `server`
 - 报文正则提取（默认值照搬 Python）：任务类型 `##\s*任务类型\(Task Type\)`、通知主题 `##\s*通知主题`、授权操作类型 `##\s*授权策略的操作类型`
 
@@ -145,26 +147,28 @@ public interface TelemetryHook {
 
 ### 6.1 Client：`A2ATClientTransportDecorator implements ClientTransport`
 
-- 覆写全部 12 方法；入口 Span kind=CLIENT，名见 §5.1
-- **传播**：从 `ClientCallContext.getHeaders()`（小写容错）提取调用方 traceparent 为父；无则显式 ROOT（`NonRecordingSpan(INVALID_SPAN_CONTEXT)` 语义等价物）；向 delegate 传递**新建** `ClientCallContext`（原 state + 注入入口 Span traceparent 的 headers，不改传入对象）
-- **流式**（`sendMessageStreaming`/`subscribeToTask`）：包装两个 Consumer；每事件发 `SendStreamingMessage-event`（同 trace 孤儿上下文 + Link）；错误 Consumer 发 `SendStreamingMessage-error`；终态事件止流
-- **属性**：请求结构化提取 + 双写 + stash 中 LLM token 用量 + 正则提取
-- **指标**：`gen_ai.client.operation.duration`、`a2at.task.request.duration`(side=client)
+- 覆写全部 12 方法；入口 Span kind=CLIENT，名见 §5.1；**构造器防双重装饰守卫**（内层已是本装饰器则解包，杜绝双重 Span，对齐 Python factory-guard）
+- **传播**：从 `ClientCallContext.getHeaders()`（小写容错）提取调用方 traceparent 为父（业务根传播 mode B）；无则显式 ROOT（`SpanContext` INVALID 语义等价物）；向 delegate 传递**新建** `ClientCallContext`（原 state + 注入入口 Span traceparent 的 headers，不改传入对象 —— 相比 Python 原地覆写 `service_parameters` 更安全，消除"覆写调用方业务根"缺陷）
+- **流式**（`sendMessageStreaming`/`subscribeToTask`）：包装两个 Consumer；每事件发 `SendStreamingMessage-event`（同 trace 孤儿上下文 + Link + `gen_ai.conversation.id`）；错误 Consumer 发 `SendStreamingMessage-error`（`error.type`）；**取消/中止类异常（`CancellationException`）不发 error span**（对齐 Python CancelledError 豁免）；终态事件止流（对齐 a2a-java `shouldAutoClose`）
+- **协商 Span（client 侧）**：sync 响应与流式事件中的协商 Message 发 `{操作名}-negotiation`（CLIENT kind，**父子**挂入口 Span，即时结束；属性 `gen_ai.operation.name`/`extension.name`/`gen_ai.conversation.id`/`task.id`/`negotiation.*`）+ `negotiation.message` 日志
+- **属性**：请求结构化提取 + 双写 + stash 中 LLM token 用量 + 正则提取（DEFAULT_* 回退、空串 opt-out、尾括号清洗）；**trace 关闭时 stash 必须丢弃**（防泄漏到下一请求入口 Span，对齐 Python）
+- **指标**：`gen_ai.client.operation.duration` + `a2at.task.request.duration`(side=client)，双门控（运行时开关 + config 实例开关）
 - 另提供 `A2ATA2ATClientTransportWrapper implements ClientTransportWrapper`（a2a-java 原生 SPI，可注册自动包装，等价 Python `register_client_factory`）
 
 ### 6.2 Server：`A2ATRequestHandlerDecorator implements RequestHandler`
 
-- `onMessageSend`→`SendMessage`；`onMessageSendStream`→`SendStreamingMessage`（Span 存活至流结束，try/finally）；`onSubscribeToTask`→`SubscribeToTask`（仅入口）；其余 `_runSimple` 等价处理；kind=SERVER
-- **父上下文**：`ServerCallContext.getState()` 探测 headers（运行时探测 `headers`/`http.headers` 等常见 key，小写容错）
-- **流式 per-event**：包装返回的 `Flow.Publisher<StreamingEventKind>`（订阅者包装）；每事件 `SendStreamingMessage-event` SERVER Span（孤儿 + Link）；协商 Message 事件 `SendStreamingMessage-negotiation`（**父子**）+ `negotiation.message` 日志
-- **入口 Span 注册表**：有界 map（上限 2048，FIFO 淘汰），task_id 与 context_id 双 key（context_id 仅在入口 Span 仍 recording 时作 fallback），供 per-event/Push/executor 关联
-- **指标**：`a2at.task.request.duration`(side=server)
+- `onMessageSend`→`SendMessage`；`onMessageSendStream`→`SendStreamingMessage`（Span 存活至流结束，try/finally）；`onSubscribeToTask`→`SubscribeToTask`（仅入口，不重复观测——事件由产生请求侧观测）；其余简单包装；kind=SERVER
+- **父上下文**：`ServerCallContext.getState()` 按 `RestContextKeys.HEADERS_KEY`（transport-rest）提取 headers，找不到时通用探测 `headers` key（小写容错，兼容 jsonrpc transport）
+- **流式 per-event**：包装返回的 `Flow.Publisher<StreamingEventKind>`（订阅者包装，**仅流式操作**——同步 `SendMessage` 不产生幻影 event Span，对齐 Python `_start_event_span` 门）；每事件 `SendStreamingMessage-event` SERVER Span（孤儿 + Link）；协商 Message 事件发 `SendStreamingMessage-negotiation`（**父子**）+ `negotiation.message` 日志
+- **同步 `SendMessage` 的协商 Span**：响应分类后在收尾阶段发（对齐 Python `_capture_response`，EventQueue/Publisher 侧只管流式，避免双发）
+- **入口 Span 注册表**：有界 map（上限 2048，FIFO 淘汰），task_id 与 context_id 双 key 注册；**context_id fallback 仅当该记录的入口 Span 仍在 recording 时可被采纳**（防止复用上一请求的记录，对齐 Python `_find_record`）
+- **指标**：`a2at.task.request.duration`（side=server，双门控）
 
 ### 6.3 协作装饰器
 
 - `A2ATAgentExecutorDecorator implements AgentExecutor`：激活入口 Span（业务代码可见 `current_span()`）。用法：**先包 executor 再 `DefaultRequestHandler.create(...)`，后包 handler**（create 显式收 executor，无需反射）
-- `A2ATPushSenderDecorator implements PushNotificationSender`：`SendMessage-pushNotification` CLIENT Span + Link 入口 Span + `push.notification.url` 属性
-- `PayloadSanitizer` 复用核心模块；payload 提取（request/response JSON）受 `A2AT_EXTRACT_REQUEST/RESPONSE` 门控
+- `A2ATPushSenderDecorator implements PushNotificationSender`：`SendMessage-pushNotification` CLIENT Span + Link 入口 Span + `push.notification.url` 属性。**注入点**：a2a-java 的 push 发送经 `MainEventBusProcessor(MainEventBus, TaskStore, PushNotificationSender, QueueManager)` 公共构造器注入 → 先装饰 sender 再构造。**URL 提取**：a2a-java `sendNotification(event, task)` 不携带 URL（URL 在内部私有 dispatch 中）；装饰器持有 `PushNotificationConfigStore`，发 Span 时按 task_id 查询配置取 URL（对齐 Python 经 `push_info.url` 的语义）
+- `PayloadSanitizer` 复用核心模块；payload 提取（request/response JSON）受 `A2AT_EXTRACT_REQUEST/RESPONSE` 门控；span 属性通道（`gen_ai.agent.a2a.request/response`）与日志通道（`task.request`/`task.response`）共享同一 redact→truncate 语义
 
 ### 6.4 与 a2a-java 自带 OTel 插桩的关系
 
@@ -198,8 +202,16 @@ public interface TelemetryHook {
 沿用仓库惯例：JUnit 5 + 手写 scripted stub + logback `ListAppender`；无 Mockito。
 
 - **核心模块**：配置解析矩阵（显式/env/默认/非法值）、装配幂等与降级（无 endpoint → Console；无 sdk 类 → 跳过）、传播 inject/extract 往返与容错、Payload 脱敏→截断顺序、LLM 装饰器 token 指标与 stash 取后清空、协商指标终态触发
-- **协议层**：scripted `ClientTransport`/`RequestHandler`/`AgentExecutor`/`PushNotificationSender` fake + a2a-java spec 真实类型构造请求/事件；用 `SdkTracerProvider` + 内存 `SpanProcessor`（收集已结束 Span）断言：Span 名/kind/属性/状态/Link 拓扑/per-event 序列/双端指标
-- **合同测试**：公共 API 导出面测试（对齐 Python `test_public_api.py`）、日志 JSON 字段合同、包结构测试
+- **协议层**：scripted `ClientTransport`/`RequestHandler`/`AgentExecutor`/`PushNotificationSender` fake + a2a-java spec 真实类型构造请求/事件；用 `SdkTracerProvider` + 内存 `SpanProcessor`（收集已结束 Span）断言：Span 名/kind/属性/状态/Link 拓扑/per-event 序列/双端指标；**双重装饰守卫**（装饰器套装饰器只出一层 Span）；**取消豁免**（CancellationException 不发 error span）；**context_id fallback 仅 recording 可采纳**
+- **公共 API 导出面合同**（对齐 Python `test_public_api.py` 的 "nothing more, nothing less"），Java 导出面基准：
+  - 装配：`ObservabilitySetup.setup / isConfigured`
+  - 集成：`A2ATClientTransportWrapper`、`A2ATRequestHandlerDecorator`（+ Executor/PushSender 装饰器）
+  - 手动 API：`A2ATSpan`（try-with-resources）、`CurrentSpans.current()` / `A2ATCurrentSpan`
+  - 门面追踪：`TelemetryHook`（+ `SdkOperationSpans` 实现）
+  - 传播：`TracePropagation.inject/extract`、`TRACEPARENT_HEADER`
+  - 配置：`A2ATObservabilityConfig`
+  - 属性常量：§5.2 全量（A2A-T 扩展 14 个 + 预授权 3 个 + GenAI 7 个 + `a2at.span.side`/`streaming`/`error.type`）
+- **日志 JSON 字段合同**（ListAppender + Jackson 解析断言 event/trace_id/span_id/payload）
 - **既有模块回归**：builder `@Nullable` 注入点新增注入测试；全量 `mvn test`
 - **Sample**：`a2a-t-sample` 新增 `observability` 示例场景（对标 Python `observability-sample`：Console 模式端到端跑通 trace/metrics/logs）
 
@@ -211,8 +223,23 @@ public interface TelemetryHook {
 - 不叠加 a2a-java 自带 OTel 插桩（二选一）
 - 协议层模块不追求兼容 a2a-java 1.0.0.Beta1（锁定 1.1.0.Final）
 
-## 11. 参考
+## 11. 可行性核查结论（2026-10-20，源码级验证）
 
-- Python 实现：`a2a-t-sdk-python/src/a2a_t/observability/`（对照文件清单见 §3 表格）
+| # | 接缝 | 结论 |
+|---|---|---|
+| 1 | Client 12 方法装饰 + `ClientCallContext(state, headers)` 新建实例注入 traceparent | ✅ 可行 |
+| 2 | Server 11 方法装饰 + `Flow.Publisher` 订阅者包装 per-event Span | ✅ 可行 |
+| 3 | traceparent 提取：`RestContextKeys.HEADERS_KEY`（transport-rest 公共常量）+ 通用探测回退 | ✅ 可行（依赖清单已补 transport-rest） |
+| 4 | PushNotificationSender 注入：`MainEventBusProcessor(MainEventBus, TaskStore, PushNotificationSender, QueueManager)` 公共构造器 | ✅ 可行（DefaultRequestHandler 不直接收 sender；先装饰再构造） |
+| 5 | `push.notification.url`：`sendNotification(event, task)` 无 URL 参数 | ⚠️ 调整：装饰器持 `PushNotificationConfigStore` 按 task_id 查 URL（§6.3） |
+| 6 | `A2ATAgentExecutorDecorator`：`DefaultRequestHandler.create` 显式收 executor | ✅ 先包后建，无需反射 |
+| 7 | LLM token：`LLMResponse.usage` 键 `prompt_tokens`/`completion_tokens` + `model()` | ✅ 与 Python stash 读法一致 |
+| 8 | 协商轮次指标：Java 从入参 `NegotiationContext` 取（Python 从返回值取） | ✅ 数据路径小异，结果等价 |
+| 9 | 同 trace 孤儿上下文：`SpanContext.create(traceId, randomSpanId, flags, state)` + `spanBuilder.setParent` | ✅ 可行（含 0 值 span_id 守卫） |
+| 10 | 防泄漏激活：Java SDK 全同步，`Span.makeCurrent()`/`Scope.close()` 同步可靠 | ✅ 简化（Python 的跨 async 上下文修复逻辑不需要） |
+
+## 12. 参考
+
+- Python 实现：`a2a-t-sdk-python/src/a2a_t/observability/`（对照文件清单见 §3 表格；`__init__.py` 公共导出 24 符号为 API 面合同基准）
 - Python 设计大纲：`a2a-t-sdk-python/observity.md`
-- a2a-java 接缝（已用 javap 验证 1.1.0.Final）：`ClientTransport`、`ClientTransportWrapper`、`ClientCallContext(Map state, Map headers)`、`RequestHandler`（流式返回 `Flow.Publisher`）、`ServerCallContext.getState()`、`AgentExecutor`、`PushNotificationSender`、`DefaultRequestHandler.create(AgentExecutor, TaskStore, QueueManager, PushNotificationConfigStore, MainEventBusProcessor, Executor, Executor)`、`A2AObservabilityNames`
+- a2a-java 接缝（javap + 常量池扫描验证 1.1.0.Final）：`ClientTransport`、`ClientTransportWrapper`、`ClientCallContext(Map state, Map headers)`、`RequestHandler`（流式返回 `Flow.Publisher`）、`ServerCallContext.getState()` + `RestContextKeys.HEADERS_KEY`、`AgentExecutor`、`PushNotificationSender`/`BasePushNotificationSender`（私有 `dispatch(event, task, TaskPushNotificationConfig, headers)` 含 URL）、`MainEventBusProcessor` 构造器、`DefaultRequestHandler.create(AgentExecutor, TaskStore, QueueManager, PushNotificationConfigStore, MainEventBusProcessor, Executor, Executor)`、`A2AObservabilityNames`
