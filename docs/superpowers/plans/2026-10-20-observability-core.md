@@ -2885,6 +2885,14 @@ A2AT_LOGS_PAYLOAD_MAX_LENGTH=4096
 
 a2a-java 协议层装饰器（`A2ATClientTransportDecorator`、`A2ATRequestHandlerDecorator`、`A2ATAgentExecutorDecorator`、`A2ATPushSenderDecorator`、`A2ATA2ATClientTransportWrapper`、类型化提取器 `A2AJavaAttributeExtractors`、`SdkOperationSpans` hook 实现）+ sample 可观测场景 + README。待 Plan A 落地后按其真实签名编写独立计划。
 
+### Plan B 必须吸收的终审遗留项（final review 2026-10-20）
+
+1. `ensureConfigured()` 仅读系统环境变量；`.env` 接线（`fromMap(DotEnvConfigSource.load(path))`）由 Plan B 的 README/sample 负责，并注意 `A2AT_SERVICE_NAME` 未列入 env.example 示例
+2. `PayloadSanitizer` redactor 失败时 fail-open（透传未脱敏值）→ 后续安全加固改 fail-closed（丢弃 payload）
+3. `MetricHistograms` 静态缓存跨 `GlobalOpenTelemetry.resetForTest()` 存活 + 装配前缓存的直方图永久绑定 no-op meter → Plan B 设计 provider 感知缓存或在 `ObservabilitySetup.resetForTest` 中清缓存
+4. 终审已修：门面 hook 回调全防护（ae2c526）；`getOrNoop()` 防 get() 副作用（ae2c526）——Plan B 的 `SdkOperationSpans` 必须沿用 `getOrNoop()` 模式且自身调用点全部 try/catch 防护
+5. 遗留 follow-up（不阻塞合并）：console-exporter-disabled 分支跳过 `set()`、ISE 路径 provider 关闭、`replaceAll("/+$")` 多斜杠、`switchOn` 去重、`A2ATCurrentSpan.setAttribute` 类型化
+
 
 
 
