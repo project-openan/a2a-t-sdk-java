@@ -14,6 +14,7 @@
 - 订阅事件样例服务端：`net.openan.a2at.sample.subscribe_incident.server.ServerSampleMain`
 - 协商端到端样例（4报文）：`net.openan.a2at.sample.negotiation.NegotiationDemoApp`
 - 授权策略样例（Authorization-T）：`net.openan.a2at.sample.authz_policy.AuthzSampleMain`
+- 可观测性样例（Console 离线模式）：`net.openan.a2at.sample.observability.ObservabilitySampleMain`，说明见 [observability/README-zh.md](observability/README-zh.md)
 
 ## 模块内资源
 
