@@ -51,6 +51,16 @@
                 <artifactId>a2a-t-server</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>net.openan.a2a-t.sdk</groupId>
+                <artifactId>a2a-t-observability</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.openan.a2a-t.sdk</groupId>
+                <artifactId>a2a-t-observability-a2a</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>
