@@ -25,10 +25,10 @@ class LlmObservabilityTest {
     @BeforeEach
     void setUp() {
         reader = InMemoryMetricReader.create();
-        SdkMeterProvider provider = SdkMeterProvider.builder()
-                .registerMetricReader(reader)
-                .build();
-        GlobalOpenTelemetry.set(OpenTelemetrySdk.builder().setMeterProvider(provider).build());
+        SdkMeterProvider provider =
+                SdkMeterProvider.builder().registerMetricReader(reader).build();
+        GlobalOpenTelemetry.set(
+                OpenTelemetrySdk.builder().setMeterProvider(provider).build());
     }
 
     @AfterEach
@@ -38,8 +38,8 @@ class LlmObservabilityTest {
 
     @Test
     void structuredStashesUsageAndRecordsTokenHistogram() {
-        LLMClient scripted = (messages, schema, temperature, maxTokens) -> new LLMResponse(
-                "ok", "gpt-x", Map.of("prompt_tokens", 10, "completion_tokens", 5), Map.of());
+        LLMClient scripted = (messages, schema, temperature, maxTokens) ->
+                new LLMResponse("ok", "gpt-x", Map.of("prompt_tokens", 10, "completion_tokens", 5), Map.of());
         ObservabilityLLMClient client = new ObservabilityLLMClient(scripted);
         client.structured(List.of(Map.of("role", "user", "content", "hi")), Map.of(), null, null);
 
@@ -78,9 +78,8 @@ class LlmObservabilityTest {
         LLMClient throwing = (messages, schema, temperature, maxTokens) -> {
             throw new IllegalStateException("llm down");
         };
-        assertThrows(
-                IllegalStateException.class,
-                () -> new ObservabilityLLMClient(throwing).structured(List.of(), Map.of(), null, null));
+        assertThrows(IllegalStateException.class, () -> new ObservabilityLLMClient(throwing)
+                .structured(List.of(), Map.of(), null, null));
         assertNull(LlmUsageStashHolder.getAndClear());
     }
 }

@@ -16,15 +16,20 @@ class AttributeExtractorsTest {
     @Test
     void extensionNameFromUriParsesBase() {
         assertEquals("Negotiation-T", AttributeExtractors.extensionNameFromUri(NEGOTIATION_URI));
-        assertEquals("Task-T", AttributeExtractors.extensionNameFromUri(
-                "https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/sub"));
+        assertEquals(
+                "Task-T",
+                AttributeExtractors.extensionNameFromUri(
+                        "https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/sub"));
         assertNull(AttributeExtractors.extensionNameFromUri("https://other.example/ext"));
         assertNull(AttributeExtractors.extensionNameFromUri(null));
     }
 
     @Test
     void negotiationAttributesExtractedFromMetadata() {
-        Map<String, Object> metadata = Map.of(NEGOTIATION_URI, "v1", "negotiationContext",
+        Map<String, Object> metadata = Map.of(
+                NEGOTIATION_URI,
+                "v1",
+                "negotiationContext",
                 Map.of("id", "N001", "round", 3, "maxRounds", 5, "performative", "ACCEPT"));
         Map<String, Object> attrs = AttributeExtractors.negotiationAttributes(metadata);
         assertEquals("N001", attrs.get(A2ATAttributes.ATTR_NEGOTIATION_ID));
@@ -52,7 +57,8 @@ class AttributeExtractorsTest {
         assertEquals("alarm", attrs.get(A2ATAttributes.ATTR_NOTIFICATION_TOPIC));
 
         Map<String, Object> optedOut = AttributeExtractors.regexAttributes(
-                metadata, A2ATObservabilityConfig.fromEnv().toBuilder().taskTypeRegex("").build());
+                metadata,
+                A2ATObservabilityConfig.fromEnv().toBuilder().taskTypeRegex("").build());
         assertFalse(optedOut.containsKey(A2ATAttributes.ATTR_TASK_TYPE));
     }
 

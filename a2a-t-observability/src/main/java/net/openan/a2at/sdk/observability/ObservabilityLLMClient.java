@@ -51,15 +51,13 @@ public final class ObservabilityLLMClient implements LLMClient {
             MetricHistograms.histogram(METRIC_TOKEN_USAGE, "{token}", "GenAI client token usage")
                     .record(
                             input,
-                            Attributes.of(
-                                    AttributeKey.stringKey(A2ATAttributes.ATTR_GEN_AI_TOKEN_TYPE), "input"));
+                            Attributes.of(AttributeKey.stringKey(A2ATAttributes.ATTR_GEN_AI_TOKEN_TYPE), "input"));
         }
         if (output != null) {
             MetricHistograms.histogram(METRIC_TOKEN_USAGE, "{token}", "GenAI client token usage")
                     .record(
                             output,
-                            Attributes.of(
-                                    AttributeKey.stringKey(A2ATAttributes.ATTR_GEN_AI_TOKEN_TYPE), "output"));
+                            Attributes.of(AttributeKey.stringKey(A2ATAttributes.ATTR_GEN_AI_TOKEN_TYPE), "output"));
         }
     }
 }

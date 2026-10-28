@@ -38,8 +38,7 @@ public final class TracePropagation {
         if (headers == null || !ObservabilityRuntime.isEnabled()) {
             return;
         }
-        GlobalOpenTelemetry.getPropagators().getTextMapPropagator()
-                .inject(Context.current(), headers, SETTER);
+        GlobalOpenTelemetry.getPropagators().getTextMapPropagator().inject(Context.current(), headers, SETTER);
     }
 
     public static void inject(Map<String, String> headers, Context context) {
@@ -55,8 +54,8 @@ public final class TracePropagation {
         }
         Map<String, String> lowered = new HashMap<>();
         headers.forEach((key, value) -> lowered.put(key.toLowerCase(Locale.ROOT), value));
-        Context extracted = GlobalOpenTelemetry.getPropagators().getTextMapPropagator()
-                .extract(Context.root(), lowered, GETTER);
+        Context extracted =
+                GlobalOpenTelemetry.getPropagators().getTextMapPropagator().extract(Context.root(), lowered, GETTER);
         return Span.fromContext(extracted).getSpanContext().isValid() ? extracted : null;
     }
 }

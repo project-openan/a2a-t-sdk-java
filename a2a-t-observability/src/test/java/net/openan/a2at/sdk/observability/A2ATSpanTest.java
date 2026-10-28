@@ -30,7 +30,8 @@ class A2ATSpanTest {
         provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        GlobalOpenTelemetry.set(OpenTelemetrySdk.builder().setTracerProvider(provider).build());
+        GlobalOpenTelemetry.set(
+                OpenTelemetrySdk.builder().setTracerProvider(provider).build());
     }
 
     @AfterEach
@@ -41,7 +42,9 @@ class A2ATSpanTest {
 
     @Test
     void tryWithResourcesEndsWithOk() {
-        try (A2ATSpan span = new A2ATSpan("manual.op", SpanKind.INTERNAL).setAttribute("k", "v").open()) {
+        try (A2ATSpan span = new A2ATSpan("manual.op", SpanKind.INTERNAL)
+                .setAttribute("k", "v")
+                .open()) {
             span.setAttribute("k2", 2);
             assertNotNull(CurrentSpans.current());
             assertNotNull(CurrentSpans.current().traceId());
@@ -49,9 +52,10 @@ class A2ATSpanTest {
         List<SpanData> ended = exporter.getFinishedSpanItems();
         assertEquals(1, ended.size());
         assertEquals("manual.op", ended.get(0).getName());
-        assertEquals(io.opentelemetry.api.trace.StatusCode.OK, ended.get(0).getStatus().getStatusCode());
-        assertEquals("v", ended.get(0).getAttributes().get(
-                io.opentelemetry.api.common.AttributeKey.stringKey("k")));
+        assertEquals(
+                io.opentelemetry.api.trace.StatusCode.OK,
+                ended.get(0).getStatus().getStatusCode());
+        assertEquals("v", ended.get(0).getAttributes().get(io.opentelemetry.api.common.AttributeKey.stringKey("k")));
     }
 
     @Test
@@ -61,7 +65,8 @@ class A2ATSpanTest {
             span.recordError(failure);
         }
         SpanData data = exporter.getFinishedSpanItems().get(0);
-        assertEquals(io.opentelemetry.api.trace.StatusCode.ERROR, data.getStatus().getStatusCode());
+        assertEquals(
+                io.opentelemetry.api.trace.StatusCode.ERROR, data.getStatus().getStatusCode());
         assertFalse(data.getEvents().isEmpty());
         assertTrue(data.getStatus().getDescription().contains("boom"));
     }
@@ -74,10 +79,16 @@ class A2ATSpanTest {
             }
         }
         List<SpanData> ended = exporter.getFinishedSpanItems();
-        SpanData event = ended.stream().filter(d -> d.getName().equals("event")).findFirst().orElseThrow();
+        SpanData event = ended.stream()
+                .filter(d -> d.getName().equals("event"))
+                .findFirst()
+                .orElseThrow();
         assertEquals(1, event.getLinks().size());
         assertEquals(
-                ended.stream().filter(d -> d.getName().equals("entry")).findFirst().orElseThrow()
+                ended.stream()
+                        .filter(d -> d.getName().equals("entry"))
+                        .findFirst()
+                        .orElseThrow()
                         .getSpanContext(),
                 event.getLinks().get(0).getSpanContext());
     }

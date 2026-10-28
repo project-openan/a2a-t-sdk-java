@@ -85,20 +85,23 @@ public final class ObservabilitySetup {
             tracerProvider = SdkTracerProvider.builder()
                     .setResource(resource)
                     .addSpanProcessor(BatchSpanProcessor.builder(exporters.span)
-                            .setExporterTimeout(2, TimeUnit.SECONDS).build())
+                            .setExporterTimeout(2, TimeUnit.SECONDS)
+                            .build())
                     .build();
         }
         if (exporters.metric != null && config.metricEnabled() && ObservabilityRuntime.isMetricEnabled()) {
             meterProvider = SdkMeterProvider.builder()
                     .setResource(resource)
                     .registerMetricReader(PeriodicMetricReader.builder(exporters.metric)
-                            .setInterval(30, TimeUnit.SECONDS).build())
+                            .setInterval(30, TimeUnit.SECONDS)
+                            .build())
                     .build();
         }
         if (exporters.log != null && config.logEnabled() && ObservabilityRuntime.isLogEnabled()) {
             loggerProvider = SdkLoggerProvider.builder()
                     .setResource(resource)
-                    .addLogRecordProcessor(BatchLogRecordProcessor.builder(exporters.log).build())
+                    .addLogRecordProcessor(
+                            BatchLogRecordProcessor.builder(exporters.log).build())
                     .build();
         }
         OpenTelemetrySdkBuilder builder = OpenTelemetrySdk.builder();
@@ -119,10 +122,12 @@ public final class ObservabilitySetup {
 
     private static Resource buildResource(A2ATObservabilityConfig config) {
         AttributesBuilder attributes = Attributes.builder();
-        attributes.put("service.name", config.serviceName() == null
-                ? A2ATObservabilityConfig.DEFAULT_SERVICE_NAME : config.serviceName());
+        attributes.put(
+                "service.name",
+                config.serviceName() == null ? A2ATObservabilityConfig.DEFAULT_SERVICE_NAME : config.serviceName());
         String version = ObservabilitySetup.class.getPackage() == null
-                ? null : ObservabilitySetup.class.getPackage().getImplementationVersion();
+                ? null
+                : ObservabilitySetup.class.getPackage().getImplementationVersion();
         attributes.put("service.version", version == null ? "dev" : version);
         if (config.resolveAgentRole() != null) {
             attributes.put("agent.role", config.resolveAgentRole());
@@ -148,18 +153,24 @@ public final class ObservabilitySetup {
         if ("http/protobuf".equals(config.protocol())) {
             String base = config.endpoint().replaceAll("/$", "");
             exporters.span = OtlpHttpSpanExporter.builder()
-                    .setEndpoint(base + "/v1/traces").build();
+                    .setEndpoint(base + "/v1/traces")
+                    .build();
             exporters.metric = OtlpHttpMetricExporter.builder()
-                    .setEndpoint(base + "/v1/metrics").build();
+                    .setEndpoint(base + "/v1/metrics")
+                    .build();
             exporters.log = OtlpHttpLogRecordExporter.builder()
-                    .setEndpoint(base + "/v1/logs").build();
+                    .setEndpoint(base + "/v1/logs")
+                    .build();
         } else {
             exporters.span = OtlpGrpcSpanExporter.builder()
-                    .setEndpoint(config.endpoint()).build();
+                    .setEndpoint(config.endpoint())
+                    .build();
             exporters.metric = OtlpGrpcMetricExporter.builder()
-                    .setEndpoint(config.endpoint()).build();
+                    .setEndpoint(config.endpoint())
+                    .build();
             exporters.log = OtlpGrpcLogRecordExporter.builder()
-                    .setEndpoint(config.endpoint()).build();
+                    .setEndpoint(config.endpoint())
+                    .build();
         }
         return exporters;
     }
@@ -176,9 +187,15 @@ public final class ObservabilitySetup {
     }
 
     private static final class Exporters {
-        @Nullable SpanExporter span;
-        @Nullable MetricExporter metric;
-        @Nullable LogRecordExporter log;
+        @Nullable
+        SpanExporter span;
+
+        @Nullable
+        MetricExporter metric;
+
+        @Nullable
+        LogRecordExporter log;
+
         boolean console;
     }
 }

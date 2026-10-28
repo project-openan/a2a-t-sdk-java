@@ -35,7 +35,8 @@ class ObservabilityLogsTest {
         logger.setLevel(ch.qos.logback.classic.Level.DEBUG);
         GlobalOpenTelemetry.resetForTest();
         tracerProvider = SdkTracerProvider.builder().build();
-        GlobalOpenTelemetry.set(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
+        GlobalOpenTelemetry.set(
+                OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
     }
 
     @AfterEach
@@ -52,11 +53,17 @@ class ObservabilityLogsTest {
     @Test
     void jsonRecordCarriesEventFieldsAndTraceIds() throws Exception {
         try (A2ATSpan span = new A2ATSpan("entry").open()) {
-            ObservabilityLogs.logEvent("task.status_changed", Level.INFO,
-                    Map.of("task.id", "t1", "task.status", "working"), null, A2ATObservabilityConfig.fromEnv());
+            ObservabilityLogs.logEvent(
+                    "task.status_changed",
+                    Level.INFO,
+                    Map.of("task.id", "t1", "task.status", "working"),
+                    null,
+                    A2ATObservabilityConfig.fromEnv());
         }
         ILoggingEvent event = appender.list.stream()
-                .filter(e -> e.getLevel() == ch.qos.logback.classic.Level.INFO).findFirst().orElseThrow();
+                .filter(e -> e.getLevel() == ch.qos.logback.classic.Level.INFO)
+                .findFirst()
+                .orElseThrow();
         Map<?, ?> json = mapper.readValue(event.getFormattedMessage(), Map.class);
         assertEquals("task.status_changed", json.get("event"));
         assertEquals("t1", json.get("task.id"));

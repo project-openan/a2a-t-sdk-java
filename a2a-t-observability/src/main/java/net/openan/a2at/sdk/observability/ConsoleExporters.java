@@ -27,12 +27,20 @@ final class ConsoleExporters {
         return new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
-                spans.forEach(span -> LOG.info(json("span", span.getName(),
+                spans.forEach(span -> LOG.info(json(
+                        "span",
+                        span.getName(),
                         Map.of(
-                                "traceId", span.getTraceId(), "spanId", span.getSpanId(),
-                                "kind", span.getKind().name(),
-                                "status", span.getStatus().getStatusCode().name(),
-                                "attributes", span.getAttributes().asMap()))));
+                                "traceId",
+                                span.getTraceId(),
+                                "spanId",
+                                span.getSpanId(),
+                                "kind",
+                                span.getKind().name(),
+                                "status",
+                                span.getStatus().getStatusCode().name(),
+                                "attributes",
+                                span.getAttributes().asMap()))));
                 return CompletableResultCode.ofSuccess();
             }
 
@@ -52,9 +60,14 @@ final class ConsoleExporters {
         return new MetricExporter() {
             @Override
             public CompletableResultCode export(Collection<MetricData> metrics) {
-                metrics.forEach(metric -> LOG.info(json("metric", metric.getName(),
-                        Map.of("unit", String.valueOf(metric.getUnit()),
-                                "description", String.valueOf(metric.getDescription())))));
+                metrics.forEach(metric -> LOG.info(json(
+                        "metric",
+                        metric.getName(),
+                        Map.of(
+                                "unit",
+                                String.valueOf(metric.getUnit()),
+                                "description",
+                                String.valueOf(metric.getDescription())))));
                 return CompletableResultCode.ofSuccess();
             }
 
@@ -79,7 +92,9 @@ final class ConsoleExporters {
         return new LogRecordExporter() {
             @Override
             public CompletableResultCode export(Collection<LogRecordData> records) {
-                records.forEach(record -> LOG.info(json("log", String.valueOf(record.getBodyValue()),
+                records.forEach(record -> LOG.info(json(
+                        "log",
+                        String.valueOf(record.getBodyValue()),
                         Map.of(
                                 "severity", String.valueOf(record.getSeverityText()),
                                 "attributes", record.getAttributes().asMap()))));

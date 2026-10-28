@@ -251,10 +251,22 @@ public record A2ATObservabilityConfig(
                 name = System.getenv(ENV_OTEL_SERVICE_NAME);
             }
             return new A2ATObservabilityConfig(
-                    enabled, traceEnabled, metricEnabled, logEnabled, endpoint, protocol,
+                    enabled,
+                    traceEnabled,
+                    metricEnabled,
+                    logEnabled,
+                    endpoint,
+                    protocol,
                     name == null || name.isBlank() ? DEFAULT_SERVICE_NAME : name.trim(),
-                    agentRole, taskTypeRegex, notificationTopicRegex, authorizationPolicyOperationTypeRegex,
-                    extractRequest, extractResponse, payloadLogEnabled, payloadLogMaxLength, payloadRedactor);
+                    agentRole,
+                    taskTypeRegex,
+                    notificationTopicRegex,
+                    authorizationPolicyOperationTypeRegex,
+                    extractRequest,
+                    extractResponse,
+                    payloadLogEnabled,
+                    payloadLogMaxLength,
+                    payloadRedactor);
         }
     }
 }

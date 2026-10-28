@@ -45,19 +45,19 @@ class A2ATObservabilityConfigTest {
 
     @Test
     void invalidProtocolFallsBackToGrpcAndInvalidIntFallsBackToDefault() {
-        A2ATObservabilityConfig config = A2ATObservabilityConfig.fromMap(Map.of(
-                "A2AT_EXPORTER_PROTOCOL", "udp", "A2AT_LOGS_PAYLOAD_MAX_LENGTH", "abc"));
+        A2ATObservabilityConfig config = A2ATObservabilityConfig.fromMap(
+                Map.of("A2AT_EXPORTER_PROTOCOL", "udp", "A2AT_LOGS_PAYLOAD_MAX_LENGTH", "abc"));
         assertEquals("grpc", config.protocol());
         assertEquals(4096, config.payloadLogMaxLength());
     }
 
     @Test
     void builderBeatsMap() {
-        A2ATObservabilityConfig config = A2ATObservabilityConfig.fromMap(Map.of("A2AT_SERVICE_NAME", "from-map"))
-                .toBuilder()
-                .serviceName("explicit")
-                .taskTypeRegex("")
-                .build();
+        A2ATObservabilityConfig config =
+                A2ATObservabilityConfig.fromMap(Map.of("A2AT_SERVICE_NAME", "from-map")).toBuilder()
+                        .serviceName("explicit")
+                        .taskTypeRegex("")
+                        .build();
         assertEquals("explicit", config.serviceName());
         assertEquals("", config.taskTypeRegex());
     }

@@ -43,8 +43,10 @@ class ObservabilityRuntimeTest {
     @Test
     void sameTraceOrphanContextKeepsTraceIdAndDropsParent() {
         SpanContext parent = SpanContext.create(
-                "0123456789abcdef0123456789abcdef", "0123456789abcdef",
-                TraceFlags.getSampled(), TraceState.getDefault());
+                "0123456789abcdef0123456789abcdef",
+                "0123456789abcdef",
+                TraceFlags.getSampled(),
+                TraceState.getDefault());
         Context orphan = ObservabilityRuntime.sameTraceOrphanContext(parent);
         assertNotNull(orphan);
         SpanContext orphanSpan = Span.fromContext(orphan).getSpanContext();

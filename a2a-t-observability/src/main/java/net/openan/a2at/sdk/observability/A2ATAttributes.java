@@ -47,8 +47,8 @@ public final class A2ATAttributes {
     public static final String NEGOTIATION_EXTENSION = "Negotiation-T";
     public static final String NEGOTIATION_SUFFIX = "-negotiation";
 
-    public static final Set<String> EVENT_LOG_KINDS = Set.of(
-            "status", "artifact", "completed", "canceled", "failed", "rejected");
+    public static final Set<String> EVENT_LOG_KINDS =
+            Set.of("status", "artifact", "completed", "canceled", "failed", "rejected");
 
     private A2ATAttributes() {}
 }

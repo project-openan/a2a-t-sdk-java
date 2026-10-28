@@ -19,7 +19,8 @@ class NegotiationMetricsTest {
     void setUp() {
         reader = InMemoryMetricReader.create();
         GlobalOpenTelemetry.set(OpenTelemetrySdk.builder()
-                .setMeterProvider(SdkMeterProvider.builder().registerMetricReader(reader).build())
+                .setMeterProvider(
+                        SdkMeterProvider.builder().registerMetricReader(reader).build())
                 .build());
     }
 

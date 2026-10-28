@@ -50,7 +50,8 @@ class PropagationAndPayloadTest {
     void extractReturnsNullWhenInvalidOrDisabled() {
         assertNull(TracePropagation.extract(Map.of("traceparent", "00-abc-def-01")));
         System.setProperty("OTEL_INSTRUMENTATION_A2AT_SDK_ENABLED", "false");
-        assertNull(TracePropagation.extract(Map.of("traceparent", "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01")));
+        assertNull(TracePropagation.extract(
+                Map.of("traceparent", "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01")));
     }
 
     @Test

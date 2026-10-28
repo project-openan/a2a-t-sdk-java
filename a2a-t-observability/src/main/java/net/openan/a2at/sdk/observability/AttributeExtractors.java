@@ -11,8 +11,7 @@ import org.jspecify.annotations.Nullable;
 /** Metadata-level attribute extractors (Map in / attributes out); never raises. */
 public final class AttributeExtractors {
 
-    public static final String EXTENSION_BASE =
-            "https://projects.tmforum.org/a2aproject/telecommunication/extensions/";
+    public static final String EXTENSION_BASE = "https://projects.tmforum.org/a2aproject/telecommunication/extensions/";
     public static final String DEFAULT_TASK_TYPE_REGEX = "##\\s*任务类型\\(Task Type\\)\\s*\\n+\\s*(\\S[^\\n]*)";
     public static final String DEFAULT_NOTIFICATION_TOPIC_REGEX = "##\\s*通知主题\\s*\\n+\\s*(\\S[^\\n]*)";
     public static final String DEFAULT_AUTHORIZATION_REGEX = "##\\s*授权策略的操作类型\\s*\\n+\\s*(\\S[^\\n]*)";
@@ -89,19 +88,30 @@ public final class AttributeExtractors {
             return null;
         }
         String prefix = "TASK_STATE_";
-        return enumName.startsWith(prefix) ? enumName.substring(prefix.length()).toLowerCase(Locale.ROOT)
+        return enumName.startsWith(prefix)
+                ? enumName.substring(prefix.length()).toLowerCase(Locale.ROOT)
                 : enumName.toLowerCase(Locale.ROOT);
     }
 
     public static Map<String, Object> regexAttributes(Map<String, Object> metadata, A2ATObservabilityConfig config) {
         Map<String, Object> attrs = new LinkedHashMap<>();
-        putRegex(attrs, A2ATAttributes.ATTR_TASK_TYPE, metadata,
+        putRegex(
+                attrs,
+                A2ATAttributes.ATTR_TASK_TYPE,
+                metadata,
                 config.taskTypeRegex() != null ? config.taskTypeRegex() : DEFAULT_TASK_TYPE_REGEX);
-        putRegex(attrs, A2ATAttributes.ATTR_NOTIFICATION_TOPIC, metadata,
-                config.notificationTopicRegex() != null ? config.notificationTopicRegex()
+        putRegex(
+                attrs,
+                A2ATAttributes.ATTR_NOTIFICATION_TOPIC,
+                metadata,
+                config.notificationTopicRegex() != null
+                        ? config.notificationTopicRegex()
                         : DEFAULT_NOTIFICATION_TOPIC_REGEX);
-        String authorization = findFirst(metadata, config.authorizationPolicyOperationTypeRegex() != null
-                ? config.authorizationPolicyOperationTypeRegex() : DEFAULT_AUTHORIZATION_REGEX);
+        String authorization = findFirst(
+                metadata,
+                config.authorizationPolicyOperationTypeRegex() != null
+                        ? config.authorizationPolicyOperationTypeRegex()
+                        : DEFAULT_AUTHORIZATION_REGEX);
         if (authorization != null) {
             String cleaned = authorization.replaceAll("[（(][^）)]*[）)]\\s*$", "").trim();
             if (!cleaned.isEmpty()) {
@@ -111,8 +121,8 @@ public final class AttributeExtractors {
         return attrs;
     }
 
-    private static void putRegex(Map<String, Object> attrs, String key, Map<String, Object> metadata,
-            @Nullable String pattern) {
+    private static void putRegex(
+            Map<String, Object> attrs, String key, Map<String, Object> metadata, @Nullable String pattern) {
         if (pattern == null || pattern.isEmpty()) {
             return;
         }

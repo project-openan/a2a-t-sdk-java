@@ -18,8 +18,12 @@ public final class ObservabilityLogs {
 
     private ObservabilityLogs() {}
 
-    public static void logEvent(String event, Level level, Map<String, Object> fields,
-            @Nullable String payload, A2ATObservabilityConfig config) {
+    public static void logEvent(
+            String event,
+            Level level,
+            Map<String, Object> fields,
+            @Nullable String payload,
+            A2ATObservabilityConfig config) {
         if (!ObservabilityRuntime.isLogEnabled() || !config.logEnabled()) {
             return;
         }
@@ -47,8 +51,7 @@ public final class ObservabilityLogs {
 
     private static void emitOtel(Level level, Map<String, Object> data, String json) {
         try {
-            Logger logger = GlobalOpenTelemetry.getOrNoop().getLogsBridge()
-                    .get(ObservabilityRuntime.SCOPE_NAME);
+            Logger logger = GlobalOpenTelemetry.getOrNoop().getLogsBridge().get(ObservabilityRuntime.SCOPE_NAME);
             var builder = logger.logRecordBuilder()
                     .setSeverity(severity(level))
                     .setSeverityText(level.name())

@@ -13,8 +13,7 @@ public record EventInfo(
         @Nullable Map<String, Object> messageMetadata,
         @Nullable String artifactName) {
 
-    public static final EventInfo UNKNOWN =
-            new EventInfo("unknown", null, null, false, false, null, null);
+    public static final EventInfo UNKNOWN = new EventInfo("unknown", null, null, false, false, null, null);
 
     public boolean isNegotiationCandidate() {
         return "message".equals(kind);
