@@ -59,9 +59,11 @@ a2a-t-observability-a2a        协议层装饰器（可选模块）
 | 模块 | 改动 |
 |---|---|
 | `a2a-t-core` | 新增 `net.openan.a2at.sdk.core.telemetry.TelemetryHook` SPI 接口 + `NO_OP` 常量（见 §4） |
-| `a2a-t-client` | `DefaultA2ATClientBuilder` 新增 `telemetryHook(@Nullable TelemetryHook)`；协商终态时回调 `reportNegotiationRounds` |
-| `a2a-t-server` | 同上（`DefaultA2ATServerBuilder`） |
+| `a2a-t-client` | `A2ATClient` 新增二级构造器 `A2ATClient(Path envPath, @Nullable TelemetryHook hook)`（既有构造器委托 NO_OP）；全部公开方法经 hook 包 `a2at.sdk.client.{method}` Span；`continueNegotiation` 终态时回调 `reportNegotiationRounds` |
+| `a2a-t-server` | 同上（`A2ATServer(Path, @Nullable TelemetryHook)`，role=server） |
 | `a2a-t-bom` / 根 pom | 登记两新模块与依赖管理 |
+
+> 注：hook 注入点在**门面二级构造器**而非 builder——builder 只组装 orchestrator（非门面），hook 生命周期属于门面方法包装；与 §4 `trace_facade` 等价机制一致。
 
 依赖方向保持单向：`observability → core/llm`，`observability-a2a → observability + a2a-java`。**`ObservabilityLLMClient` 由使用者/sample 组装时显式包装**（builder 不感知 OTel），文档给出示例。
 
@@ -81,7 +83,7 @@ a2a-t-observability-a2a        协议层装饰器（可选模块）
 | `payload.py` | `PayloadExtractor` + `PayloadSanitizer` | **提取**：a2a-java spec 对象（Jackson 注解 POJO）经 Jackson 序列化为 JSON（对齐 Python `MessageToDict`）；**净化**：先脱敏后截断（安全顺序）；默认 4096 + `[truncated]` 后缀；自定义 redactor 函数接口 |
 | `logs.py` | `ObservabilityLogs` | SLF4J logger `net.openan.a2at.sdk.observability`；**JSON 行**（Jackson 序列化，`ensure_ascii=false` 等价）：`{"event": ..., <业务字段>, "trace_id", "span_id", "payload"?}`；事件名沿用 Python；log_enabled 双门控（运行时开关 + config）；**OTel 日志信号**：log_enabled 时同步写入 OTel `Logger` API（`SdkLoggerProvider` + OTLP/Console exporter），SLF4J 与 OTel 双通道共享同一 JSON 语义，对齐 Python LoggingHandler 桥接 |
 | `llm_decorator.py` + `llm_stash.py` | `ObservabilityLLMClient implements LLMClient` + `LlmUsageStash` | `structured()` 返回后：从 `LLMResponse.usage`（键 `prompt_tokens`/`completion_tokens`，与 Python stash 读法一致）+ `model()` 取数；记 `gen_ai.client.token.usage` 直方图（unit `{token}`，按 `gen_ai.token.type`=input/output 各一样本）+ `LlmUsageStash`（ThreadLocal）暂存（input/output tokens、request model）供协议层入口 Span 取用（**取后清空**；trace 关闭时入口侧直接丢弃 stash） |
-| `negotiation_metrics.py` | `NegotiationMetrics` | `a2at.negotiation.total_rounds` 直方图（unit `{round}`）；属性 `gen_ai.agent.a2at.extension.name="Negotiation-T"`、`negotiation.id`、`outcome`(accept/reject/abort)；仅终态触发；**数据路径差异**：Python 从返回的 `MetadataContent.negotiation_context` 取，Java 从门面入参/结果的 `NegotiationContext(type, negotiationId, round, NegotiationStatus)` 取（终态 status 映射 outcome），结果等价 |
+| `negotiation_metrics.py` | `NegotiationMetrics` | `a2at.negotiation.total_rounds` 直方图（unit `{round}`）；属性 `gen_ai.agent.a2at.extension.name="Negotiation-T"`、`negotiation.id`、`outcome`(accept/reject/abort)；仅终态触发；outcome 映射：Java `NegotiationStatus` 仅 `IN_PROGRESS/AGREED/REJECTED`（无 ABORT）→ `AGREED→accept`、`REJECTED→reject`（Python 的 abort 在 Java 无对应，不产生样本）；**数据路径差异**：Python 从返回的 `MetadataContent.negotiation_context` 取，Java 从门面入参/结果的 `NegotiationContext(type, negotiationId, round, NegotiationStatus)` 取（终态 status 映射 outcome），结果等价 |
 | `sdk_trace.py` | `SdkOperationSpans` | `TelemetryHook` 的 OTel 实现：`a2at.sdk.{role}.{method}` INTERNAL Span |
 
 指标 instrument 缓存沿用 Python 的惰性单例模式（`ConcurrentHashMap<String, LongHistogram>`）。
