@@ -50,11 +50,11 @@ public final class ObservabilityRuntime {
     }
 
     public static Tracer tracer() {
-        return GlobalOpenTelemetry.getTracer(SCOPE_NAME, SCOPE_VERSION);
+        return GlobalOpenTelemetry.getOrNoop().getTracer(SCOPE_NAME, SCOPE_VERSION);
     }
 
     public static Meter meter() {
-        return GlobalOpenTelemetry.meterBuilder(SCOPE_NAME)
+        return GlobalOpenTelemetry.getOrNoop().meterBuilder(SCOPE_NAME)
                 .setInstrumentationVersion(SCOPE_VERSION)
                 .build();
     }

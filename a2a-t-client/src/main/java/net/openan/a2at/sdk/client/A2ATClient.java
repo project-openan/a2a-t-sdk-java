@@ -81,13 +81,28 @@ public final class A2ATClient {
     }
 
     private <T> T observed(String method, Supplier<T> action) {
-        try (TelemetryOperation operation = hook.startSdkOperation("client", method)) {
+        TelemetryOperation started;
+        try {
+            started = hook.startSdkOperation("client", method);
+        } catch (RuntimeException error) {
+            LOGGER.warn("a2at: startSdkOperation failed; telemetry disabled for this call", error);
+            started = TelemetryOperation.NO_OP;
+        }
+        try (TelemetryOperation operation = started) {
             try {
                 T result = action.get();
-                operation.markSuccess();
+                try {
+                    operation.markSuccess();
+                } catch (RuntimeException callbackError) {
+                    LOGGER.warn("a2at: telemetry hook callback failed", callbackError);
+                }
                 return result;
             } catch (RuntimeException error) {
-                operation.markError(error);
+                try {
+                    operation.markError(error);
+                } catch (RuntimeException callbackError) {
+                    LOGGER.warn("a2at: telemetry hook callback failed", callbackError);
+                }
                 throw error;
             }
         }

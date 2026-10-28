@@ -7,11 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.context.Context;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +23,8 @@ class ObservabilityRuntimeTest {
     void clearSwitches() {
         System.clearProperty("OTEL_INSTRUMENTATION_A2AT_SDK_ENABLED");
         System.clearProperty("A2AT_TRACE_ENABLED");
+        GlobalOpenTelemetry.resetForTest();
+        ObservabilitySetup.resetForTest();
     }
 
     @Test
@@ -65,5 +69,17 @@ class ObservabilityRuntimeTest {
     void tracerAndMeterScopeNames() {
         assertNotNull(ObservabilityRuntime.tracer());
         assertNotNull(ObservabilityRuntime.meter());
+    }
+
+    @Test
+    void runtimeAccessBeforeGlobalSetDoesNotPoisonSetup() {
+        GlobalOpenTelemetry.resetForTest();
+        ObservabilitySetup.resetForTest();
+        assertNotNull(ObservabilityRuntime.tracer());
+        TracePropagation.extract(Map.of(
+                "traceparent", "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01"));
+        ObservabilitySetup.ensureConfigured(A2ATObservabilityConfig.fromEnv());
+        assertTrue(ObservabilitySetup.isConfigured());
+        assertTrue(GlobalOpenTelemetry.isSet());
     }
 }

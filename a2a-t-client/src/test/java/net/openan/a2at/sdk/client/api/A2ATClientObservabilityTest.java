@@ -1,5 +1,6 @@
 package net.openan.a2at.sdk.client;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,6 +65,35 @@ class A2ATClientObservabilityTest {
         }
     }
 
+    static final class ThrowingHook implements TelemetryHook {
+        private final boolean throwOnStart;
+
+        ThrowingHook(boolean throwOnStart) {
+            this.throwOnStart = throwOnStart;
+        }
+
+        @Override
+        public TelemetryOperation startSdkOperation(String role, String method) {
+            if (throwOnStart) {
+                throw new IllegalStateException("startSdkOperation failed");
+            }
+            return new TelemetryOperation() {
+                @Override public void setAttribute(String key, Object value) {}
+
+                @Override public void markSuccess() {}
+
+                @Override public void markError(Throwable error) {
+                    throw new IllegalStateException("markError failed");
+                }
+
+                @Override public void close() {}
+            };
+        }
+
+        @Override
+        public void reportNegotiationRounds(String negotiationId, String outcome, long totalRounds) {}
+    }
+
     @TempDir
     Path tempDir;
 
@@ -105,7 +135,18 @@ class A2ATClientObservabilityTest {
     }
 
     @Test
-    void legacyConstructorUsesNoOpHook() throws IOException {
+    void throwingHookDoesNotBreakBusinessFlow() throws IOException {
+        A2ATClient startFailure = newClient(new ThrowingHook(true));
+        assertDoesNotThrow(startFailure::getPrompts);
+
+        A2ATClient markErrorFailure = newClient(new ThrowingHook(false));
+        NullPointerException error = assertThrows(
+                NullPointerException.class, () -> markErrorFailure.generateTaskPromptFromText(null, null));
+        assertEquals("text", error.getMessage());
+    }
+
+    @Test
+    void legacyConstructorAndFacadeCallsComplete() throws IOException {
         if (!LLMClientFactory.availableProviders().contains(MOCK_PROVIDER)) {
             LLMClientFactory.register(MOCK_PROVIDER, NoopLLM.class);
         }
@@ -122,7 +163,8 @@ class A2ATClientObservabilityTest {
                 """
                 .formatted(MOCK_PROVIDER));
         A2ATClient client = new A2ATClient(envFile);
-        assertEquals(client.getPrompts().size(), client.getPrompts().size());
+        assertDoesNotThrow(client::getPrompts);
+        assertDoesNotThrow(client::getPrompts);
     }
 
     @Test

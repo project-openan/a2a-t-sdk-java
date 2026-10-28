@@ -38,14 +38,17 @@ public final class TracePropagation {
         if (headers == null || !ObservabilityRuntime.isEnabled()) {
             return;
         }
-        GlobalOpenTelemetry.getPropagators().getTextMapPropagator().inject(Context.current(), headers, SETTER);
+        GlobalOpenTelemetry.getOrNoop()
+                .getPropagators()
+                .getTextMapPropagator()
+                .inject(Context.current(), headers, SETTER);
     }
 
     public static void inject(Map<String, String> headers, Context context) {
         if (headers == null || context == null || !ObservabilityRuntime.isEnabled()) {
             return;
         }
-        GlobalOpenTelemetry.getPropagators().getTextMapPropagator().inject(context, headers, SETTER);
+        GlobalOpenTelemetry.getOrNoop().getPropagators().getTextMapPropagator().inject(context, headers, SETTER);
     }
 
     public static @Nullable Context extract(@Nullable Map<String, String> headers) {
@@ -54,8 +57,10 @@ public final class TracePropagation {
         }
         Map<String, String> lowered = new HashMap<>();
         headers.forEach((key, value) -> lowered.put(key.toLowerCase(Locale.ROOT), value));
-        Context extracted =
-                GlobalOpenTelemetry.getPropagators().getTextMapPropagator().extract(Context.root(), lowered, GETTER);
+        Context extracted = GlobalOpenTelemetry.getOrNoop()
+                .getPropagators()
+                .getTextMapPropagator()
+                .extract(Context.root(), lowered, GETTER);
         return Span.fromContext(extracted).getSpanContext().isValid() ? extracted : null;
     }
 }

@@ -1,5 +1,6 @@
 package net.openan.a2at.sdk.server;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,6 +65,35 @@ class A2ATServerObservabilityTest {
         }
     }
 
+    static final class ThrowingHook implements TelemetryHook {
+        private final boolean throwOnStart;
+
+        ThrowingHook(boolean throwOnStart) {
+            this.throwOnStart = throwOnStart;
+        }
+
+        @Override
+        public TelemetryOperation startSdkOperation(String role, String method) {
+            if (throwOnStart) {
+                throw new IllegalStateException("startSdkOperation failed");
+            }
+            return new TelemetryOperation() {
+                @Override public void setAttribute(String key, Object value) {}
+
+                @Override public void markSuccess() {}
+
+                @Override public void markError(Throwable error) {
+                    throw new IllegalStateException("markError failed");
+                }
+
+                @Override public void close() {}
+            };
+        }
+
+        @Override
+        public void reportNegotiationRounds(String negotiationId, String outcome, long totalRounds) {}
+    }
+
     @TempDir
     Path tempDir;
 
@@ -110,9 +140,21 @@ class A2ATServerObservabilityTest {
     }
 
     @Test
-    void legacyConstructorUsesNoOpHook() throws IOException {
+    void throwingHookDoesNotBreakBusinessFlow() throws IOException {
+        A2ATServer startFailure = newServer(new ThrowingHook(true));
+        assertDoesNotThrow(startFailure::getPrompts);
+
+        A2ATServer markErrorFailure = newServer(new ThrowingHook(false));
+        NullPointerException error =
+                assertThrows(NullPointerException.class, () -> markErrorFailure.getPrompt(null));
+        assertEquals("templateUri", error.getMessage());
+    }
+
+    @Test
+    void legacyConstructorAndFacadeCallsComplete() throws IOException {
         A2ATServer server = new A2ATServer(writeEnv(true));
-        assertEquals(server.getPrompts().size(), server.getPrompts().size());
+        assertDoesNotThrow(server::getPrompts);
+        assertDoesNotThrow(server::getPrompts);
     }
 
     @Test
