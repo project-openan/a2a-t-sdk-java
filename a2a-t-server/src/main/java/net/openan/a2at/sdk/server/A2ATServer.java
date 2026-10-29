@@ -5,11 +5,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 import net.openan.a2at.sdk.core.model.A2ATConfig;
 import net.openan.a2at.sdk.core.model.FilledParamData;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.PromptTemplate;
 import net.openan.a2at.sdk.core.model.TemplateUri;
+import net.openan.a2at.sdk.core.telemetry.TelemetryHook;
+import net.openan.a2at.sdk.core.telemetry.TelemetryOperation;
 import net.openan.a2at.sdk.core.validation.ContentValidator;
 import net.openan.a2at.sdk.negotiation.content.NegotiationAbortData;
 import net.openan.a2at.sdk.negotiation.content.NegotiationEndingData;
@@ -24,6 +27,9 @@ import net.openan.a2at.sdk.server.assembly.DefaultA2ATServerBuilder;
 import net.openan.a2at.sdk.server.compliance.ServerPromptComplianceOrchestrator;
 import net.openan.a2at.sdk.server.model.PromptComplianceResult;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * High-level server facade for prompt compliance and negotiation APIs. The caller provides the `.env` file path
@@ -32,6 +38,8 @@ import org.jspecify.annotations.NonNull;
  * @since 2026-06
  */
 public final class A2ATServer {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(A2ATServer.class);
 
     private final ServerPromptComplianceOrchestrator promptComplianceOrchestrator;
 
@@ -47,17 +55,31 @@ public final class A2ATServer {
 
     private final ContentValidator authContentValidator;
 
+    private final TelemetryHook hook;
+
     /**
-     * Creates a server facade from one user-supplied `.env` path.
+     * Creates a server facade from one user-supplied `.env` path without telemetry observation.
      *
      * @param envPath user-supplied `.env` file path
      */
     public A2ATServer(Path envPath) {
+        this(envPath, null);
+    }
+
+    /**
+     * Creates a server facade from one user-supplied `.env` path with an optional telemetry hook observing every
+     * facade operation.
+     *
+     * @param envPath user-supplied `.env` file path
+     * @param hook telemetry hook receiving the SDK operation events; {@code null} disables observation
+     */
+    public A2ATServer(Path envPath, @Nullable TelemetryHook hook) {
         Path resolvedEnvPath = envPath.toAbsolutePath().normalize();
         A2ATConfig config =
                 A2ATConfig.resolvePromptResourceLocalRootDir(A2ATConfig.load(resolvedEnvPath), resolvedEnvPath);
         DefaultA2ATServerBuilder builder =
                 DefaultA2ATServerBuilder.builder().envPath(resolvedEnvPath).config(config);
+        this.hook = hook == null ? TelemetryHook.NO_OP : hook;
         this.promptComplianceOrchestrator = builder.buildPromptComplianceOrchestrator();
         this.negotiationOrchestrator = builder.buildNegotiationOrchestrator();
         this.negotiationContentService =
@@ -66,6 +88,52 @@ public final class A2ATServer {
         this.taskContentValidator = builder.buildTaskContentValidator();
         this.notificationContentValidator = builder.buildNotificationContentValidator();
         this.authContentValidator = builder.buildAuthContentValidator();
+    }
+
+    private <T> T observed(String method, Supplier<T> action) {
+        TelemetryOperation started;
+        try {
+            started = hook.startSdkOperation("server", method);
+        } catch (RuntimeException error) {
+            LOGGER.warn("a2at: startSdkOperation failed; telemetry disabled for this call", error);
+            started = TelemetryOperation.NO_OP;
+        }
+        try (TelemetryOperation operation = started) {
+            try {
+                T result = action.get();
+                try {
+                    operation.markSuccess();
+                } catch (RuntimeException callbackError) {
+                    LOGGER.warn("a2at: telemetry hook callback failed", callbackError);
+                }
+                return result;
+            } catch (RuntimeException error) {
+                try {
+                    operation.markError(error);
+                } catch (RuntimeException callbackError) {
+                    LOGGER.warn("a2at: telemetry hook callback failed", callbackError);
+                }
+                throw error;
+            }
+        }
+    }
+
+    static @Nullable String terminalOutcome(NegotiationStatus status) {
+        if (status == NegotiationStatus.AGREED) {
+            return "accept";
+        }
+        return status == NegotiationStatus.REJECTED ? "reject" : null;
+    }
+
+    private void reportNegotiationRounds(NegotiationContext context, NegotiationStatus status) {
+        try {
+            String outcome = terminalOutcome(status);
+            if (outcome != null) {
+                hook.reportNegotiationRounds(context.negotiationId(), outcome, context.round());
+            }
+        } catch (RuntimeException error) {
+            LOGGER.warn("a2at: negotiation metric report failed", error);
+        }
     }
 
     /**
@@ -78,7 +146,7 @@ public final class A2ATServer {
      * @return compliance result containing only success state or failure details
      */
     public PromptComplianceResult checkTaskPrompt(@NonNull String processedPromptText) {
-        return promptComplianceOrchestrator.checkTaskPrompt(processedPromptText);
+        return observed("checkTaskPrompt", () -> promptComplianceOrchestrator.checkTaskPrompt(processedPromptText));
     }
 
     /**
@@ -91,7 +159,7 @@ public final class A2ATServer {
      */
     public Map<String, Object> startNegotiation(
             @NonNull NegotiationType type, @NonNull String contentText, @NonNull Map<String, Object> facts) {
-        return negotiationOrchestrator.startNegotiation(type, contentText, facts);
+        return observed("startNegotiation", () -> negotiationOrchestrator.startNegotiation(type, contentText, facts));
     }
 
     /**
@@ -102,7 +170,7 @@ public final class A2ATServer {
      * @return normalized payload describing the receive result
      */
     public Map<String, Object> receiveNegotiation(@NonNull String message, @NonNull Map<String, Object> context) {
-        return negotiationOrchestrator.receiveNegotiation(message, context);
+        return observed("receiveNegotiation", () -> negotiationOrchestrator.receiveNegotiation(message, context));
     }
 
     /**
@@ -115,7 +183,11 @@ public final class A2ATServer {
      */
     public Map<String, Object> continueNegotiation(
             @NonNull NegotiationContext context, @NonNull NegotiationStatus status, @NonNull String contentText) {
-        return negotiationOrchestrator.continueNegotiation(context, status, contentText);
+        return observed("continueNegotiation", () -> {
+            Map<String, Object> result = negotiationOrchestrator.continueNegotiation(context, status, contentText);
+            reportNegotiationRounds(context, status);
+            return result;
+        });
     }
 
     /**
@@ -139,7 +211,9 @@ public final class A2ATServer {
      */
     public MetadataContent generateNegotiationProposePromptFromData(
             @NonNull NegotiationProposeData data, @NonNull String templateUri) {
-        return negotiationContentService.generateProposeFromData(data, parseTemplateUri(templateUri));
+        return observed(
+                "generateNegotiationProposePromptFromData",
+                () -> negotiationContentService.generateProposeFromData(data, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -163,7 +237,9 @@ public final class A2ATServer {
      */
     public MetadataContent generateNegotiationAcceptPromptFromData(
             @NonNull NegotiationEndingData data, @NonNull String templateUri) {
-        return negotiationContentService.generateAcceptFromData(data, parseTemplateUri(templateUri));
+        return observed(
+                "generateNegotiationAcceptPromptFromData",
+                () -> negotiationContentService.generateAcceptFromData(data, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -187,7 +263,9 @@ public final class A2ATServer {
      */
     public MetadataContent generateNegotiationRejectPromptFromData(
             @NonNull NegotiationEndingData data, @NonNull String templateUri) {
-        return negotiationContentService.generateRejectFromData(data, parseTemplateUri(templateUri));
+        return observed(
+                "generateNegotiationRejectPromptFromData",
+                () -> negotiationContentService.generateRejectFromData(data, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -209,7 +287,9 @@ public final class A2ATServer {
      */
     public MetadataContent generateNegotiationAbortPromptFromData(
             @NonNull NegotiationAbortData data, @NonNull String templateUri) {
-        return negotiationContentService.generateAbortFromData(data, parseTemplateUri(templateUri));
+        return observed(
+                "generateNegotiationAbortPromptFromData",
+                () -> negotiationContentService.generateAbortFromData(data, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -240,7 +320,9 @@ public final class A2ATServer {
             @NonNull String text,
             net.openan.a2at.sdk.core.model.@NonNull NegotiationContext context,
             @NonNull String templateUri) {
-        return negotiationContentService.generateProposeFromText(text, context, parseTemplateUri(templateUri));
+        return observed(
+                "generateNegotiationProposePromptFromText",
+                () -> negotiationContentService.generateProposeFromText(text, context, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -271,7 +353,9 @@ public final class A2ATServer {
             @NonNull String text,
             net.openan.a2at.sdk.core.model.@NonNull NegotiationContext context,
             @NonNull String templateUri) {
-        return negotiationContentService.generateAcceptFromText(text, context, parseTemplateUri(templateUri));
+        return observed(
+                "generateNegotiationAcceptPromptFromText",
+                () -> negotiationContentService.generateAcceptFromText(text, context, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -302,7 +386,9 @@ public final class A2ATServer {
             @NonNull String text,
             net.openan.a2at.sdk.core.model.@NonNull NegotiationContext context,
             @NonNull String templateUri) {
-        return negotiationContentService.generateRejectFromText(text, context, parseTemplateUri(templateUri));
+        return observed(
+                "generateNegotiationRejectPromptFromText",
+                () -> negotiationContentService.generateRejectFromText(text, context, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -331,7 +417,9 @@ public final class A2ATServer {
             @NonNull String text,
             net.openan.a2at.sdk.core.model.@NonNull NegotiationContext context,
             @NonNull String templateUri) {
-        return negotiationContentService.generateAbortFromText(text, context, parseTemplateUri(templateUri));
+        return observed(
+                "generateNegotiationAbortPromptFromText",
+                () -> negotiationContentService.generateAbortFromText(text, context, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -345,7 +433,7 @@ public final class A2ATServer {
      *     none can be loaded
      */
     public List<PromptTemplate> getPrompts() {
-        return templateQueryService.getPrompts();
+        return observed("getPrompts", () -> templateQueryService.getPrompts());
     }
 
     /**
@@ -361,7 +449,7 @@ public final class A2ATServer {
      * @throws IllegalArgumentException if the template URI is blank or malformed
      */
     public Optional<PromptTemplate> getPrompt(@NonNull String templateUri) {
-        return templateQueryService.getPrompt(parseTemplateUri(templateUri));
+        return observed("getPrompt", () -> templateQueryService.getPrompt(parseTemplateUri(templateUri)));
     }
 
     /**
@@ -397,8 +485,10 @@ public final class A2ATServer {
             net.openan.a2at.sdk.core.model.NegotiationContext context,
             @NonNull Map<String, Object> schema,
             @NonNull String templateUri) {
-        return negotiationContentService.validateProposePromptAndDataFilling(
-                prompt, context, schema, parseTemplateUri(templateUri));
+        return observed(
+                "validateProposePromptAndDataFilling",
+                () -> negotiationContentService.validateProposePromptAndDataFilling(
+                        prompt, context, schema, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -434,8 +524,10 @@ public final class A2ATServer {
             net.openan.a2at.sdk.core.model.NegotiationContext context,
             @NonNull Map<String, Object> schema,
             @NonNull String templateUri) {
-        return negotiationContentService.validateAcceptPromptAndDataFilling(
-                prompt, context, schema, parseTemplateUri(templateUri));
+        return observed(
+                "validateAcceptPromptAndDataFilling",
+                () -> negotiationContentService.validateAcceptPromptAndDataFilling(
+                        prompt, context, schema, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -471,8 +563,10 @@ public final class A2ATServer {
             net.openan.a2at.sdk.core.model.NegotiationContext context,
             @NonNull Map<String, Object> schema,
             @NonNull String templateUri) {
-        return negotiationContentService.validateRejectPromptAndDataFilling(
-                prompt, context, schema, parseTemplateUri(templateUri));
+        return observed(
+                "validateRejectPromptAndDataFilling",
+                () -> negotiationContentService.validateRejectPromptAndDataFilling(
+                        prompt, context, schema, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -508,8 +602,10 @@ public final class A2ATServer {
             net.openan.a2at.sdk.core.model.NegotiationContext context,
             @NonNull Map<String, Object> schema,
             @NonNull String templateUri) {
-        return negotiationContentService.validateAbortPromptAndDataFilling(
-                prompt, context, schema, parseTemplateUri(templateUri));
+        return observed(
+                "validateAbortPromptAndDataFilling",
+                () -> negotiationContentService.validateAbortPromptAndDataFilling(
+                        prompt, context, schema, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -533,7 +629,9 @@ public final class A2ATServer {
      */
     public FilledParamData validateTaskPromptAndDataFilling(
             @NonNull String prompt, @NonNull Map<String, Object> schema, @NonNull String templateUri) {
-        return taskContentValidator.validate(prompt, schema, parseTemplateUri(templateUri));
+        return observed(
+                "validateTaskPromptAndDataFilling",
+                () -> taskContentValidator.validate(prompt, schema, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -557,7 +655,9 @@ public final class A2ATServer {
      */
     public FilledParamData validateNotificationPromptAndDataFilling(
             @NonNull String prompt, @NonNull Map<String, Object> schema, @NonNull String templateUri) {
-        return notificationContentValidator.validate(prompt, schema, parseTemplateUri(templateUri));
+        return observed(
+                "validateNotificationPromptAndDataFilling",
+                () -> notificationContentValidator.validate(prompt, schema, parseTemplateUri(templateUri)));
     }
 
     /**
@@ -581,7 +681,9 @@ public final class A2ATServer {
      */
     public FilledParamData validateAuthPromptAndDataFilling(
             @NonNull String prompt, @NonNull Map<String, Object> schema, @NonNull String templateUri) {
-        return authContentValidator.validate(prompt, schema, parseTemplateUri(templateUri));
+        return observed(
+                "validateAuthPromptAndDataFilling",
+                () -> authContentValidator.validate(prompt, schema, parseTemplateUri(templateUri)));
     }
 
     private static TemplateUri parseTemplateUri(String templateUri) {

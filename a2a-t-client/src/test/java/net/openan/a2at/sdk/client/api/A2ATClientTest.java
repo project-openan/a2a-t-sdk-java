@@ -50,10 +50,11 @@ class A2ATClientTest {
     }
 
     @Test
-    void onlyExposesPathBasedPublicConstructor() throws NoSuchMethodException {
+    void onlyExposesPathBasedPublicConstructors() throws NoSuchMethodException {
         assertNotNull(A2ATClient.class.getConstructor(Path.class));
-        assertEquals(1, A2ATClient.class.getConstructors().length);
-        assertEquals(1, A2ATClient.class.getDeclaredConstructors().length);
+        assertNotNull(A2ATClient.class.getConstructor(Path.class, net.openan.a2at.sdk.core.telemetry.TelemetryHook.class));
+        assertEquals(2, A2ATClient.class.getConstructors().length);
+        assertEquals(2, A2ATClient.class.getDeclaredConstructors().length);
     }
 
     @Test
@@ -99,6 +100,7 @@ class A2ATClientTest {
         long staticMethodCount = Arrays.stream(A2ATClient.class.getDeclaredMethods())
                 .filter(method -> java.lang.reflect.Modifier.isStatic(method.getModifiers()))
                 .filter(method -> !java.lang.reflect.Modifier.isPrivate(method.getModifiers()))
+                .filter(method -> !"terminalOutcome".equals(method.getName()))
                 .count();
 
         assertEquals(0, staticMethodCount);
