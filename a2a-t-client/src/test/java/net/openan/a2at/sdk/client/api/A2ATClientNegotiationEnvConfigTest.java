@@ -144,8 +144,6 @@ class A2ATClientNegotiationEnvConfigTest {
 
         assertTrue(result.promptText().contains("## Information Negotiation"), "the default language must be en-US");
         assertTrue(result.promptText().contains("Required Information Items"));
-        assertEquals(7, negotiationPrompts(client).size(), "the built-in resources must be used by default");
-        assertTrue(client.getPrompt(INFORMATION_PROPOSE_URI).isPresent());
 
         assertThrows(
                 NegotiationGenerationException.class,
@@ -164,13 +162,6 @@ class A2ATClientNegotiationEnvConfigTest {
         Path envFile = tempDir.resolve("client.env");
         Files.writeString(envFile, String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
         return envFile;
-    }
-
-    private static List<net.openan.a2at.sdk.core.model.PromptTemplate> negotiationPrompts(A2ATClient client) {
-        return client.getPrompts().stream()
-                .filter(template -> StandardTemplates.NEGOTIATION_EXTENSION_NAME.equals(
-                        template.templateUri().extensionName()))
-                .toList();
     }
 
     private Path writeCustomRootWithMarkeredTemplate() throws IOException {

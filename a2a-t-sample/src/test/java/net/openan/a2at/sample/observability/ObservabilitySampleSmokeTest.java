@@ -50,7 +50,9 @@ class ObservabilitySampleSmokeTest {
                 .map(SpanData::getName)
                 .toList();
         assertTrue(names.contains("sample.workflow"), "root span missing; got: " + names);
-        assertTrue(names.contains("a2at.sdk.client.getPrompts"), "facade span missing; got: " + names);
+        assertTrue(
+                names.contains("a2at.sdk.client.generateNegotiationProposePromptFromData"),
+                "facade span missing; got: " + names);
         assertTrue(names.contains("sample.negotiation-rounds"), "negotiation span missing; got: " + names);
 
         assertDoesNotThrow(ObservabilitySampleMain::run);

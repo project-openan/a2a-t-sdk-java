@@ -11,12 +11,17 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import net.openan.a2at.sdk.core.model.NegotiationContext;
+import net.openan.a2at.sdk.core.model.NegotiationPerformative;
+import net.openan.a2at.sdk.core.model.StandardTemplates;
 import net.openan.a2at.sdk.core.telemetry.TelemetryHook;
 import net.openan.a2at.sdk.core.telemetry.TelemetryOperation;
 import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMClientFactory;
 import net.openan.a2at.sdk.llm.LLMResponse;
+import net.openan.a2at.sdk.negotiation.content.NegotiationAbortContent;
+import net.openan.a2at.sdk.negotiation.content.NegotiationAbortData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -118,9 +123,9 @@ class A2ATClientObservabilityTest {
     void llmFreePathIsWrappedAsSdkOperation() throws IOException {
         RecordingHook hook = new RecordingHook();
         A2ATClient client = newClient(hook);
-        client.getPrompts();
-        assertTrue(hook.started.contains("client.getPrompts"));
-        assertTrue(hook.succeeded.contains("client.getPrompts"));
+        generateAbortFromData(client);
+        assertTrue(hook.started.contains("client.generateNegotiationAbortPromptFromData"));
+        assertTrue(hook.succeeded.contains("client.generateNegotiationAbortPromptFromData"));
     }
 
     @Test
@@ -135,7 +140,7 @@ class A2ATClientObservabilityTest {
     @Test
     void throwingHookDoesNotBreakBusinessFlow() throws IOException {
         A2ATClient startFailure = newClient(new ThrowingHook(true));
-        assertDoesNotThrow(startFailure::getPrompts);
+        assertDoesNotThrow(() -> generateAbortFromData(startFailure));
 
         A2ATClient markErrorFailure = newClient(new ThrowingHook(false));
         NullPointerException error = assertThrows(
@@ -160,7 +165,16 @@ class A2ATClientObservabilityTest {
                 """
                 .formatted(MOCK_PROVIDER));
         A2ATClient client = new A2ATClient(envFile);
-        assertDoesNotThrow(client::getPrompts);
-        assertDoesNotThrow(client::getPrompts);
+        assertDoesNotThrow(() -> generateAbortFromData(client));
+        assertDoesNotThrow(() -> generateAbortFromData(client));
+    }
+
+    private static void generateAbortFromData(A2ATClient client) {
+        client.generateNegotiationAbortPromptFromData(
+                new NegotiationAbortData(
+                        new NegotiationContext(
+                                "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 1, 5, NegotiationPerformative.ABORT),
+                        new NegotiationAbortContent("Done.")),
+                StandardTemplates.NEGOTIATION_ABORT_URI);
     }
 }

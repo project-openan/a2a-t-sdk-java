@@ -61,13 +61,6 @@ class A2ATServerContentValidationApiTest {
     }
 
     @Test
-    void getPromptStillThrowsOnNullTemplateUri() throws IOException {
-        A2ATServer server = new A2ATServer(writeEnv());
-
-        assertThrows(NullPointerException.class, () -> server.getPrompt(null));
-    }
-
-    @Test
     void generateNegotiationProposePromptFromDataRejectsMalformedTemplateUri() throws IOException {
         A2ATServer server = new A2ATServer(writeEnv());
 
@@ -100,25 +93,6 @@ class A2ATServerContentValidationApiTest {
         IllegalArgumentException error = assertThrows(
                 IllegalArgumentException.class,
                 () -> server.validateTaskPromptAndDataFilling("test prompt", Map.of(), "Task-T/network-layer"));
-
-        assertTrue(error.getMessage().contains("Unparseable template URI"));
-    }
-
-    @Test
-    void getPromptRejectsMalformedTemplateUri() throws IOException {
-        A2ATServer server = new A2ATServer(writeEnv());
-
-        IllegalArgumentException error =
-                assertThrows(IllegalArgumentException.class, () -> server.getPrompt("not-a-template-uri"));
-
-        assertTrue(error.getMessage().contains("Unparseable template URI"));
-    }
-
-    @Test
-    void getPromptRejectsBlankTemplateUri() throws IOException {
-        A2ATServer server = new A2ATServer(writeEnv());
-
-        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> server.getPrompt("   "));
 
         assertTrue(error.getMessage().contains("Unparseable template URI"));
     }

@@ -419,18 +419,6 @@ A2AT_LLM_API_KEY=test-key
     }
 
     @Test
-    void getPromptThrowsOnMalformedAndBlankTemplateUriString() throws IOException {
-        Path envFile = writeMinimalLocalClientEnv();
-        A2ATClient client = new A2ATClient(envFile);
-
-        IllegalArgumentException malformedEx =
-                assertThrows(IllegalArgumentException.class, () -> client.getPrompt("not-a-uri"));
-        assertTrue(malformedEx.getMessage().contains("Unparseable template URI"), "message was: " + malformedEx.getMessage());
-        IllegalArgumentException blankEx = assertThrows(IllegalArgumentException.class, () -> client.getPrompt("  "));
-        assertTrue(blankEx.getMessage().contains("Unparseable template URI"), "message was: " + blankEx.getMessage());
-    }
-
-    @Test
     void fromTextRejectsOverLimitTextWhenConfiguredWithSmallLimit() throws IOException {
         Path envFile = writeMinimalClientEnvWithInputLimit(TEST_MOCK_PROVIDER, 100);
         A2ATClient client = new A2ATClient(envFile);

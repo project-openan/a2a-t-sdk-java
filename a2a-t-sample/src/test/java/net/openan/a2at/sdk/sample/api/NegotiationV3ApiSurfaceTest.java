@@ -45,7 +45,7 @@ class NegotiationV3ApiSurfaceTest {
     private static final List<String> REMOVED_NEGOTIATION_QUERY_METHODS =
             List.of("getNegotiationPrompts", "getNegotiationPrompt");
 
-    private static final List<String> CROSS_EXTENSION_QUERY_METHODS = List.of("getPrompts", "getPrompt");
+    private static final List<String> INTERNAL_TEMPLATE_QUERY_METHODS = List.of("getPrompts", "getPrompt");
 
     private static final List<String> REMOVED_V2_METHOD_NAME_FRAGMENTS =
             List.of("FromNl", "FromJsonData", "validateAndExtractParams");
@@ -57,7 +57,7 @@ class NegotiationV3ApiSurfaceTest {
     }
 
     @Test
-    void removedNegotiationQueryMethodsAreAbsentWhileCrossExtensionQueriesRemain() {
+    void removedNegotiationQueryMethodsAreAbsentAndTemplateQueriesAreNotPublic() {
         for (Class<?> facade : List.of(A2ATClient.class, A2ATServer.class)) {
             for (String removedMethod : REMOVED_NEGOTIATION_QUERY_METHODS) {
                 assertFalse(
@@ -65,11 +65,12 @@ class NegotiationV3ApiSurfaceTest {
                                 .anyMatch(method -> method.getName().equals(removedMethod)),
                         facade.getSimpleName() + " must not expose the removed " + removedMethod);
             }
-            for (String queryMethod : CROSS_EXTENSION_QUERY_METHODS) {
-                assertTrue(
+            for (String queryMethod : INTERNAL_TEMPLATE_QUERY_METHODS) {
+                assertFalse(
                         Arrays.stream(facade.getMethods())
                                 .anyMatch(method -> method.getName().equals(queryMethod)),
-                        facade.getSimpleName() + " must expose the cross-extension query " + queryMethod);
+                        facade.getSimpleName() + " must not expose the template query " + queryMethod
+                                + " publicly; it is an SDK-internal interface");
             }
         }
     }

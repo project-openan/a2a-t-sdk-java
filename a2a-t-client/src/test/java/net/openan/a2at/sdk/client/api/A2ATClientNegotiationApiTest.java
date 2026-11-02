@@ -14,7 +14,6 @@ import net.openan.a2at.sdk.client.A2ATClient;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
 import net.openan.a2at.sdk.core.model.NegotiationPerformative;
-import net.openan.a2at.sdk.core.model.PromptTemplate;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
 import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.llm.LLMClient;
@@ -83,12 +82,6 @@ class A2ATClientNegotiationApiTest {
     }
 
     @Test
-    void listsAllSevenNegotiationTemplatesPerLanguage() throws IOException {
-        assertEquals(7, negotiationPrompts(new A2ATClient(writeEnv("zh-CN"))).size());
-        assertEquals(7, negotiationPrompts(new A2ATClient(writeEnv("en-US"))).size());
-    }
-
-    @Test
     void generatesAbortPromptFromDataWithBuiltinChineseTemplates() throws IOException {
         A2ATClient client = new A2ATClient(writeEnv("zh-CN"));
 
@@ -123,29 +116,6 @@ class A2ATClientNegotiationApiTest {
     }
 
     @Test
-    void queriesTheCommonAbortTemplateWithoutThrowing() throws IOException {
-        A2ATClient client = new A2ATClient(writeEnv("zh-CN"));
-
-        PromptTemplate template =
-                client.getPrompt(StandardTemplates.NEGOTIATION_ABORT_URI).orElseThrow();
-        assertEquals(StandardTemplates.NEGOTIATION_ABORT, template.templateUri());
-        assertFalse(template.content().isBlank());
-    }
-
-    @Test
-    void queriesSingleNegotiationTemplateWithoutThrowing() throws IOException {
-        A2ATClient client = new A2ATClient(writeEnv("zh-CN"));
-
-        assertTrue(client.getPrompt(INFORMATION_PROPOSE_URI).isPresent());
-        assertTrue(client.getPrompt(StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT_URI)
-                .isPresent());
-        assertFalse(client.getPrompt("Negotiation-T/information-negotiation/propose/v9").isPresent());
-        PromptTemplate template = client.getPrompt(INFORMATION_PROPOSE_URI).orElseThrow();
-        assertEquals(INFORMATION_PROPOSE, template.templateUri());
-        assertFalse(template.content().isBlank());
-    }
-
-    @Test
     void generateNegotiationPromptFromDataThrowsOnMalformedTemplateUriString() throws IOException {
         A2ATClient client = new A2ATClient(writeEnv("zh-CN"));
 
@@ -171,13 +141,6 @@ class A2ATClientNegotiationApiTest {
                         Map.of("type", "object"),
                         "  "));
         assertTrue(ex.getMessage().contains("Unparseable template URI"), "message was: " + ex.getMessage());
-    }
-
-    private static List<PromptTemplate> negotiationPrompts(A2ATClient client) {
-        return client.getPrompts().stream()
-                .filter(template -> StandardTemplates.NEGOTIATION_EXTENSION_NAME.equals(
-                        template.templateUri().extensionName()))
-                .toList();
     }
 
     private static Path writeEnv(String language) throws IOException {

@@ -363,10 +363,13 @@ public final class A2ATServer {
      * templates of extensions added later are included automatically. Templates that exist nowhere for the language are
      * skipped and an empty list is returned when no template can be loaded at all.
      *
+     * <p>This is an SDK-internal query and not part of the public API; it carries no cross-version compatibility
+     * guarantee.
+     *
      * @return loadable templates of the configured language across all extensions, sorted by template URI; empty when
      *     none can be loaded
      */
-    public List<PromptTemplate> getPrompts() {
+    private List<PromptTemplate> getPrompts() {
         return observed("getPrompts", () -> templateQueryService.getPrompts());
     }
 
@@ -376,13 +379,16 @@ public final class A2ATServer {
      * <p>This query never throws for a well-formed template URI: a template that exists nowhere for the configured
      * language returns an empty result and logs an actionable warning.
      *
+     * <p>This is an SDK-internal query and not part of the public API; it carries no cross-version compatibility
+     * guarantee.
+     *
      * @param templateUri raw template URI string such as {@code Negotiation-T/target-negotiation/propose/v1} or
      *     {@code Task-T/network-layer/ran-energy-saving/v1}
      * @return the addressed template, or an empty result when the template does not exist for the configured language
      * @throws NullPointerException if the template URI is null
      * @throws IllegalArgumentException if the template URI is blank or malformed
      */
-    public Optional<PromptTemplate> getPrompt(@NonNull String templateUri) {
+    private Optional<PromptTemplate> getPrompt(@NonNull String templateUri) {
         return observed("getPrompt", () -> templateQueryService.getPrompt(parseTemplateUri(templateUri)));
     }
 

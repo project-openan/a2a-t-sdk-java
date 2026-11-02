@@ -2,8 +2,10 @@ package net.openan.a2at.sample.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -16,7 +18,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Guards the negotiation content-layer API surface of both high-level facades.
  *
- * <p>The client and the server facade expose the negotiation generation, query and validation APIs as one symmetric
+ * <p>The client and the server facade expose the negotiation generation and validation APIs as one symmetric
  * surface: identical method names, parameter types and return types. This test fails when one facade drifts from the
  * other.
  */
@@ -39,7 +41,7 @@ class NegotiationFacadeApiSymmetryTest {
     private static final List<String> REMOVED_NEGOTIATION_QUERY_METHODS =
             List.of("getNegotiationPrompts", "getNegotiationPrompt");
 
-    private static final List<String> CROSS_EXTENSION_QUERY_METHODS = List.of("getPrompts", "getPrompt");
+    private static final List<String> INTERNAL_TEMPLATE_QUERY_METHODS = List.of("getPrompts", "getPrompt");
 
     @Test
     void bothFacadesExposeTheSameTwelveNegotiationApiMethods() {
@@ -64,22 +66,36 @@ class NegotiationFacadeApiSymmetryTest {
     }
 
     @Test
-    void bothFacadesExposeTheSameCrossExtensionQueryMethods() {
-        assertEquals(
-                new HashSet<>(CROSS_EXTENSION_QUERY_METHODS),
-                Arrays.stream(A2ATClient.class.getMethods())
-                        .filter(method -> CROSS_EXTENSION_QUERY_METHODS.contains(method.getName()))
-                        .map(Method::getName)
-                        .collect(Collectors.toSet()));
-        assertEquals(
-                Arrays.stream(A2ATClient.class.getMethods())
-                        .filter(method -> CROSS_EXTENSION_QUERY_METHODS.contains(method.getName()))
-                        .map(NegotiationFacadeApiSymmetryTest::methodSignature)
-                        .collect(Collectors.toSet()),
-                Arrays.stream(A2ATServer.class.getMethods())
-                        .filter(method -> CROSS_EXTENSION_QUERY_METHODS.contains(method.getName()))
-                        .map(NegotiationFacadeApiSymmetryTest::methodSignature)
-                        .collect(Collectors.toSet()));
+    void neitherFacadeExposesTheTemplateQueryMethodsPublicly() {
+        for (Class<?> facade : List.of(A2ATClient.class, A2ATServer.class)) {
+            for (String queryMethod : INTERNAL_TEMPLATE_QUERY_METHODS) {
+                boolean exposed = Arrays.stream(facade.getMethods())
+                        .anyMatch(method -> method.getName().equals(queryMethod));
+                assertFalse(
+                        exposed,
+                        facade.getSimpleName() + " must not expose the template query method " + queryMethod
+                                + " publicly; it is an SDK-internal interface");
+            }
+        }
+    }
+
+    @Test
+    void internalTemplateQueryMethodsArePrivateAndSymmetric() throws NoSuchMethodException {
+        assertPrivateAndSymmetric("getPrompts");
+        assertPrivateAndSymmetric("getPrompt", String.class);
+    }
+
+    private static void assertPrivateAndSymmetric(String name, Class<?>... parameterTypes)
+            throws NoSuchMethodException {
+        Method clientMethod = A2ATClient.class.getDeclaredMethod(name, parameterTypes);
+        Method serverMethod = A2ATServer.class.getDeclaredMethod(name, parameterTypes);
+        assertTrue(
+                Modifier.isPrivate(clientMethod.getModifiers()),
+                "A2ATClient." + name + " must be private (SDK-internal interface)");
+        assertTrue(
+                Modifier.isPrivate(serverMethod.getModifiers()),
+                "A2ATServer." + name + " must be private (SDK-internal interface)");
+        assertEquals(methodSignature(clientMethod), methodSignature(serverMethod));
     }
 
     private static Map<String, String> negotiationApiSurface(Class<?> facade) {

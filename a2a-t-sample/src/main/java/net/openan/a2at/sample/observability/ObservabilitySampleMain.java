@@ -7,10 +7,18 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import net.openan.a2at.sdk.client.A2ATClient;
+import net.openan.a2at.sdk.core.model.NegotiationContext;
+import net.openan.a2at.sdk.core.model.NegotiationPerformative;
+import net.openan.a2at.sdk.core.model.StandardTemplates;
 import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMClientFactory;
 import net.openan.a2at.sdk.llm.LLMResponse;
+import net.openan.a2at.sdk.negotiation.content.InformationProposeContent;
+import net.openan.a2at.sdk.negotiation.content.NegotiationAbortContent;
+import net.openan.a2at.sdk.negotiation.content.NegotiationAbortData;
+import net.openan.a2at.sdk.negotiation.content.NegotiationItem;
+import net.openan.a2at.sdk.negotiation.content.NegotiationProposeData;
 import net.openan.a2at.sdk.observability.A2ATObservabilityConfig;
 import net.openan.a2at.sdk.observability.A2ATSpan;
 import net.openan.a2at.sdk.observability.NegotiationMetrics;
@@ -51,12 +59,18 @@ public final class ObservabilitySampleMain {
             Path envPath = Files.createTempFile("a2at-observability-sample", ".env");
             Files.writeString(envPath, SAMPLE_ENV.formatted(SAMPLE_LLM_PROVIDER));
             A2ATClient client = new A2ATClient(envPath, new SdkOperationSpans());
-            client.getPrompts();
-            try {
-                client.getPrompt("Task-T/network-layer/private-line-complaint/v1");
-            } catch (RuntimeException ignored) {
-                // tolerated: the template URI may resolve to an empty Optional
-            }
+            client.generateNegotiationProposePromptFromData(
+                    new NegotiationProposeData(
+                            new NegotiationContext(
+                                    "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 1, 5, NegotiationPerformative.PROPOSE),
+                            new InformationProposeContent(List.of(new NegotiationItem("节能区域", "松山湖")), null)),
+                    StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI);
+            client.generateNegotiationAbortPromptFromData(
+                    new NegotiationAbortData(
+                            new NegotiationContext(
+                                    "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 1, 5, NegotiationPerformative.ABORT),
+                            new NegotiationAbortContent("Sample workflow finished.")),
+                    StandardTemplates.NEGOTIATION_ABORT_URI);
 
             try (A2ATSpan rounds = new A2ATSpan("sample.negotiation-rounds").open()) {
                 NegotiationMetrics.reportRounds("sample-negotiation", "accept", 3);
