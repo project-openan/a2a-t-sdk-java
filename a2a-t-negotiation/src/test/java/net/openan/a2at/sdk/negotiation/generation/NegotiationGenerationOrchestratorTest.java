@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import net.openan.a2at.sdk.core.exception.ErrorCatalog;
 import net.openan.a2at.sdk.core.exception.ResourceNotFoundException;
+import net.openan.a2at.sdk.core.model.ExtensionUriConstants;
 import net.openan.a2at.sdk.core.model.FilledParamData;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
@@ -26,7 +27,6 @@ import net.openan.a2at.sdk.negotiation.content.NegotiationParamExtractionExcepti
 import net.openan.a2at.sdk.negotiation.content.NegotiationProposeData;
 import net.openan.a2at.sdk.negotiation.resources.NegotiationReference;
 import net.openan.a2at.sdk.negotiation.resources.NegotiationTemplateLoader;
-import net.openan.a2at.sdk.negotiation.runtime.NegotiationHandler;
 import net.openan.a2at.sdk.prompt.resources.catalog.TemplateQueryService;
 import org.junit.jupiter.api.Test;
 
@@ -48,14 +48,14 @@ class NegotiationGenerationOrchestratorTest {
                         INFORMATION_PROPOSE);
 
         assertEquals(INFORMATION_PROPOSE_URI, result.templateUri());
-        assertEquals(NegotiationHandler.NEGOTIATION_T_URI, result.extensionUri());
+        assertEquals(ExtensionUriConstants.NEGOTIATION_T_EXTENSION_URI, result.extensionUri());
         assertFalse(result.promptText().isBlank());
         assertFalse(result.promptText().contains("协商上下文"), "the context section must not be rendered");
         assertTrue(result.promptText().contains("所需信息项"));
 
         Map<String, Object> metadata = result.buildMetadataContent();
         assertEquals(3, metadata.size());
-        assertEquals(result.promptText(), metadata.get(NegotiationHandler.NEGOTIATION_T_URI));
+        assertEquals(result.promptText(), metadata.get(ExtensionUriConstants.NEGOTIATION_T_EXTENSION_URI));
         assertEquals(result.templateUri(), metadata.get(MetadataContent.TEMPLATE_URI_METADATA_KEY));
         assertEquals(new NegotiationContext(UUID, 1, 5, NegotiationPerformative.PROPOSE), result.negotiationContext());
         @SuppressWarnings("unchecked")

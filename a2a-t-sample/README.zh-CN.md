@@ -213,7 +213,6 @@ A2AT_LLM_PROVIDER=openai                     # OpenAI 兼容端点均为 openai
 A2AT_LLM_MODEL=glm-5.2                       # 换成你的模型名
 A2AT_LLM_API_KEY=sk-xxxxxxxx                 # 你的 API key
 A2AT_LLM_BASE_URL=https://your-endpoint/v1   # OpenAI 兼容 base URL
-A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
 A2AT_LLM_TIMEOUT_SECONDS=180                 # 推理型模型建议调大（默认 60）
 A2AT_LLM_MAX_TOKENS=8192                     # 推理型模型建议调大（默认 2000）
 ```

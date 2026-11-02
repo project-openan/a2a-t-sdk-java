@@ -63,7 +63,7 @@ flowchart LR
 | --- | --- |
 | 任务提示词生成（客户端） | 覆盖输入归一化、场景识别、槽位提取与模板渲染，支持自然语言与结构化数据两种输入 |
 | 报文校验与提参（服务端） | 对符合 SDK 格式的任务提示词执行元数据解析、槽位提取与语义校验，按 Schema 提取参数并返回缺失/非法槽位明细 |
-| 多轮协商&协商状态管理 | 支持 `information` / `feasibility` / `target` 三类协商，提供模板驱动的协商报文生成；协商类型、运行时状态机与状态存储（当前提供内存实现） |
+| 多轮协商 | 支持 `information` / `feasibility` / `target` 三类协商，提供模板驱动的协商报文生成与校验；协商会话状态随消息 metadata 往返（SDK 无状态） |
 | 资源组织 | 内置提示词资源（`prompts` / `scenarios` / `slots` / `templates`）位于 `a2a-t-resources`，支持 `classpath` 与本地文件两种加载方式 |
 | LLM 适配 | 默认提供 OpenAIClient，支持接入兼容 OpenAI 规范的 LLM，并支持自定义 LLM 接入 |
 | 可观测性 | 基于 OpenTelemetry 自动记录 SDK 客户端/服务端调用的调用链、指标与结构化日志；构造客户端与服务端时各传入一个参数即可接入，无需修改业务代码，支持按需整体关闭 |
@@ -80,7 +80,7 @@ flowchart LR
 | `a2a-t-resources` | 内置提示词资源的打包与 classpath 加载 |
 | `a2a-t-llm` | LLM 适配层，支持自定义 LLM 接入，默认提供 OpenAIClient |
 | `a2a-t-prompt` | 提示词资源模型与加载、场景识别、槽位提取与模板渲染 |
-| `a2a-t-negotiation` | 协商类型、运行时状态机与状态存储 |
+| `a2a-t-negotiation` | 协商内容模型、模板驱动的报文生成与校验 |
 | `a2a-t-client` | 客户端封装，提供任务提示词生成与协商入口（`A2ATClient`） |
 | `a2a-t-server` | 服务端封装，提供 A2A-T 协议报文的校验与协商入口（`A2ATServer`） |
 | `a2a-t-observability` | 可观测性模块：OpenTelemetry 初始化、SDK 调用记录、LLM token 与协商轮数指标、手动 span API 与结构化日志 |
@@ -88,7 +88,7 @@ flowchart LR
 | `a2a-t-corpus` | 准确性验证语料（纯测试模块）：数据驱动工作流用例，需配置真实 LLM 执行；不参与打包与 CI |
 | `a2a-t-sample` | 可运行的客户端/服务端示例 |
 
-各模块的 `src/test/java` 与 main 包结构对应，覆盖协商状态机、协商处理器、资源加载器、提示词渲染以及客户端/服务端编排等测试用例。
+各模块的 `src/test/java` 与 main 包结构对应，覆盖协商报文生成与校验、资源加载器、提示词渲染以及客户端/服务端编排等测试用例。
 
 ## 快速开始
 
@@ -158,7 +158,7 @@ mvn test
 
 - 内置 LLM 调用链对外统一为 OpenAI 适配层。
 - 大模型提示词资源已内置，不支持自定义扩展。
-- 协商状态存储目前仅提供内存实现，不保证持久化。
+- 协商会话状态随消息 metadata 往返（SDK 无状态），不提供协商状态存储；旧的状态机协商 API（`startNegotiation` / `receiveNegotiation` / `continueNegotiation`）自 v1.1.0 起废弃，已在 v1.2.0 版本删除。
 - 随包资源与语言覆盖有限，不包含 `registry-center`（注册中心）等远程资源加载能力。
 - 本文档主要介绍 SDK 本身，不涉及 CLI、托管服务、部署流程或可直接使用的应用方案。
 

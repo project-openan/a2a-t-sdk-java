@@ -83,7 +83,6 @@ class AuthorizationEntryPointMetadataTest {
                 A2AT_LLM_MODEL=example-model
                 A2AT_LLM_BASE_URL=https://llm.example.test/v1
                 A2AT_LLM_API_KEY=test-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """
                         .formatted(provider));
         return envFile;

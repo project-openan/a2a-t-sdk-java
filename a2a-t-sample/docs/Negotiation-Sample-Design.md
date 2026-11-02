@@ -27,7 +27,7 @@ NegotiationStrategy（接口）
   └── FromTextStrategy  → 自然语言文本    → generateXxxFromText（LLM 结构化抽取 + 模板渲染）
 ```
 
-两个通道仅在"缺失/补齐参数如何进入生成 API"这一步不同：fromData 通道把参数组装成类型化内容记录（`InformationProposeContent` 等），由 SDK 直接渲染模板；fromText 通道把参数组织成自然语言语句，由 SDK 先做一步 LLM 结构化抽取再渲染。Task-T 报文生成、参数语义校验、协商状态机等其余环节两个通道完全共享。
+两个通道仅在"缺失/补齐参数如何进入生成 API"这一步不同：fromData 通道把参数组装成类型化内容记录（`InformationProposeContent` 等），由 SDK 直接渲染模板；fromText 通道把参数组织成自然语言语句，由 SDK 先做一步 LLM 结构化抽取再渲染。Task-T 报文生成、参数语义校验、协商上下文传递等其余环节两个通道完全共享。
 
 入口通过命令行参数选择通道：默认 fromData，`--fromText` 切换为自然语言通道。
 
@@ -144,8 +144,8 @@ java @a2a-t-sample/target/eval.javaargs.txt --out my-report.json /path/to/.env
 ## 八、已知限制
 
 1. `DiagnosisService` 输出的是基于校验参数生成的文本结果，非真实网管诊断；生产场景应替换为 EMS/NMS 北向接口调用。
-2. 服务端在参数缺失分支跳过 `receiveNegotiation`（信息协商 handler 的合规检查会拒绝不完整的 Task-T），缺失项直接取自语义校验错误列表。
-3. 协商状态机的两套 `NegotiationContext`（content 层与 types.model 层）职责不同，不可混用：前者注入渲染内容，后者驱动状态推进。
+2. 服务端在参数缺失分支不做协商合规校验，缺失项直接取自语义校验错误列表。
+3. 协商会话状态随消息 metadata（`negotiationContext`）往返，样例本身不保存协商状态；SDK 旧的状态机协商 API（`startNegotiation` / `receiveNegotiation` / `continueNegotiation`）已删除，样例统一使用无状态的协商内容 API。
 
 ## 九、相关文档
 

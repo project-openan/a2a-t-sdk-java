@@ -27,9 +27,8 @@ class A2ATConfigTest {
      * Verifies that {@link A2ATConfig#load(Path)} correctly builds a unified configuration from a complete .env file
      * with all keys specified.
      *
-     * <p>Scenario: A .env file contains all configuration keys for prompt, LLM, and negotiation. Expected result: All
-     * configuration values are correctly parsed and accessible via {@link A2ATConfig#prompt()},
-     * {@link A2ATConfig#llm()}, and {@link A2ATConfig#negotiation()}.
+     * <p>Scenario: A .env file contains all configuration keys for prompt and LLM. Expected result: All configuration
+     * values are correctly parsed and accessible via {@link A2ATConfig#prompt()} and {@link A2ATConfig#llm()}.
      *
      * @throws IOException if temp directory creation fails
      */
@@ -55,7 +54,6 @@ class A2ATConfigTest {
                 A2AT_LLM_TIMEOUT_SECONDS=15
                 A2AT_LLM_SESSION_MAX_TOTAL=300
                 A2AT_LLM_SESSION_MAX_PER_PROVIDER=100
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """);
 
         A2ATConfig config = A2ATConfig.load(envFile);
@@ -73,14 +71,13 @@ class A2ATConfigTest {
         assertEquals(15.0d, config.llm().timeoutSeconds());
         assertEquals(300, config.llm().sessionMaxTotal());
         assertEquals(100, config.llm().sessionMaxPerProvider());
-        assertEquals("in_memory", config.negotiation().stateStoreType());
     }
 
     /**
      * Verifies that {@link A2ATConfig#load(Path)} applies default values for missing configuration keys.
      *
-     * <p>Scenario: A .env file contains only minimal required keys (LLM provider and negotiation). Expected result:
-     * Default values are applied for prompt configuration (classpath source type, unset local root directory).
+     * <p>Scenario: A .env file contains only the minimal required keys (LLM provider). Expected result: Default values
+     * are applied for prompt configuration (classpath source type, unset local root directory).
      *
      * @throws IOException if temp directory creation fails
      */
@@ -92,7 +89,6 @@ class A2ATConfigTest {
                 envFile,
                 """
                 A2AT_LLM_PROVIDER=openai
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """);
 
         A2ATConfig config = A2ATConfig.load(envFile);
@@ -211,8 +207,7 @@ class A2ATConfigTest {
                 new PromptRuntimeConfig(
                         loaded.prompt().language(), loaded.prompt().sourceType(), "   "),
                 loaded.llm(),
-                loaded.inputLimits(),
-                loaded.negotiation());
+                loaded.inputLimits());
 
         A2ATConfig resolved = A2ATConfig.resolvePromptResourceLocalRootDir(config, envFile);
 
@@ -240,8 +235,7 @@ class A2ATConfigTest {
         A2ATConfig config = new A2ATConfig(
                 new PromptRuntimeConfig(loaded.prompt().language(), "local_file", "prompt_resources"),
                 loaded.llm(),
-                loaded.inputLimits(),
-                loaded.negotiation());
+                loaded.inputLimits());
 
         A2ATConfig resolved = A2ATConfig.resolvePromptResourceLocalRootDir(config, Path.of(".env"));
 
@@ -253,6 +247,25 @@ class A2ATConfigTest {
                         .normalize()
                         .toString(),
                 resolved.prompt().localRootDir());
+    }
+
+    /**
+     * Verifies that the removed legacy negotiation state store configuration stays absent from the unified SDK
+     * configuration surface.
+     *
+     * <p>Scenario: Reflectively inspect {@link A2ATConfig}. Expected result: the record carries no {@code negotiation}
+     * component and no {@code A2AT_NEGOTIATION_STATE_STORE_TYPE} key constant remains.
+     */
+    @Test
+    void should_notExposeNegotiationStateStoreConfig_When_legacyStateMachineIsRemoved() {
+        assertTrue(
+                java.util.Arrays.stream(A2ATConfig.class.getRecordComponents())
+                        .noneMatch(component -> "negotiation".equals(component.getName())),
+                "the A2ATConfig record must not carry the removed negotiation state store component");
+        assertTrue(
+                java.util.Arrays.stream(A2ATConfigKeys.class.getDeclaredClasses())
+                        .noneMatch(nested -> "Negotiation".equals(nested.getSimpleName())),
+                "the A2ATConfigKeys.Negotiation constants holder must stay removed");
     }
 
     /**

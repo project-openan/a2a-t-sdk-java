@@ -32,8 +32,7 @@ A2AT_LLM_BASE_URL=<网关地址>
 A2AT_LLM_API_KEY=<凭据>          # 绝不能提交、打印或写入任何产物
 ```
 
-模板另含两个可忽略键（`A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR` 留空、
-`A2AT_NEGOTIATION_STATE_STORE_TYPE` 默认 in_memory）；启动仅校验 provider/model/api_key 三键。
+模板另含一个可忽略键（`A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR` 留空）；启动仅校验 provider/model/api_key 三键。
 
 **安全约束**：
 - env 文件命中 `.gitignore` 的 `*.env` 规则，永不提交；真实凭据只放在本地 env 文件中

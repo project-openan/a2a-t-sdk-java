@@ -44,10 +44,9 @@ Four pieces wire the observability module into a client-side workflow (see
    }
    ```
 
-The demo generates a temporary `.env` at runtime (`A2AT_LANGUAGE=zh-CN`, `A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory`,
-plus `A2AT_LLM_*` keys pointing at a scripted offline `SampleLLM` registered under the provider name
-`a2at-observability-sample` — the facade constructor validates the provider even though `getPrompts()` never calls the
-LLM).
+The demo generates a temporary `.env` at runtime (`A2AT_LANGUAGE=zh-CN`, plus `A2AT_LLM_*` keys pointing at a scripted
+offline `SampleLLM` registered under the provider name `a2at-observability-sample` — the facade constructor validates
+the provider even though `getPrompts()` never calls the LLM).
 
 ## Running
 

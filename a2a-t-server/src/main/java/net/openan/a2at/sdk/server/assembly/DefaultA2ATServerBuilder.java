@@ -10,7 +10,6 @@ import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMClientFactory;
 import net.openan.a2at.sdk.negotiation.generation.NegotiationContentService;
 import net.openan.a2at.sdk.negotiation.generation.NegotiationGenerationOrchestrator;
-import net.openan.a2at.sdk.negotiation.runtime.RoleBoundNegotiationOrchestrator;
 import net.openan.a2at.sdk.prompt.analysis.impl.DefaultStructuredPromptSlotValueExtractor;
 import net.openan.a2at.sdk.prompt.analysis.impl.LlmScenarioRecognizer;
 import net.openan.a2at.sdk.prompt.resources.catalog.TemplateQueryService;
@@ -141,19 +140,6 @@ public final class DefaultA2ATServerBuilder {
     }
 
     /**
-     * Builds the default negotiation orchestrator from the configured unified SDK config.
-     *
-     * @return assembled negotiation orchestrator
-     */
-    public RoleBoundNegotiationOrchestrator buildNegotiationOrchestrator() {
-        require(config, "Unified SDK config must be configured.");
-        requireSupportedConfig();
-        return new ServerNegotiationOrchestratorBuilder()
-                .promptComplianceOrchestrator(buildPromptComplianceOrchestrator())
-                .build();
-    }
-
-    /**
      * Builds the default negotiation content-layer orchestrator from the configured unified SDK config.
      *
      * <p>The wiring is shared with the client side through
@@ -253,10 +239,6 @@ public final class DefaultA2ATServerBuilder {
         if (!LLMClientFactory.availableProviders().contains(config.llm().provider())) {
             throw new UnsupportedOperationException(
                     "Unsupported LLM provider: " + config.llm().provider());
-        }
-        if (!"in_memory".equals(config.negotiation().stateStoreType())) {
-            throw new UnsupportedOperationException("Unsupported negotiation state store type: "
-                    + config.negotiation().stateStoreType());
         }
     }
 

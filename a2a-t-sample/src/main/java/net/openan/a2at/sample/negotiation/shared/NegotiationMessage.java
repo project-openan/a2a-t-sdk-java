@@ -11,8 +11,8 @@ import net.openan.a2at.sample.subscribe_incident.shared.error.ValueErrorExceptio
  * transport.
  *
  * <p>An A2A {@code Message.metadata} map carries one entry per active extension: the extension URI maps to the rendered
- * prompt text. The negotiation context map (type/id/round/status) is JSON-serialised into a dedicated
- * {@link DemoConstants#NEGOTIATION_CONTEXT_KEY} entry so the state machine can advance on the receiving side.
+ * prompt text. The negotiation context map (id/round/maxRounds/performative) is JSON-serialised into a dedicated
+ * {@link DemoConstants#NEGOTIATION_CONTEXT_KEY} entry so the receiving side can correlate the negotiation session.
  *
  * @since 2026-08
  */

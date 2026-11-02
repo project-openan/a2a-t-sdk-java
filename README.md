@@ -63,7 +63,7 @@ flowchart LR
 | --- | --- |
 | Task prompt generation (client) | Covers input normalization, scenario recognition, slot extraction, and template rendering; supports both natural-language and structured-data input |
 | Message validation and parameter extraction (server) | Performs metadata parsing, slot extraction, and semantic validation on task prompts that conform to the SDK format, extracts parameters per a schema, and returns details of missing/invalid slots |
-| Multi-round negotiation & negotiation state management | Supports the three negotiation types `information` / `feasibility` / `target` with template-driven negotiation message generation; covers negotiation types, the runtime state machine, and state storage (currently an in-memory implementation) |
+| Multi-round negotiation | Supports the three negotiation types `information` / `feasibility` / `target` with template-driven negotiation message generation and validation; the negotiation session state travels with the message metadata (the SDK is stateless) |
 | Resource organization | Built-in prompt resources (`prompts` / `scenarios` / `slots` / `templates`) live in `a2a-t-resources` and support both classpath and local-file loading |
 | LLM adaptation | Provides OpenAIClient by default, supports LLMs compatible with the OpenAI specification, and allows custom LLM integration |
 | Observability | Automatically records traces, metrics, and structured logs of SDK client/server calls based on OpenTelemetry; integrate by passing one constructor argument on each of the client and the server, with no business code changes, and it can be switched off entirely as needed |
@@ -80,7 +80,7 @@ The repository is organized as Maven multi-modules, with core code under each mo
 | `a2a-t-resources` | Packaging and classpath loading of built-in prompt resources |
 | `a2a-t-llm` | LLM adapter layer; supports custom LLM integration and provides OpenAIClient by default |
 | `a2a-t-prompt` | Prompt resource model and loading, scenario recognition, slot extraction, and template rendering |
-| `a2a-t-negotiation` | Negotiation types, runtime state machine, and state storage |
+| `a2a-t-negotiation` | Negotiation content models, template-driven message generation, and validation |
 | `a2a-t-client` | Client facade providing task prompt generation and negotiation entry points (`A2ATClient`) |
 | `a2a-t-server` | Server facade providing A2A-T protocol message validation and negotiation entry points (`A2ATServer`) |
 | `a2a-t-observability` | The observability module: OpenTelemetry setup, SDK call records, LLM token and negotiation round metrics, the manual span API, and structured logs |
@@ -88,7 +88,7 @@ The repository is organized as Maven multi-modules, with core code under each mo
 | `a2a-t-corpus` | Accuracy verification corpus (pure test module): data-driven workflow cases executed against a real LLM; excluded from packaging and CI |
 | `a2a-t-sample` | Runnable client/server samples |
 
-Each module's `src/test/java` mirrors the main package structure, covering the negotiation state machine, negotiation handlers, resource loaders, prompt rendering, and client/server orchestration.
+Each module's `src/test/java` mirrors the main package structure, covering negotiation message generation and validation, resource loaders, prompt rendering, and client/server orchestration.
 
 ## Quick Start
 
@@ -158,7 +158,7 @@ Before use, it is recommended to confirm the following limitations:
 
 - The built-in LLM invocation chain is unified externally as an OpenAI adaptation layer.
 - LLM prompt resources are built in and do not support customization or extension.
-- Negotiation state storage currently only provides an in-memory implementation and does not guarantee persistence.
+- Negotiation session state travels in the message metadata (the SDK is stateless) and no negotiation state store is provided; the legacy state-machine negotiation APIs (`startNegotiation` / `receiveNegotiation` / `continueNegotiation`) were deprecated since v1.1.0 and removed in v1.2.0.
 - The bundled resources and language coverage are limited, and do not include remote resource loading capabilities such as `registry-center`.
 - This document primarily introduces the SDK itself, and does not cover the CLI, hosted services, deployment processes, or ready-to-use application solutions.
 

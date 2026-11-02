@@ -18,10 +18,6 @@ import net.openan.a2at.sdk.negotiation.content.NegotiationAbortData;
 import net.openan.a2at.sdk.negotiation.content.NegotiationEndingData;
 import net.openan.a2at.sdk.negotiation.content.NegotiationProposeData;
 import net.openan.a2at.sdk.negotiation.generation.NegotiationContentService;
-import net.openan.a2at.sdk.negotiation.runtime.RoleBoundNegotiationOrchestrator;
-import net.openan.a2at.sdk.negotiation.types.model.NegotiationContext;
-import net.openan.a2at.sdk.negotiation.types.model.NegotiationStatus;
-import net.openan.a2at.sdk.negotiation.types.model.NegotiationType;
 import net.openan.a2at.sdk.prompt.resources.catalog.TemplateQueryService;
 import net.openan.a2at.sdk.server.assembly.DefaultA2ATServerBuilder;
 import net.openan.a2at.sdk.server.compliance.ServerPromptComplianceOrchestrator;
@@ -42,8 +38,6 @@ public final class A2ATServer {
     private static final Logger LOGGER = LoggerFactory.getLogger(A2ATServer.class);
 
     private final ServerPromptComplianceOrchestrator promptComplianceOrchestrator;
-
-    private final RoleBoundNegotiationOrchestrator negotiationOrchestrator;
 
     private final NegotiationContentService negotiationContentService;
 
@@ -81,7 +75,6 @@ public final class A2ATServer {
                 DefaultA2ATServerBuilder.builder().envPath(resolvedEnvPath).config(config);
         this.hook = hook == null ? TelemetryHook.NO_OP : hook;
         this.promptComplianceOrchestrator = builder.buildPromptComplianceOrchestrator();
-        this.negotiationOrchestrator = builder.buildNegotiationOrchestrator();
         this.negotiationContentService =
                 new NegotiationContentService(builder.buildNegotiationGenerationOrchestrator());
         this.templateQueryService = builder.buildTemplateQueryService();
@@ -118,24 +111,6 @@ public final class A2ATServer {
         }
     }
 
-    static @Nullable String terminalOutcome(NegotiationStatus status) {
-        if (status == NegotiationStatus.AGREED) {
-            return "accept";
-        }
-        return status == NegotiationStatus.REJECTED ? "reject" : null;
-    }
-
-    private void reportNegotiationRounds(NegotiationContext context, NegotiationStatus status) {
-        try {
-            String outcome = terminalOutcome(status);
-            if (outcome != null) {
-                hook.reportNegotiationRounds(context.negotiationId(), outcome, context.round());
-            }
-        } catch (RuntimeException error) {
-            LOGGER.warn("a2at: negotiation metric report failed", error);
-        }
-    }
-
     /**
      * Checks one processed task prompt for server-side compliance.
      *
@@ -147,47 +122,6 @@ public final class A2ATServer {
      */
     public PromptComplianceResult checkTaskPrompt(@NonNull String processedPromptText) {
         return observed("checkTaskPrompt", () -> promptComplianceOrchestrator.checkTaskPrompt(processedPromptText));
-    }
-
-    /**
-     * Starts a new negotiation payload for the requested negotiation type.
-     *
-     * @param type negotiation type to initiate
-     * @param contentText human-readable negotiation message
-     * @param facts structured facts attached to the payload
-     * @return transport payload representing the initial negotiation turn
-     */
-    public Map<String, Object> startNegotiation(
-            @NonNull NegotiationType type, @NonNull String contentText, @NonNull Map<String, Object> facts) {
-        return observed("startNegotiation", () -> negotiationOrchestrator.startNegotiation(type, contentText, facts));
-    }
-
-    /**
-     * Processes a received negotiation message using its transport context payload.
-     *
-     * @param message received negotiation message
-     * @param context transport context payload associated with the message
-     * @return normalized payload describing the receive result
-     */
-    public Map<String, Object> receiveNegotiation(@NonNull String message, @NonNull Map<String, Object> context) {
-        return observed("receiveNegotiation", () -> negotiationOrchestrator.receiveNegotiation(message, context));
-    }
-
-    /**
-     * Continues an existing negotiation with a locally stored context snapshot.
-     *
-     * @param context current negotiation context
-     * @param status next status to emit
-     * @param contentText continuation message content
-     * @return transport payload representing the next negotiation turn
-     */
-    public Map<String, Object> continueNegotiation(
-            @NonNull NegotiationContext context, @NonNull NegotiationStatus status, @NonNull String contentText) {
-        return observed("continueNegotiation", () -> {
-            Map<String, Object> result = negotiationOrchestrator.continueNegotiation(context, status, contentText);
-            reportNegotiationRounds(context, status);
-            return result;
-        });
     }
 
     /**

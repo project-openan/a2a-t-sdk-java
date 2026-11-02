@@ -18,8 +18,8 @@
  *   <li>{@code shared/} - A2A metadata bridge, scenario data, extension/template URI constants.
  * </ul>
  *
- * The core path uses deterministic {@code fromData} generation + runtime state machine (no LLM key needed); optional
- * {@code validateAndFilling} runs when a real LLM key is configured.
+ * The core path uses deterministic {@code fromData} generation with the negotiation session context carried in the
+ * message metadata (no LLM key needed); optional {@code validateAndFilling} runs when a real LLM key is configured.
  *
  * @since 2026-08
  */

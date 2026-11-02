@@ -42,9 +42,9 @@
    }
    ```
 
-样例在运行期生成临时 `.env`（`A2AT_LANGUAGE=zh-CN`、`A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory`，以及指向离线脚本
-LLM `SampleLLM` 的 `A2AT_LLM_*` 键，provider 名为 `a2at-observability-sample`——门面构造器会校验 provider，虽然
-`getPrompts()` 并不真正调用 LLM）。
+样例在运行期生成临时 `.env`（`A2AT_LANGUAGE=zh-CN`，以及指向离线脚本 LLM `SampleLLM` 的 `A2AT_LLM_*` 键，
+provider 名为 `a2at-observability-sample`——门面构造器会校验 provider，虽然 `getPrompts()` 并不真正调用
+LLM）。
 
 ## 运行
 

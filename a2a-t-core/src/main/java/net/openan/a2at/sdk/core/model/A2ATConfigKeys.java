@@ -76,14 +76,6 @@ public final class A2ATConfigKeys {
         public static final String MAX_ATTEMPTS = "A2AT_LLM_MAX_ATTEMPTS";
     }
 
-    /** Negotiation runtime configuration keys. */
-    @NoArgsConstructor(access = AccessLevel.PRIVATE)
-    public static final class Negotiation {
-
-        /** Selects the negotiation state store implementation (e.g., in_memory). */
-        public static final String STATE_STORE_TYPE = "A2AT_NEGOTIATION_STATE_STORE_TYPE";
-    }
-
     /** Input limit configuration keys. */
     @NoArgsConstructor(access = AccessLevel.PRIVATE)
     public static final class Input {
