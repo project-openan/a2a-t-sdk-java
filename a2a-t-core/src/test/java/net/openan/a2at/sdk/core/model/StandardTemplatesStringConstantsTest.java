@@ -24,6 +24,9 @@ class StandardTemplatesStringConstantsTest {
         assertEquals(
                 StandardTemplates.RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE.uri(),
                 StandardTemplates.RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE_URI);
+        assertEquals(
+                StandardTemplates.IPRAN_SERVICE_ASSURANCE.uri(),
+                StandardTemplates.IPRAN_SERVICE_ASSURANCE_URI);
         assertEquals(StandardTemplates.SUBSCRIBE_INCIDENT.uri(), StandardTemplates.SUBSCRIBE_INCIDENT_URI);
         assertEquals(StandardTemplates.SERVICE_RECOVERY.uri(), StandardTemplates.SERVICE_RECOVERY_URI);
         assertEquals(

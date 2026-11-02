@@ -67,6 +67,16 @@ public final class StandardTemplates {
     public static final String RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE_URI =
             RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE.uri();
 
+    /** Task-T template for the ipran-service-assurance scenario. */
+    public static final TemplateUri IPRAN_SERVICE_ASSURANCE =
+            TemplateUri.of(TASK_EXTENSION_NAME, NETWORK_LAYER_SEGMENT, "ipran-service-assurance");
+
+    /**
+     * Raw template URI of {@link #IPRAN_SERVICE_ASSURANCE}:
+     * {@code Task-T/network-layer/ipran-service-assurance/v1}.
+     */
+    public static final String IPRAN_SERVICE_ASSURANCE_URI = IPRAN_SERVICE_ASSURANCE.uri();
+
     /** Notification-T template for the subscribe-incident scenario. */
     public static final TemplateUri SUBSCRIBE_INCIDENT =
             TemplateUri.of(NOTIFICATION_EXTENSION_NAME, NETWORK_LAYER_SEGMENT, "subscribe-incident");
@@ -159,11 +169,14 @@ public final class StandardTemplates {
 
     /** All built-in Task-T templates. */
     public static final List<TemplateUri> TASK = List.of(
-            ENERGY_SAVING, PRIVATE_LINE_COMPLAINT, RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE);
+            ENERGY_SAVING, PRIVATE_LINE_COMPLAINT, RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE, IPRAN_SERVICE_ASSURANCE);
 
     /** Raw template URIs of all built-in Task-T templates. */
     public static final List<String> TASK_URIS = List.of(
-            ENERGY_SAVING_URI, PRIVATE_LINE_COMPLAINT_URI, RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE_URI);
+            ENERGY_SAVING_URI,
+            PRIVATE_LINE_COMPLAINT_URI,
+            RAN_INTELLIGENT_BACKUP_BATTERY_ENDURANCE_URI,
+            IPRAN_SERVICE_ASSURANCE_URI);
 
     /** All built-in Notification-T templates. */
     public static final List<TemplateUri> NOTIFICATION = List.of(SUBSCRIBE_INCIDENT, SERVICE_RECOVERY);
