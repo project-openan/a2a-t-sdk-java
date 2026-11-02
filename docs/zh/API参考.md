@@ -1648,7 +1648,7 @@ public MetadataContent generateNegotiationAbortPromptFromText(
 | ---- | ---- | ---- | ---- |
 | text | String | 是 | 协商终止原因的自然语言描述 |
 | context | `NegotiationContext` | 是 | 协商会话上下文（performative 为 `ABORT`） |
-| templateUri | TemplateUri | 是 | common abort 模板 |
+| templateUri | String | 是 | common abort 模板 |
 
 **请求样例**
 
@@ -1665,15 +1665,19 @@ MetadataContent abort = client.generateNegotiationAbortPromptFromText(
 
 失败时抛 `NegotiationGenerationException`（结构同 1.3.1）。错误码：
 
-- `template_not_found`（模板或提示词资源缺失）
+- `template.not_found`（模板或提示词资源缺失）
 
-- `negotiation_content_extract_failed`（无法从文本抽取终止原因，可重试）
+- `negotiation.content_extract_failed`（无法从文本抽取终止原因，可重试）
 
-- `negotiation_llm_infrastructure_error`（LLM 基础设施故障，可重试）
+- `llm.invocation_failed`（LLM 基础设施故障，可重试）
 
-- `negotiation_invalid_input`（文本为空或抽取内容与 abort 阶段不符）
+- `llm.response_invalid`（LLM 响应结构无效，可重试）
 
-- `negotiation_slot_missing`（缺少必需槽位）
+- `input.text_too_long`（输入超出配置的字符上限）
+
+- `negotiation.invalid_input`（文本为空或抽取内容与 abort 阶段不符）
+
+- `negotiation.field_missing`（缺少必需槽位）
 
 入参为 null 抛 `NullPointerException`，templateUri 的 phase 段不是 `abort` 抛 `IllegalArgumentException`。
 
@@ -1708,7 +1712,7 @@ public MetadataContent generateNegotiationAbortPromptFromData(
 | 参数 | 类型 | 必填 | 说明 |
 | ---- | ---- | ---- | ---- |
 | data | `NegotiationAbortData(context, content)` | 是 | 协商上下文（performative 为 `ABORT`）+ 终止内容 |
-| templateUri | TemplateUri | 是 | common abort 模板 |
+| templateUri | String | 是 | common abort 模板 |
 
 终止内容：`NegotiationAbortContent(terminationReason)`，terminationReason 为协商终止原因（必填）。
 
@@ -1731,9 +1735,9 @@ MetadataContent abort = client.generateNegotiationAbortPromptFromData(
 
 失败时抛 `NegotiationGenerationException`（结构同 1.3.1）。错误码：
 
-- `template_not_found`（模板缺失）
+- `template.not_found`（模板缺失）
 
-- `negotiation_slot_missing`（渲染缺少必需槽位）
+- `negotiation.field_missing`（渲染缺少必需槽位）
 
 编程错误：入参或其 context 为 null 抛 `NullPointerException`；终止原因为空或 phase 段不是 `abort` 抛 `IllegalArgumentException`。
 
@@ -1778,15 +1782,19 @@ FilledParamData abortParams = server.validateAbortPromptAndDataFilling(
 
 失败时抛 `NegotiationParamExtractionException`（结构同 1.3.7）。错误码：
 
-- `negotiation_invalid_input`（报文不是 abort 协商消息或 context 为 null）
+- `negotiation.invalid_input`（报文不是 abort 协商消息或 context 为 null）
 
-- `negotiation_rule_violation`（协商上下文违反结构规则）
+- `negotiation.rule_violation`（协商上下文违反结构规则）
 
-- `negotiation_semantic_rejected`（结论不是 Abort 或缺少终止原因板块）
+- `negotiation.semantic_rejected`（结论不是 Abort 或缺少终止原因板块）
 
-- `negotiation_llm_infrastructure_error`（LLM 基础设施故障，可重试）
+- `llm.invocation_failed`（LLM 基础设施故障，可重试）
 
-- `template_not_found`（校验提示词资源缺失）
+- `llm.response_invalid`（LLM 响应结构无效，可重试）
+
+- `input.text_too_long`（输入超出配置的字符上限）
+
+- `template.not_found`（校验提示词资源缺失）
 
 编程错误：prompt 或 schema 为 null 抛 `NullPointerException`，prompt 为空白或 phase 段不是 `abort` 抛 `IllegalArgumentException`。
 

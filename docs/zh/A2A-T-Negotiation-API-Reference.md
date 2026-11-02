@@ -22,7 +22,7 @@
 <dependency>
     <groupId>net.openan.a2a-t.sdk</groupId>
     <artifactId>a2a-t-client</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -33,9 +33,9 @@ Server 侧用 `a2a-t-server` 替代。协商模块由二者传递依赖引入，
 | 配置项 | 默认值 | 说明 |
 |---|---|---|
 | A2AT_LANGUAGE | en-US | 消息语言，`zh-CN` 或 `en-US` |
-| A2AT_PROMPT_SOURCE_TYPE | local_file | `classpath` 用打包资源，`local_file` 用本地目录 |
-| A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR | （打包目录） | 本地资源根目录，相对路径基于 .env 所在目录 |
-| A2AT_LLM_PROVIDER | （必填） | 仅支持 `openai`（兼容 DeepSeek、Azure 等） |
+| A2AT_PROMPT_SOURCE_TYPE | classpath | `classpath` 用打包资源，`local_file` 用本地目录 |
+| A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR | （未设置） | local_file 的资源根目录，相对路径基于 .env 所在目录 |
+| A2AT_LLM_PROVIDER | openai | 内置 OpenAI 兼容 provider，也可通过 `LLMClientFactory` 注册其他 provider |
 | A2AT_LLM_MODEL | （必填） | 模型名 |
 | A2AT_LLM_API_KEY | （必填） | API key |
 | A2AT_LLM_BASE_URL | （可选） | OpenAI 兼容 API 的 base URL |
@@ -163,24 +163,24 @@ Client 与 Server 均通过 `NegotiationContentService` 代理 `NegotiationGener
 ### 4.1 fromData 生成（确定性，协商报文生成不调 LLM）
 
 ```java
-MetadataContent generateNegotiationProposePromptFromData(NegotiationProposeData data, TemplateUri templateUri);
-MetadataContent generateNegotiationAcceptPromptFromData (NegotiationEndingData  data, TemplateUri templateUri);
-MetadataContent generateNegotiationRejectPromptFromData (NegotiationEndingData  data, TemplateUri templateUri);
-MetadataContent generateNegotiationAbortPromptFromData  (NegotiationAbortData   data, TemplateUri templateUri);
+MetadataContent generateNegotiationProposePromptFromData(NegotiationProposeData data, String templateUri);
+MetadataContent generateNegotiationAcceptPromptFromData (NegotiationEndingData  data, String templateUri);
+MetadataContent generateNegotiationRejectPromptFromData (NegotiationEndingData  data, String templateUri);
+MetadataContent generateNegotiationAbortPromptFromData  (NegotiationAbortData   data, String templateUri);
 ```
 
 流程：解析 `templateUri` → 加载模板 → `GeneratorRegistry` 精确类型匹配 dispatch → Generator 渲染 → 返回 `MetadataContent`。
 
-- accept 要求内容 conclusion 必须为 `ACCEPT`，reject 必须为 `REJECT`，否则抛 `NegotiationContentException`
+- accept 要求内容 conclusion 必须为 `ACCEPT`，reject 必须为 `REJECT`，否则抛 `IllegalArgumentException`
 - abort 与协商类型无关，由唯一的 common abort 模板渲染，只需携带终止原因（见 §4.4）
 
 ### 4.2 fromText 生成（含一步 LLM 抽取）
 
 ```java
-MetadataContent generateNegotiationProposePromptFromText(String text, NegotiationContext context, TemplateUri templateUri);
-MetadataContent generateNegotiationAcceptPromptFromText (String text, NegotiationContext context, TemplateUri templateUri);
-MetadataContent generateNegotiationRejectPromptFromText (String text, NegotiationContext context, TemplateUri templateUri);
-MetadataContent generateNegotiationAbortPromptFromText  (String text, NegotiationContext context, TemplateUri templateUri);
+MetadataContent generateNegotiationProposePromptFromText(String text, NegotiationContext context, String templateUri);
+MetadataContent generateNegotiationAcceptPromptFromText (String text, NegotiationContext context, String templateUri);
+MetadataContent generateNegotiationRejectPromptFromText (String text, NegotiationContext context, String templateUri);
+MetadataContent generateNegotiationAbortPromptFromText  (String text, NegotiationContext context, String templateUri);
 ```
 
 注意此处的 `NegotiationContext` 是内容生成用的（`net.openan.a2at.sdk.core.model.NegotiationContext`，见 §7.1），只注入到渲染消息里，不经过 LLM。
@@ -193,16 +193,17 @@ MetadataContent generateNegotiationAbortPromptFromText  (String text, Negotiatio
 record MetadataContent(
     String templateUri,    // 模板 URI
     String promptText,     // 渲染后的消息文本
-    String extensionUri    // TMF 扩展 URI（规范 Negotiation-T URI）
+    String extensionUri,   // TMF 扩展 URI（规范 Negotiation-T URI）
+    NegotiationContext negotiationContext // 非协商消息为 null
 )
 ```
 
 直接生成 A2A-T metadata map：
 
 ```java
-MetadataContent mc = client.generateNegotiationProposePromptFromData(data, StandardTemplates.TARGET_NEGOTIATION_PROPOSE);
-Map<String, String> metadata = mc.buildMetadataContent();
-// { extensionUri -> promptText, "template_uri" -> templateUri }
+MetadataContent mc = client.generateNegotiationProposePromptFromData(data, StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI);
+Map<String, Object> metadata = mc.buildMetadataContent();
+// { extensionUri -> promptText, "templateUri" -> templateUri, "negotiationContext" -> contextMap }
 ```
 
 ### 4.4 输入数据模型
@@ -312,20 +313,18 @@ accept 与 reject 共享 `accept-reject` 模板，由 `NegotiationConclusion` �
 | 可行性协商接受/拒绝 | `Negotiation-T/feasibility-negotiation/accept-reject/v1` |
 | 协商终止（通用） | `Negotiation-T/common/abort/v1` |
 
-模板 URI 层把四个 performative 归并为三段：`ACCEPT` 与 `REJECT` 共享 `accept-reject` 段（由 conclusion 值区分），`ABORT` 由类型无关的 common 模板承载。类型化模板对应 `StandardTemplates` 中的常量（如 `INFORMATION_NEGOTIATION_PROPOSE`），abort 对应 `StandardTemplates.NEGOTIATION_ABORT`。
+模板 URI 层把四个 performative 归并为三段：`ACCEPT` 与 `REJECT` 共享 `accept-reject` 段（由 conclusion 值区分），`ABORT` 由类型无关的 common 模板承载。类型化模板对应 `StandardTemplates` 中的常量（对外接口使用 `INFORMATION_NEGOTIATION_PROPOSE_URI`），abort 对应 `StandardTemplates.NEGOTIATION_ABORT_URI`。
 
-URI 解析规则（`NegotiationReference.parse`）：恰好 4 个 slash 分隔段；第 1 段必须为 `Negotiation-T`；第 2 段为 `{type}-negotiation` 或 `common`（common 仅用于 abort）；第 3 段必须为 `propose` 或 `accept-reject`，abort 模板为 `abort`；第 4 段必须为 `v1`。
+URI 解析规则（`NegotiationReference.tryParse`）：恰好 4 个 slash 分隔段；第 1 段必须为 `Negotiation-T`；第 2 段为 `{type}-negotiation` 或 `common`（common 仅用于 abort）；第 3 段必须为 `propose` 或 `accept-reject`，abort 模板为 `abort`；第 4 段必须为 `v1`。
 
 ### 5.1 模板查询 API
 
 ```java
-List<PromptTemplate>       getNegotiationPrompts();              // 当前语言的全部协商模板，固定顺序
-Optional<PromptTemplate>   getNegotiationPrompt(String uri);    // 按 URI 查单个
 List<PromptTemplate>       getPrompts();                         // 跨所有扩展
 Optional<PromptTemplate>   getPrompt(String uri);                // 跨扩展按 URI 查
 ```
 
-这些方法不抛异常，缺失返回空列表或 empty。
+对于格式正确的模板 URI，缺失返回空列表或 `Optional.empty()`。URI 为 null 时抛 `NullPointerException`，空白或格式错误时抛 `IllegalArgumentException`。
 
 ---
 
@@ -334,10 +333,10 @@ Optional<PromptTemplate>   getPrompt(String uri);                // 跨扩展按
 ### 6.1 方法签名
 
 ```java
-FilledParamData validateProposePromptAndDataFilling(String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri);
-FilledParamData validateAcceptPromptAndDataFilling (String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri);
-FilledParamData validateRejectPromptAndDataFilling (String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri);
-FilledParamData validateAbortPromptAndDataFilling  (String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri);
+FilledParamData validateProposePromptAndDataFilling(String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri);
+FilledParamData validateAcceptPromptAndDataFilling (String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri);
+FilledParamData validateRejectPromptAndDataFilling (String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri);
+FilledParamData validateAbortPromptAndDataFilling  (String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri);
 ```
 
 - `prompt`：已渲染的协商消息文本
@@ -354,7 +353,7 @@ record FilledParamData(Map<String, Object> data)
 ### 6.2 校验管线
 
 1. **规则门**（`DefaultNegotiationComplianceChecker`，确定性，无 LLM）
-   - 按 `##` 分段，识别是否含协商上下文段（通过 `Vocabulary` 的 `section.context` 匹配）
+   - 校验随 metadata 单独传入的 `NegotiationContext`，不从 prompt 正文解析上下文段
    - 校验 `id` 为 UUID 格式（8-4-4-4-12 十六进制）
    - 校验 `round` 和 `maxRounds` 为正整数，且 round 不超 maxRounds
    - 不做类型推断、conclusion 值校验或条件段互斥
@@ -377,7 +376,7 @@ record FilledParamData(Map<String, Object> data)
 | `net.openan.a2at.sdk.core.model.NegotiationContext` | 内容生成/校验 | `id, round, maxRounds, performative` |
 | `net.openan.a2at.sdk.negotiation.types.model.NegotiationContext` | 状态机 | `negotiationType, negotiationId, round, status` |
 
-状态机方法（start/receive/continue）用 `types.model` 层的；内容生成/校验用 `core.model` 层的。内容生成 context 是 record，带 `of(id, round, performative)`、`nextRound()`、`isExhausted()`，`DEFAULT_MAX_ROUNDS = 5`；`performative` 必填，表达该 context 随哪类消息出行（`PROPOSE` 提出提案，`ACCEPT` / `REJECT` 回应提案，`ABORT` 终止协商），生成 API 渲染出站消息时以此为准。
+状态机方法（start/receive/continue）用 `types.model` 层的；内容生成/校验用 `core.model` 层的。内容生成 context 是 record，带 `of(id, round, performative)`、`nextRound()`、`isExhausted()`，`DEFAULT_MAX_ROUNDS = 5`。生成操作在返回的 metadata context 上标记自身的 performative，不修改调用者传入的 context。accept/reject/abort 响应保留收到的 id 和 round；只有发起新一轮提案时才调用 `nextRound()`。
 
 ### 7.2 NegotiationPayloadMapper
 
@@ -403,27 +402,28 @@ Map<String, Object> payload = NegotiationPayloadMapper.payload(context, contentT
 
 | 异常类型 | 性质 | 携带信息 |
 |---|---|---|
-| `NegotiationContentException` | 编程错误 | message + field（出错字段路径） |
-| `NegotiationGenerationException` | 生成失败 | code + message + cause |
-| `NegotiationParamExtractionException` | 校验失败 | code + message + errors（逐 slot 错误） |
+| `IllegalArgumentException` / `NullPointerException` | 编程错误 | 指出非法或缺失参数的 message |
+| `NegotiationGenerationException` | 生成失败 | code + message + facts + cause |
+| `NegotiationParamExtractionException` | 校验失败 | code + message + facts + errors（逐 slot 错误） |
 | `NegotiationStateException` | 状态机错误 | message（运行时状态机层） |
 
 ### 8.2 错误码
 
 | 码 | 含义 | 可重试 |
 |---|---|---|
-| `template_not_found` | 模板/prompt 资源缺失 | 否 |
-| `negotiation_content_extract_failed` | LLM 内容抽取响应不可解析 | 是 |
-| `negotiation_llm_infrastructure_error` | LLM 调用基础设施失败 | 是 |
-| `negotiation_slot_missing` | 必填字段缺失 | 否 |
-| `negotiation_invalid_input` | 输入与 phase/action 矛盾 | 否 |
-| `negotiation_rule_violation` | 规则门校验失败 | 否 |
-| `negotiation_semantic_rejected` | 语义校验拒绝 | 否 |
-| `input_text_too_long` | fromText 输入超出配置的最大长度 | 否 |
+| `template.not_found` | 模板/prompt 资源缺失 | 否 |
+| `negotiation.content_extract_failed` | LLM 内容抽取响应不可解析 | 是 |
+| `llm.invocation_failed` | LLM 调用基础设施失败 | 是 |
+| `llm.response_invalid` | LLM 响应结构无效 | 是 |
+| `negotiation.field_missing` | 必填字段缺失 | 否 |
+| `negotiation.invalid_input` | 输入与 phase/action 矛盾 | 否 |
+| `negotiation.rule_violation` | 规则门校验失败 | 否 |
+| `negotiation.semantic_rejected` | 语义校验拒绝 | 否 |
+| `input.text_too_long` | fromText 输入超出配置的最大长度 | 否 |
 
 ### 8.3 重试策略
 
-`NegotiationGenerationOrchestrator.withRetry` 对 LLM 步骤统一重试：只有 `negotiation_content_extract_failed` 与 `negotiation_llm_infrastructure_error` 可重试，其他错误码立即抛出；耗尽后原样重抛（保留原始 error code）；默认 `maxAttempts` 来自 LLM config。
+`NegotiationGenerationOrchestrator.withRetry` 对 LLM 步骤统一重试：`negotiation.content_extract_failed`、`llm.invocation_failed` 和 `llm.response_invalid` 可重试，其他错误码立即抛出；耗尽后原样重抛（保留原始 error code）。`A2AT_LLM_MAX_ATTEMPTS` 默认 3，取值限定为 1–10。
 
 ---
 
@@ -461,14 +461,14 @@ TargetProposeContent content = new TargetProposeContent(
     null);
 MetadataContent mc = client.generateNegotiationProposePromptFromData(
     new NegotiationProposeData(contentCtx, content),
-    StandardTemplates.TARGET_NEGOTIATION_PROPOSE);
+    StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI);
 
 // 2. 用渲染好的消息文本初始化状态机
 Map<String, Object> payload = client.startNegotiation(
     NegotiationType.TARGET, mc.promptText(), Map.of("agent", "city1-agent"));
 
 // 3. 合并 metadata
-Map<String, String> metadata = mc.buildMetadataContent();
+Map<String, Object> metadata = mc.buildMetadataContent();
 ```
 
 ### 10.2 接收并校验协商消息
@@ -483,7 +483,7 @@ if (Boolean.TRUE.equals(receiveResult.get("needResponse"))) {
             "city1_omc_alarm", Map.of("type", "string"),
             "optical_power", Map.of("type", "number")));
     FilledParamData params = client.validateProposePromptAndDataFilling(
-        message, contentCtx, schema, StandardTemplates.TARGET_NEGOTIATION_PROPOSE);
+        message, contentCtx, schema, StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI);
     // params.data() 含 id, round, maxRounds + LLM 提取参数
 }
 ```
@@ -505,7 +505,7 @@ NegotiationContext contentCtx = NegotiationContext.of("session-123", 1, Negotiat
 MetadataContent mc = client.generateNegotiationProposePromptFromText(
     "城市1到城市2的SPN专线中断，城市1 OMC告警端口Down，光功率-28dBm",
     contentCtx,
-    StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE);
+    StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI);
 // LLM 自动抽取 InformationProposeContent（items + relationship）并渲染
 ```
 
@@ -516,19 +516,19 @@ MetadataContent mc = client.generateNegotiationProposePromptFromText(
 MetadataContent acceptMc = client.generateNegotiationAcceptPromptFromData(
     new NegotiationEndingData(contentCtx,
         new TargetEndingContent(NegotiationConclusion.ACCEPT, "确认意图：恢复专线", null)),
-    StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT);
+    StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI);
 
 // 拒绝
 MetadataContent rejectMc = client.generateNegotiationRejectPromptFromData(
     new NegotiationEndingData(contentCtx,
         new TargetEndingContent(NegotiationConclusion.REJECT, null, "资源不足无法执行")),
-    StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT);
+    StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI);
 
 // 终止协商
 MetadataContent abortMc = client.generateNegotiationAbortPromptFromData(
     new NegotiationAbortData(contentCtx,
         new NegotiationAbortContent("双方无法就诊断范围达成一致，终止协商")),
-    StandardTemplates.NEGOTIATION_ABORT);
+    StandardTemplates.NEGOTIATION_ABORT_URI);
 ```
 
 完整可运行样例见 [a2a-t-sample 协商样例](../../a2a-t-sample/README.zh-CN.md#协商negotiation样例)。

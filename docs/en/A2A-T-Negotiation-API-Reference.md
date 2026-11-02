@@ -22,7 +22,7 @@ All three layers are exposed through the `A2ATClient` / `A2ATServer` facades wit
 <dependency>
     <groupId>net.openan.a2a-t.sdk</groupId>
     <artifactId>a2a-t-client</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -33,9 +33,9 @@ Use `a2a-t-server` instead on the server side. The negotiation module arrives as
 | Key | Default | Description |
 |---|---|---|
 | A2AT_LANGUAGE | en-US | Message language, `zh-CN` or `en-US` |
-| A2AT_PROMPT_SOURCE_TYPE | local_file | `classpath` uses packaged resources, `local_file` a local directory |
-| A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR | (packaged dir) | Local resource root; relative paths resolve against the .env directory |
-| A2AT_LLM_PROVIDER | (required) | Only `openai` is supported (DeepSeek, Azure and other OpenAI-compatible endpoints) |
+| A2AT_PROMPT_SOURCE_TYPE | classpath | `classpath` uses packaged resources, `local_file` a local directory |
+| A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR | (unset) | Resource root for `local_file`; relative paths resolve against the .env directory |
+| A2AT_LLM_PROVIDER | openai | Built-in OpenAI-compatible provider; additional providers can be registered through `LLMClientFactory` |
 | A2AT_LLM_MODEL | (required) | Model name |
 | A2AT_LLM_API_KEY | (required) | API key |
 | A2AT_LLM_BASE_URL | (optional) | Base URL of the OpenAI-compatible API |
@@ -163,24 +163,24 @@ Both facades proxy `NegotiationContentService`, which drives `NegotiationGenerat
 ### 4.1 fromData generation (deterministic; no LLM for message rendering)
 
 ```java
-MetadataContent generateNegotiationProposePromptFromData(NegotiationProposeData data, TemplateUri templateUri);
-MetadataContent generateNegotiationAcceptPromptFromData (NegotiationEndingData  data, TemplateUri templateUri);
-MetadataContent generateNegotiationRejectPromptFromData (NegotiationEndingData  data, TemplateUri templateUri);
-MetadataContent generateNegotiationAbortPromptFromData  (NegotiationAbortData   data, TemplateUri templateUri);
+MetadataContent generateNegotiationProposePromptFromData(NegotiationProposeData data, String templateUri);
+MetadataContent generateNegotiationAcceptPromptFromData (NegotiationEndingData  data, String templateUri);
+MetadataContent generateNegotiationRejectPromptFromData (NegotiationEndingData  data, String templateUri);
+MetadataContent generateNegotiationAbortPromptFromData  (NegotiationAbortData   data, String templateUri);
 ```
 
 Flow: parse `templateUri` → load template → `GeneratorRegistry` exact-type dispatch → generator renders → return `MetadataContent`.
 
-- accept requires content conclusion `ACCEPT`, reject requires `REJECT`; otherwise a `NegotiationContentException` is thrown
+- accept requires content conclusion `ACCEPT`, reject requires `REJECT`; otherwise a `IllegalArgumentException` is thrown
 - abort is negotiation-type independent, rendered by the single common abort template, carrying only the termination reason (see §4.4)
 
 ### 4.2 fromText generation (one LLM extraction step)
 
 ```java
-MetadataContent generateNegotiationProposePromptFromText(String text, NegotiationContext context, TemplateUri templateUri);
-MetadataContent generateNegotiationAcceptPromptFromText (String text, NegotiationContext context, TemplateUri templateUri);
-MetadataContent generateNegotiationRejectPromptFromText (String text, NegotiationContext context, TemplateUri templateUri);
-MetadataContent generateNegotiationAbortPromptFromText  (String text, NegotiationContext context, TemplateUri templateUri);
+MetadataContent generateNegotiationProposePromptFromText(String text, NegotiationContext context, String templateUri);
+MetadataContent generateNegotiationAcceptPromptFromText (String text, NegotiationContext context, String templateUri);
+MetadataContent generateNegotiationRejectPromptFromText (String text, NegotiationContext context, String templateUri);
+MetadataContent generateNegotiationAbortPromptFromText  (String text, NegotiationContext context, String templateUri);
 ```
 
 The `NegotiationContext` here is the content-generation one (`net.openan.a2at.sdk.core.model.NegotiationContext`, see §7.1); it is injected into the rendered message and never passes through the LLM.
@@ -193,16 +193,17 @@ Flow: parse `templateUri` → load template (before the LLM call) → `DefaultNe
 record MetadataContent(
     String templateUri,    // template URI
     String promptText,     // rendered message text
-    String extensionUri    // TMF extension URI (canonical Negotiation-T URI)
+    String extensionUri,   // TMF extension URI (canonical Negotiation-T URI)
+    NegotiationContext negotiationContext // null for non-negotiation messages
 )
 ```
 
 Builds the A2A-T metadata map directly:
 
 ```java
-MetadataContent mc = client.generateNegotiationProposePromptFromData(data, StandardTemplates.TARGET_NEGOTIATION_PROPOSE);
-Map<String, String> metadata = mc.buildMetadataContent();
-// { extensionUri -> promptText, "template_uri" -> templateUri }
+MetadataContent mc = client.generateNegotiationProposePromptFromData(data, StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI);
+Map<String, Object> metadata = mc.buildMetadataContent();
+// { extensionUri -> promptText, "templateUri" -> templateUri, "negotiationContext" -> contextMap }
 ```
 
 ### 4.4 Input data models
@@ -312,20 +313,18 @@ Typed templates follow `Negotiation-T/{type-segment}/{phase-segment}/v1`; abort 
 | Feasibility accept/reject | `Negotiation-T/feasibility-negotiation/accept-reject/v1` |
 | Negotiation termination (common) | `Negotiation-T/common/abort/v1` |
 
-The template URI layer collapses four performatives into three segments: `ACCEPT` and `REJECT` share the `accept-reject` segment (distinguished by the conclusion value), while `ABORT` is carried by the type-independent common template. Typed templates map to `StandardTemplates` constants (e.g. `INFORMATION_NEGOTIATION_PROPOSE`); abort maps to `StandardTemplates.NEGOTIATION_ABORT`.
+The template URI layer collapses four performatives into three segments: `ACCEPT` and `REJECT` share the `accept-reject` segment (distinguished by the conclusion value), while `ABORT` is carried by the type-independent common template. Typed templates map to `StandardTemplates` constants (e.g. `INFORMATION_NEGOTIATION_PROPOSE_URI` for facade calls); abort maps to `StandardTemplates.NEGOTIATION_ABORT_URI`.
 
-URI parsing rules (`NegotiationReference.parse`): exactly 4 slash-separated segments; segment 1 must be `Negotiation-T`; segment 2 is `{type}-negotiation` or `common` (common is abort only); segment 3 must be `propose` or `accept-reject`, and `abort` for the abort template; segment 4 must be `v1`.
+URI parsing rules (`NegotiationReference.tryParse`): exactly 4 slash-separated segments; segment 1 must be `Negotiation-T`; segment 2 is `{type}-negotiation` or `common` (common is abort only); segment 3 must be `propose` or `accept-reject`, and `abort` for the abort template; segment 4 must be `v1`.
 
 ### 5.1 Template lookup API
 
 ```java
-List<PromptTemplate>       getNegotiationPrompts();              // all negotiation templates of the current language, fixed order
-Optional<PromptTemplate>   getNegotiationPrompt(String uri);    // single lookup by URI
 List<PromptTemplate>       getPrompts();                         // across all extensions
 Optional<PromptTemplate>   getPrompt(String uri);                // by URI across extensions
 ```
 
-These methods never throw; missing entries yield an empty list or Optional.empty.
+For well-formed template URIs, missing entries yield an empty list or `Optional.empty()`. A null URI throws `NullPointerException`; a blank or malformed URI throws `IllegalArgumentException`.
 
 ---
 
@@ -334,10 +333,10 @@ These methods never throw; missing entries yield an empty list or Optional.empty
 ### 6.1 Method signatures
 
 ```java
-FilledParamData validateProposePromptAndDataFilling(String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri);
-FilledParamData validateAcceptPromptAndDataFilling (String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri);
-FilledParamData validateRejectPromptAndDataFilling (String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri);
-FilledParamData validateAbortPromptAndDataFilling  (String prompt, NegotiationContext context, Map<String, Object> schema, TemplateUri templateUri);
+FilledParamData validateProposePromptAndDataFilling(String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri);
+FilledParamData validateAcceptPromptAndDataFilling (String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri);
+FilledParamData validateRejectPromptAndDataFilling (String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri);
+FilledParamData validateAbortPromptAndDataFilling  (String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri);
 ```
 
 - `prompt`: the rendered negotiation message text
@@ -354,7 +353,7 @@ record FilledParamData(Map<String, Object> data)
 ### 6.2 Validation pipeline
 
 1. **Rule gate** (`DefaultNegotiationComplianceChecker`, deterministic, no LLM)
-   - splits sections on `##` and detects the negotiation context section (via the `Vocabulary` `section.context` key)
+   - reads the separately supplied `NegotiationContext` from message metadata, not a section of the rendered prompt
    - validates `id` as a UUID (8-4-4-4-12 hex)
    - validates `round` and `maxRounds` as positive integers with round <= maxRounds
    - performs no type inference, conclusion-value checks, or conditional-section mutual exclusion
@@ -377,7 +376,7 @@ record FilledParamData(Map<String, Object> data)
 | `net.openan.a2at.sdk.core.model.NegotiationContext` | content generation/validation | `id, round, maxRounds, performative` |
 | `net.openan.a2at.sdk.negotiation.types.model.NegotiationContext` | state machine | `negotiationType, negotiationId, round, status` |
 
-State-machine methods (start/receive/continue) use the `types.model` layer; content generation/validation uses the `core.model` layer. The content-generation context is a record with `of(id, round, performative)`, `nextRound()`, `isExhausted()`, and `DEFAULT_MAX_ROUNDS = 5`; `performative` is mandatory and expresses which kind of message the context travels with (`PROPOSE` puts a proposal on the table, `ACCEPT` / `REJECT` respond to a proposal, `ABORT` terminates the negotiation) — the generation API honors it when rendering the outbound message.
+State-machine methods (start/receive/continue) use the `types.model` layer; content generation/validation uses the `core.model` layer. The content-generation context is a record with `of(id, round, performative)`, `nextRound()`, `isExhausted()`, and `DEFAULT_MAX_ROUNDS = 5`. The generation operation stamps its own performative on the returned metadata context without modifying the caller's context. An accept/reject/abort response keeps the received id and round; only the initiator of a new proposal calls `nextRound()`.
 
 ### 7.2 NegotiationPayloadMapper
 
@@ -403,27 +402,28 @@ Map<String, Object> payload = NegotiationPayloadMapper.payload(context, contentT
 
 | Exception | Nature | Carries |
 |---|---|---|
-| `NegotiationContentException` | programming error | message + field (path of the offending field) |
-| `NegotiationGenerationException` | generation failure | code + message + cause |
-| `NegotiationParamExtractionException` | validation failure | code + message + errors (per-slot) |
+| `IllegalArgumentException` / `NullPointerException` | programming error | message identifying the invalid or missing argument |
+| `NegotiationGenerationException` | generation failure | code + message + facts + cause |
+| `NegotiationParamExtractionException` | validation failure | code + message + facts + errors (per-slot) |
 | `NegotiationStateException` | state machine error | message (runtime state machine layer) |
 
 ### 8.2 Error codes
 
 | Code | Meaning | Retriable |
 |---|---|---|
-| `template_not_found` | template/prompt resource missing | no |
-| `negotiation_content_extract_failed` | LLM extraction response unparseable | yes |
-| `negotiation_llm_infrastructure_error` | LLM infrastructure failure | yes |
-| `negotiation_slot_missing` | required field missing | no |
-| `negotiation_invalid_input` | input contradicts phase/action | no |
-| `negotiation_rule_violation` | rule gate rejection | no |
-| `negotiation_semantic_rejected` | semantic validation rejection | no |
-| `input_text_too_long` | fromText input exceeds the configured maximum length | no |
+| `template.not_found` | template/prompt resource missing | no |
+| `negotiation.content_extract_failed` | LLM extraction response unparseable | yes |
+| `llm.invocation_failed` | LLM infrastructure failure | yes |
+| `llm.response_invalid` | LLM response has an invalid structure | yes |
+| `negotiation.field_missing` | required field missing | no |
+| `negotiation.invalid_input` | input contradicts phase/action | no |
+| `negotiation.rule_violation` | rule gate rejection | no |
+| `negotiation.semantic_rejected` | semantic validation rejection | no |
+| `input.text_too_long` | fromText input exceeds the configured maximum length | no |
 
 ### 8.3 Retry policy
 
-`NegotiationGenerationOrchestrator.withRetry` retries LLM steps uniformly: only `negotiation_content_extract_failed` and `negotiation_llm_infrastructure_error` are retriable; every other code fails fast. After exhaustion the original error is rethrown with its code intact; the default `maxAttempts` comes from the LLM config.
+`NegotiationGenerationOrchestrator.withRetry` retries LLM steps uniformly: `negotiation.content_extract_failed`, `llm.invocation_failed`, and `llm.response_invalid` are retriable; every other code fails fast. After exhaustion the original error is rethrown with its code intact. `A2AT_LLM_MAX_ATTEMPTS` defaults to 3 and is bounded to 1–10.
 
 ---
 
@@ -461,14 +461,14 @@ TargetProposeContent content = new TargetProposeContent(
     null);
 MetadataContent mc = client.generateNegotiationProposePromptFromData(
     new NegotiationProposeData(contentCtx, content),
-    StandardTemplates.TARGET_NEGOTIATION_PROPOSE);
+    StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI);
 
 // 2. initialize the state machine with the rendered message text
 Map<String, Object> payload = client.startNegotiation(
     NegotiationType.TARGET, mc.promptText(), Map.of("agent", "city1-agent"));
 
 // 3. merge the metadata
-Map<String, String> metadata = mc.buildMetadataContent();
+Map<String, Object> metadata = mc.buildMetadataContent();
 ```
 
 ### 10.2 Receive and validate a negotiation message
@@ -483,7 +483,7 @@ if (Boolean.TRUE.equals(receiveResult.get("needResponse"))) {
             "city1_omc_alarm", Map.of("type", "string"),
             "optical_power", Map.of("type", "number")));
     FilledParamData params = client.validateProposePromptAndDataFilling(
-        message, contentCtx, schema, StandardTemplates.TARGET_NEGOTIATION_PROPOSE);
+        message, contentCtx, schema, StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI);
     // params.data() carries id, round, maxRounds + the LLM-extracted parameters
 }
 ```
@@ -505,7 +505,7 @@ NegotiationContext contentCtx = NegotiationContext.of("session-123", 1, Negotiat
 MetadataContent mc = client.generateNegotiationProposePromptFromText(
     "City1-city2 SPN private line outage; city1 OMC reports port down, optical power -28dBm",
     contentCtx,
-    StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE);
+    StandardTemplates.INFORMATION_NEGOTIATION_PROPOSE_URI);
 // the LLM extracts InformationProposeContent (items + relationship) and renders it
 ```
 
@@ -516,19 +516,19 @@ MetadataContent mc = client.generateNegotiationProposePromptFromText(
 MetadataContent acceptMc = client.generateNegotiationAcceptPromptFromData(
     new NegotiationEndingData(contentCtx,
         new TargetEndingContent(NegotiationConclusion.ACCEPT, "Confirmed intent: restore the line", null)),
-    StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT);
+    StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI);
 
 // reject
 MetadataContent rejectMc = client.generateNegotiationRejectPromptFromData(
     new NegotiationEndingData(contentCtx,
         new TargetEndingContent(NegotiationConclusion.REJECT, null, "Insufficient resources")),
-    StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT);
+    StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI);
 
 // terminate the negotiation
 MetadataContent abortMc = client.generateNegotiationAbortPromptFromData(
     new NegotiationAbortData(contentCtx,
         new NegotiationAbortContent("Parties could not agree on the diagnosis scope; terminating")),
-    StandardTemplates.NEGOTIATION_ABORT);
+    StandardTemplates.NEGOTIATION_ABORT_URI);
 ```
 
 Runnable end-to-end samples: [a2a-t-sample negotiation samples](../../a2a-t-sample/README.zh-CN.md#协商negotiation样例).

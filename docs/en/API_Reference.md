@@ -1657,7 +1657,7 @@ public MetadataContent generateNegotiationAbortPromptFromText(
 | ---- | ---- | ---- | ---- |
 | text | String | Yes | Natural-language description of the termination reason |
 | context | `NegotiationContext` | Yes | Negotiation session context (performative `ABORT`) |
-| templateUri | TemplateUri | Yes | Common abort template |
+| templateUri | String | Yes | Common abort template |
 
 **Request example**
 
@@ -1674,15 +1674,19 @@ On success returns `MetadataContent` (same structure as [1.3.1](#131-generateneg
 
 On failure throws `NegotiationGenerationException` (same structure as 1.3.1). Error codes:
 
-- `template_not_found` (template or prompt resource missing)
+- `template.not_found` (template or prompt resource missing)
 
-- `negotiation_content_extract_failed` (termination reason not extractable from the text, retriable)
+- `negotiation.content_extract_failed` (termination reason not extractable from the text, retriable)
 
-- `negotiation_llm_infrastructure_error` (LLM infrastructure failure, retriable)
+- `llm.invocation_failed` (LLM infrastructure failure, retriable)
 
-- `negotiation_invalid_input` (text empty or extracted content does not match the abort phase)
+- `llm.response_invalid` (invalid LLM response structure, retriable)
 
-- `negotiation_slot_missing` (required slot missing)
+- `input.text_too_long` (input exceeds the configured character limit)
+
+- `negotiation.invalid_input` (text empty or extracted content does not match the abort phase)
+
+- `negotiation.field_missing` (required slot missing)
 
 A null argument throws `NullPointerException`; a templateUri whose phase segment is not `abort` throws `IllegalArgumentException`.
 
@@ -1717,7 +1721,7 @@ public MetadataContent generateNegotiationAbortPromptFromData(
 | Parameter | Type | Required | Description |
 | ---- | ---- | ---- | ---- |
 | data | `NegotiationAbortData(context, content)` | Yes | Negotiation context (performative `ABORT`) + termination content |
-| templateUri | TemplateUri | Yes | Common abort template |
+| templateUri | String | Yes | Common abort template |
 
 Termination content: `NegotiationAbortContent(terminationReason)`, where terminationReason is the required termination reason.
 
@@ -1740,9 +1744,9 @@ On success returns `MetadataContent` (same structure as [1.3.1](#131-generateneg
 
 On failure throws `NegotiationGenerationException` (same structure as 1.3.1). Error codes:
 
-- `template_not_found` (template missing)
+- `template.not_found` (template missing)
 
-- `negotiation_slot_missing` (required slot missing during rendering)
+- `negotiation.field_missing` (required slot missing during rendering)
 
 Programming errors: a null argument or null context throws `NullPointerException`; a blank termination reason or a phase segment other than `abort` throws `IllegalArgumentException`.
 
@@ -1787,15 +1791,19 @@ On success returns `FilledParamData` (same structure as [1.3.7](#137-validatepro
 
 On failure throws `NegotiationParamExtractionException` (same structure as 1.3.7). Error codes:
 
-- `negotiation_invalid_input` (message is not an abort negotiation message or context is null)
+- `negotiation.invalid_input` (message is not an abort negotiation message or context is null)
 
-- `negotiation_rule_violation` (negotiation context violates the structural rules)
+- `negotiation.rule_violation` (negotiation context violates the structural rules)
 
-- `negotiation_semantic_rejected` (conclusion is not Abort or the termination-reason section is missing)
+- `negotiation.semantic_rejected` (conclusion is not Abort or the termination-reason section is missing)
 
-- `negotiation_llm_infrastructure_error` (LLM infrastructure failure, retriable)
+- `llm.invocation_failed` (LLM infrastructure failure, retriable)
 
-- `template_not_found` (validation prompt resource missing)
+- `llm.response_invalid` (invalid LLM response structure, retriable)
+
+- `input.text_too_long` (input exceeds the configured character limit)
+
+- `template.not_found` (validation prompt resource missing)
 
 Programming errors: null prompt or schema throws `NullPointerException`; a blank prompt or a phase segment other than `abort` throws `IllegalArgumentException`.
 
