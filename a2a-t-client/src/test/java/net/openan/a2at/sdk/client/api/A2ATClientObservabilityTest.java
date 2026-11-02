@@ -17,7 +17,6 @@ import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMClientFactory;
 import net.openan.a2at.sdk.llm.LLMResponse;
-import net.openan.a2at.sdk.negotiation.types.model.NegotiationStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -110,7 +109,6 @@ class A2ATClientObservabilityTest {
                 A2AT_LLM_MODEL=example-model
                 A2AT_LLM_BASE_URL=https://llm.example.test/v1
                 A2AT_LLM_API_KEY=test-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """
                 .formatted(MOCK_PROVIDER));
         return new A2ATClient(envFile, hook);
@@ -159,18 +157,10 @@ class A2ATClientObservabilityTest {
                 A2AT_LLM_MODEL=example-model
                 A2AT_LLM_BASE_URL=https://llm.example.test/v1
                 A2AT_LLM_API_KEY=test-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """
                 .formatted(MOCK_PROVIDER));
         A2ATClient client = new A2ATClient(envFile);
         assertDoesNotThrow(client::getPrompts);
         assertDoesNotThrow(client::getPrompts);
-    }
-
-    @Test
-    void terminalOutcomeMapping() {
-        assertEquals("accept", A2ATClient.terminalOutcome(NegotiationStatus.AGREED));
-        assertEquals("reject", A2ATClient.terminalOutcome(NegotiationStatus.REJECTED));
-        assertEquals(null, A2ATClient.terminalOutcome(NegotiationStatus.IN_PROGRESS));
     }
 }

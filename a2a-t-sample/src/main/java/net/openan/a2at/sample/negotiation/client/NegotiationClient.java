@@ -21,8 +21,6 @@ import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
 import net.openan.a2at.sdk.core.model.NegotiationPerformative;
 import net.openan.a2at.sdk.negotiation.content.NegotiationItem;
-import net.openan.a2at.sdk.negotiation.runtime.helper.NegotiationPayloadMapper;
-import net.openan.a2at.sdk.negotiation.types.model.NegotiationType;
 import org.a2aproject.sdk.client.Client;
 import org.a2aproject.sdk.client.ClientEvent;
 import org.a2aproject.sdk.client.MessageEvent;
@@ -71,7 +69,7 @@ public final class NegotiationClient {
     /**
      * Creates the negotiation client.
      *
-     * @param client client facade used for prompt generation and the negotiation state machine
+     * @param client client facade used for prompt generation and the negotiation content APIs
      * @param strategy negotiation-message generation strategy (fromData or fromText)
      * @param logSink log output sink
      */
@@ -82,7 +80,7 @@ public final class NegotiationClient {
     /**
      * Creates the negotiation client with an explicit endpoint preference.
      *
-     * @param client client facade used for prompt generation and the negotiation state machine
+     * @param client client facade used for prompt generation and the negotiation content APIs
      * @param strategy negotiation-message generation strategy (fromData or fromText)
      * @param logSink log output sink
      * @param preferStreaming true selects {@code message:stream} when the server advertises streaming support; false
@@ -116,10 +114,12 @@ public final class NegotiationClient {
                 ScenarioData.missingParams(), ScenarioData.taskSchema(), DemoConstants.TASK_TEMPLATE);
         emit("[client] Task-T prompt rendered (params missing)");
 
-        // start the negotiation state machine with the missing-params prompt
-        Map<String, Object> startPayload =
-                client.startNegotiation(NegotiationType.INFORMATION, taskMissing.promptText(), Map.of());
-        Map<String, Object> contextMap = NegotiationPayloadMapper.extractContextMap(startPayload);
+        // open the negotiation session: the stateless negotiation context travels in the message metadata
+        Map<String, Object> contextMap = new LinkedHashMap<>();
+        contextMap.put("id", UUID.randomUUID().toString());
+        contextMap.put("round", 1);
+        contextMap.put("maxRounds", NegotiationContext.DEFAULT_MAX_ROUNDS);
+        contextMap.put("performative", NegotiationPerformative.PROPOSE.name());
 
         EventKind reply1 = send(agentCard, DemoConstants.TASK_T_URI, taskMissing, contextMap);
         emit("[client] received message 2 (negotiation request)");

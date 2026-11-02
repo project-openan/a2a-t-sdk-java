@@ -10,11 +10,7 @@ import org.jspecify.annotations.NonNull;
  *
  * @since 2026-06
  */
-public record A2ATConfig(
-        PromptRuntimeConfig prompt,
-        LlmConfig llm,
-        InputLimitConfig inputLimits,
-        NegotiationConfig negotiation) {
+public record A2ATConfig(PromptRuntimeConfig prompt, LlmConfig llm, InputLimitConfig inputLimits) {
 
     /**
      * Loads one unified SDK config from one `.env` file path.
@@ -25,10 +21,7 @@ public record A2ATConfig(
     public static @NonNull A2ATConfig load(@NonNull Path envPath) {
         Map<String, String> values = DotEnvConfigSource.load(envPath);
         return new A2ATConfig(
-                PromptRuntimeConfig.fromMap(values),
-                LlmConfig.fromMap(values),
-                InputLimitConfig.fromMap(values),
-                NegotiationConfig.fromMap(values));
+                PromptRuntimeConfig.fromMap(values), LlmConfig.fromMap(values), InputLimitConfig.fromMap(values));
     }
 
     /**
@@ -59,8 +52,7 @@ public record A2ATConfig(
                 new PromptRuntimeConfig(
                         config.prompt().language(), config.prompt().sourceType(), resolvedLocalRootPath.toString()),
                 config.llm(),
-                config.inputLimits(),
-                config.negotiation());
+                config.inputLimits());
     }
 
     private static Path envBaseDir(Path envPath) {

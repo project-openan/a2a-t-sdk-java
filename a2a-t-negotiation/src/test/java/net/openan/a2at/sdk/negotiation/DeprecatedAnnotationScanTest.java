@@ -13,18 +13,16 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 /**
- * Guards the compatibility promise of the negotiation content layer: no API of the pre-existing negotiation state
- * machine may gain a {@code @Deprecated} marker now that the content layer exists. The scan pins the exact set of
- * pre-existing {@code @Deprecated} annotations of the module main sources, so any newly added annotation fails the
- * test.
+ * Guards the compatibility promise of the negotiation content layer: now that the legacy state-machine negotiation
+ * packages are removed, no compilation unit of the module main sources may carry a {@code @Deprecated} marker. The
+ * scan pins the empty set of {@code @Deprecated} annotations, so any newly added annotation fails the test.
  */
 class DeprecatedAnnotationScanTest {
 
     private static final Path MAIN_SOURCES = Path.of("src", "main", "java");
 
-    /** The only @Deprecated markers that existed before the negotiation content layer was added. */
-    private static final List<String> PINNED_DEPRECATED_ANNOTATIONS =
-            List.of("net/openan/a2at/sdk/negotiation/runtime/NegotiationHandler.java");
+    /** No @Deprecated markers remain after the legacy state-machine negotiation removal. */
+    private static final List<String> PINNED_DEPRECATED_ANNOTATIONS = List.of();
 
     @Test
     void noNewDeprecatedAnnotationsWereAddedToTheModuleMainSources() throws IOException {
@@ -43,8 +41,8 @@ class DeprecatedAnnotationScanTest {
         assertEquals(
                 PINNED_DEPRECATED_ANNOTATIONS,
                 annotatedFiles,
-                "the negotiation module must not gain new @Deprecated annotations; the pinned set is the"
-                        + " pre-content-layer baseline");
+                "the negotiation module must not gain @Deprecated annotations; the legacy state-machine negotiation"
+                        + " APIs that carried them were removed");
         assertTrue(
                 annotatedFiles.stream()
                         .noneMatch(file -> file.startsWith("content")

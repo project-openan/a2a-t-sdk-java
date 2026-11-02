@@ -38,7 +38,7 @@ class AuthzSampleMainConcurrencyTest {
     private static final String ENV_CONTENT =
             "A2AT_LLM_PROVIDER=openai\nA2AT_LLM_MODEL=gpt-4\nA2AT_LLM_API_KEY=sk-test\n"
                     + "A2AT_LANGUAGE=zh-CN\nA2AT_PROMPT_SOURCE_TYPE=classpath\n"
-                    + "A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR=\nA2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory\n";
+                    + "A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR=\n";
 
     private static String loadResource(String path) {
         try (InputStream in = AuthzSampleMainConcurrencyTest.class.getResourceAsStream(path)) {

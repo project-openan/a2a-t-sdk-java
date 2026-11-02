@@ -17,7 +17,6 @@ import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMClientFactory;
 import net.openan.a2at.sdk.llm.LLMResponse;
-import net.openan.a2at.sdk.negotiation.types.model.NegotiationStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -114,7 +113,6 @@ class A2ATServerObservabilityTest {
                 A2AT_LLM_MODEL=example-model
                 A2AT_LLM_BASE_URL=https://llm.example.test/v1
                 A2AT_LLM_API_KEY=test-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 A2AT_PROMPT_COMPLIANCE_ENABLED=false
                 """
                 .formatted(MOCK_PROVIDER));
@@ -155,12 +153,5 @@ class A2ATServerObservabilityTest {
         A2ATServer server = new A2ATServer(writeEnv(true));
         assertDoesNotThrow(server::getPrompts);
         assertDoesNotThrow(server::getPrompts);
-    }
-
-    @Test
-    void terminalOutcomeMapping() {
-        assertEquals("accept", A2ATServer.terminalOutcome(NegotiationStatus.AGREED));
-        assertEquals("reject", A2ATServer.terminalOutcome(NegotiationStatus.REJECTED));
-        assertEquals(null, A2ATServer.terminalOutcome(NegotiationStatus.IN_PROGRESS));
     }
 }

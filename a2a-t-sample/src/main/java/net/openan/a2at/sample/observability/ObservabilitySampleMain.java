@@ -25,7 +25,6 @@ public final class ObservabilitySampleMain {
 
     private static final String SAMPLE_ENV = """
             A2AT_LANGUAGE=zh-CN
-            A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
             A2AT_LLM_PROVIDER=%s
             A2AT_LLM_MODEL=sample-model
             A2AT_LLM_BASE_URL=http://localhost:9/v1

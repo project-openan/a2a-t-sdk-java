@@ -6,7 +6,6 @@ import net.openan.a2at.sdk.client.prompt.orchestration.ClientPromptGenerationOrc
 import net.openan.a2at.sdk.core.model.A2ATConfig;
 import net.openan.a2at.sdk.core.model.InputLimitConfig;
 import net.openan.a2at.sdk.core.model.LlmConfig;
-import net.openan.a2at.sdk.core.model.NegotiationConfig;
 import net.openan.a2at.sdk.core.model.PromptRuntimeConfig;
 import net.openan.a2at.sdk.core.validation.ContentValidator;
 import net.openan.a2at.sdk.corpus.engine.config.CorpusEnvConfig;
@@ -86,8 +85,7 @@ public final class SdkRuntimeAssembler {
         A2ATConfig config = new A2ATConfig(
                 new PromptRuntimeConfig(env.language(), PromptRuntimeConfig.SOURCE_TYPE_CLASSPATH, null),
                 llmConfig,
-                new InputLimitConfig(InputLimitConfig.DEFAULT_MAX_TEXT_CHARS),
-                new NegotiationConfig("in_memory"));
+                new InputLimitConfig(InputLimitConfig.DEFAULT_MAX_TEXT_CHARS));
 
         ClientPromptGenerationOrchestrator clientGeneration = DefaultA2ATClientBuilder.builder()
                 .config(config)
@@ -151,8 +149,7 @@ public final class SdkRuntimeAssembler {
         A2ATConfig config = new A2ATConfig(
                 new PromptRuntimeConfig(env.language(), PromptRuntimeConfig.SOURCE_TYPE_CLASSPATH, null),
                 llmConfig,
-                new InputLimitConfig(InputLimitConfig.DEFAULT_MAX_TEXT_CHARS),
-                new NegotiationConfig("in_memory"));
+                new InputLimitConfig(InputLimitConfig.DEFAULT_MAX_TEXT_CHARS));
 
         ClientPromptGenerationOrchestrator clientGeneration = DefaultA2ATClientBuilder.builder()
                 .config(config)

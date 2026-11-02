@@ -42,7 +42,7 @@ class DefaultA2ATClientBuilderTest {
         config = new A2ATConfig(
                 new net.openan.a2at.sdk.core.model.PromptRuntimeConfig(
                         config.prompt().language(), config.prompt().sourceType(), resolvedRoot),
-                config.llm(), config.inputLimits(), config.negotiation());
+                config.llm(), config.inputLimits());
 
         DefaultA2ATClientBuilder builder =
                 DefaultA2ATClientBuilder.builder().config(config).envPath(envFile);
@@ -69,7 +69,7 @@ class DefaultA2ATClientBuilderTest {
         config = new A2ATConfig(
                 new net.openan.a2at.sdk.core.model.PromptRuntimeConfig(
                         config.prompt().language(), config.prompt().sourceType(), resolvedRoot),
-                config.llm(), config.inputLimits(), config.negotiation());
+                config.llm(), config.inputLimits());
 
         DefaultA2ATClientBuilder builder =
                 DefaultA2ATClientBuilder.builder().config(config).envPath(envFile);
@@ -107,7 +107,6 @@ class DefaultA2ATClientBuilderTest {
                 A2AT_LLM_MODEL=example-model
                 A2AT_LLM_BASE_URL=https://llm.example.test/v1
                 A2AT_LLM_API_KEY=test-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """
                         .formatted(provider));
         return envFile;
@@ -155,7 +154,6 @@ class DefaultA2ATClientBuilderTest {
                 A2AT_LLM_MODEL=example-model
                 A2AT_LLM_BASE_URL=https://llm.example.test/v1
                 A2AT_LLM_API_KEY=test-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """
                         .formatted(provider));
         return envFile;

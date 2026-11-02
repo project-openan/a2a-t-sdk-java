@@ -81,7 +81,6 @@ class NegotiationSampleFlowTest {
                 A2AT_LLM_MODEL=mock-model
                 A2AT_LLM_BASE_URL=http://localhost:0
                 A2AT_LLM_API_KEY=mock-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """
                         .formatted(NegotiationMockLlmInstaller.PROVIDER));
         return envFile;

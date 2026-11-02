@@ -502,7 +502,6 @@ class FromTextLlmPipelineTest {
                 A2AT_PROMPT_SOURCE_TYPE=classpath
                 A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR=
                 A2AT_LLM_PROVIDER=local_rule
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """);
         A2ATConfig config = A2ATConfig.load(envFile);
         assertEquals(EN_US, config.prompt().language(), "the default language without A2AT_LANGUAGE is en-US");

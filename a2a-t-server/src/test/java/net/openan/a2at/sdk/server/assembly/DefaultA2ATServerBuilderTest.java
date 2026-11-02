@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import net.openan.a2at.sdk.core.model.A2ATConfig;
 import net.openan.a2at.sdk.core.model.InputLimitConfig;
 import net.openan.a2at.sdk.core.model.LlmConfig;
-import net.openan.a2at.sdk.core.model.NegotiationConfig;
 import net.openan.a2at.sdk.core.model.PromptRuntimeConfig;
 import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
@@ -55,13 +54,12 @@ class DefaultA2ATServerBuilderTest {
         builder.buildTaskContentValidator();
         builder.buildNotificationContentValidator();
         builder.buildAuthContentValidator();
-        builder.buildNegotiationOrchestrator();
 
         assertEquals(1, CountingRecorderClient.instanceCount());
     }
 
     @Test
-    void buildNegotiationOrchestratorReusesCachedComplianceOrchestrator() throws IOException {
+    void buildPromptComplianceOrchestratorReusesCachedComplianceOrchestrator() throws IOException {
         Path envFile = writeEnv();
         A2ATConfig config = A2ATConfig.load(envFile);
         DefaultA2ATServerBuilder builder =
@@ -71,12 +69,10 @@ class DefaultA2ATServerBuilderTest {
         DefaultServerPromptComplianceOrchestrator second = builder.buildPromptComplianceOrchestrator();
         assertSame(first, second, "Compliance orchestrator should be lazily cached");
 
-        builder.buildNegotiationOrchestrator();
-
         assertEquals(
                 1,
                 CountingRecorderClient.instanceCount(),
-                "LLM client should still be created only once after negotiation orchestrator build");
+                "LLM client should still be created only once after the cached compliance orchestrator build");
     }
 
     @Test
@@ -101,8 +97,7 @@ class DefaultA2ATServerBuilderTest {
                         null,
                         3,
                         List.of()),
-                new InputLimitConfig(InputLimitConfig.DEFAULT_MAX_TEXT_CHARS),
-                new NegotiationConfig("in_memory"));
+                new InputLimitConfig(InputLimitConfig.DEFAULT_MAX_TEXT_CHARS));
 
         DefaultA2ATServerBuilder builder =
                 DefaultA2ATServerBuilder.builder().config(config).envPath(envFile);
@@ -131,7 +126,6 @@ class DefaultA2ATServerBuilderTest {
                 A2AT_LLM_MODEL=example-model
                 A2AT_LLM_BASE_URL=https://llm.example.test/v1
                 A2AT_LLM_API_KEY=test-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """);
         return envFile;
     }
@@ -148,7 +142,6 @@ class DefaultA2ATServerBuilderTest {
                 A2AT_LLM_MODEL=from-env-model
                 A2AT_LLM_API_KEY=from-env-key
                 A2AT_LLM_BASE_URL=https://from-env.example.com
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """);
         return envFile;
     }

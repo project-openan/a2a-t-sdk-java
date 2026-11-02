@@ -19,7 +19,7 @@ Main capabilities include:
 
 - **Client-side template message generation**: the client generates protocol messages conforming to the A2A-T format from natural-language or structured input.
 - **Server-side template message validation**: the server validates whether A2A-T protocol-format messages sent by the client match the scenario, template, and slot constraints.
-- **Multi-round negotiation management**: supports the `information`, `feasibility`, and `target` negotiation flows.
+- **Negotiation content API**: supports the `information`, `feasibility`, and `target` negotiation types plus `abort` termination messages, with template-driven negotiation message generation and validation; negotiation session state travels in the message metadata (`negotiationContext`) and the SDK itself is stateless.
 - **Template resource management**: bundles scenario, slot, template, and system prompt resources, and supports two resource loading modes: `classpath` built-in resources and `local_file` local file resources.
 - **LLM adaptation**: connects to external large models through OpenAI-compatible call chains.
 - **Observability**: automatically records traces, metrics, and structured logs of SDK client/server calls based on OpenTelemetry; integrate by passing one constructor argument on each of the client and the server, with no business code changes, and it can be switched off entirely as needed (see 1.7).
@@ -37,14 +37,14 @@ flowchart LR
     subgraph Server["Server Agent"]
         B0["Server agent business code"]
         B1["A2A Server SDK<br><br>1. Receive requests<br>2. Task management and event queue management<br>..."]
-        B2["A2A-T Server SDK<br><br>1. Template compliance validation and parameter extraction<br>2. Negotiation state management<br>..."]
+        B2["A2A-T Server SDK<br><br>1. Template compliance validation and parameter extraction<br>2. Negotiation message validation<br>..."]
         B0 --receive responses--- B1
         B0 --A2A-T message validation and parameter extraction--- B2
     end
 
     subgraph Client["Client Agent"]
         A0["Client agent business code"]
-        A1["A2A-T Client SDK<br><br>1. Provide A2A-T prompt templates<br>2. Generate A2A-T protocol template messages<br>3. Negotiation state management<br>..."]
+        A1["A2A-T Client SDK<br><br>1. Provide A2A-T prompt templates<br>2. Generate A2A-T protocol template messages<br>3. Negotiation message generation<br>..."]
         A2["A2A Client SDK<br><br>1. Provide the A2A standard data object model<br>2. Task management and event queue management<br>3. Send requests, multi-protocol support: JSON-RPC, HTTP/REST<br>..."]
         A0 --generate A2A-T protocol messages--- A1
         A0 --assemble A2A extensions and send requests--- A2
@@ -89,7 +89,7 @@ flowchart TD
 1. JDK 17+ is required, and the build tool must be Maven 3.8+.
 2. Full multi-agent protocol interaction development requires the A2A official Java SDK (a2a-java, `org.a2aproject.sdk`) as well, with a version no lower than `1.0.0.Beta1`.
 3. Prompt resources support two sources: `classpath` (default; loads the resources bundled in the `a2a-t-resources` jar) and `local_file` (local file resources); in `local_file` mode business content is local-first and falls back to the built-in copy when missing (overlay).
-4. Negotiation state storage provides only `in_memory`; the state is lost when the process exits.
+4. The SDK is stateless: negotiation session state travels with the A2A-T metadata (`negotiationContext`) of each message and is not stored inside the SDK; the legacy state-machine negotiation APIs (`startNegotiation` / `receiveNegotiation` / `continueNegotiation` and the `negotiation/{handler,runtime,store,types}` packages) were deprecated since v1.1.0 and removed in v1.2.0.
 5. The A2A-T SDK does not provide an agent HTTP service framework, a registry center client, authentication, or key management capabilities; these must be integrated by the business system.
 
 ## 1.3 Environment Preparation
@@ -361,9 +361,6 @@ A2AT_LLM_API_KEY={your_llm_api_key}
 
 # Base URL for the configured LLM provider.
 A2AT_LLM_BASE_URL=https://api.deepseek.com
-
-# Selects the negotiation state store implementation.
-A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
 
 # Input limits
 A2AT_INPUT_TEXT_MAX_CHARS=16384
@@ -2013,5 +2010,4 @@ The sample configuration file provided by the SDK is `env.example`. When constru
 | `A2AT_LLM_SESSION_MAX_PER_PROVIDER` | Maximum number of tracked sessions per provider, default `100` |
 | `A2AT_LLM_MAX_ATTEMPTS` | Maximum number of attempts for retryable LLM steps; range 1-10 (out-of-range values are clamped), default `3` |
 | `A2AT_LLM_DETAIL_LOG_ENABLED` | Whether to print the full LLM request/response payloads (no truncation), default `false`; enabling it may expose sensitive information or consume log space — use only in the DEBUG phase and keep disabled in production; timestamp/token/latency summary logs are emitted at DEBUG level on the dedicated logger `net.openan.a2at.sdk.llm.call`, see 1.6 |
-| `A2AT_NEGOTIATION_STATE_STORE_TYPE` | Negotiation state storage; currently supports `in_memory` |
 

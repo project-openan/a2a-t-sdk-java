@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.openan.a2at.sdk.client.model.PromptGenerationResult;
-import net.openan.a2at.sdk.client.prompt.orchestration.ClientPromptGenerationOrchestrator;
 import net.openan.a2at.sdk.core.exception.A2ATError;
 import net.openan.a2at.sdk.core.exception.PromptGenerationException;
 import net.openan.a2at.sdk.core.model.ExtensionUriConstants;
@@ -25,9 +24,6 @@ import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMClientFactory;
 import net.openan.a2at.sdk.llm.LLMResponse;
-import net.openan.a2at.sdk.negotiation.types.model.NegotiationContext;
-import net.openan.a2at.sdk.negotiation.types.model.NegotiationStatus;
-import net.openan.a2at.sdk.negotiation.types.model.NegotiationType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,34 +61,13 @@ class A2ATClientTest {
     }
 
     @Test
-    void noLongerExposesLowLevelPromptAndNegotiationConstructor() {
-        assertThrows(
-                NoSuchMethodException.class,
-                () -> A2ATClient.class.getDeclaredConstructor(
-                        ClientPromptGenerationOrchestrator.class,
-                        net.openan.a2at.sdk.negotiation.runtime.RoleBoundNegotiationOrchestrator.class));
-    }
-
-    @Test
-    void noLongerExposesLowLevelPromptGenerationAssemblyConstructors() {
-        assertThrows(
-                NoSuchMethodException.class,
-                () -> A2ATClient.class.getDeclaredConstructor(
-                        net.openan.a2at.sdk.llm.LLMClient.class,
-                        net.openan.a2at.sdk.negotiation.runtime.RoleBoundNegotiationOrchestrator.class,
-                        java.util.List.class,
-                        String.class,
-                        String.class,
-                        String.class,
-                        String.class,
-                        String.class));
-        assertThrows(
-                NoSuchMethodException.class,
-                () -> A2ATClient.class.getDeclaredConstructor(
-                        net.openan.a2at.sdk.llm.LLMClient.class,
-                        net.openan.a2at.sdk.negotiation.runtime.RoleBoundNegotiationOrchestrator.class,
-                        java.util.List.class,
-                        net.openan.a2at.sdk.core.model.PromptGenerationConfig.class));
+    void noLongerExposesLegacyStateMachineNegotiationMethods() {
+        for (String method : new String[] {"startNegotiation", "receiveNegotiation", "continueNegotiation"}) {
+            assertTrue(
+                    Arrays.stream(A2ATClient.class.getDeclaredMethods())
+                            .noneMatch(declared -> declared.getName().equals(method)),
+                    "the legacy state-machine negotiation method must be removed: " + method);
+        }
     }
 
     @Test
@@ -100,7 +75,6 @@ class A2ATClientTest {
         long staticMethodCount = Arrays.stream(A2ATClient.class.getDeclaredMethods())
                 .filter(method -> java.lang.reflect.Modifier.isStatic(method.getModifiers()))
                 .filter(method -> !java.lang.reflect.Modifier.isPrivate(method.getModifiers()))
-                .filter(method -> !"terminalOutcome".equals(method.getName()))
                 .count();
 
         assertEquals(0, staticMethodCount);
@@ -199,33 +173,6 @@ class A2ATClientTest {
     }
 
     @Test
-    void pathBasedConstructorBuildsDefaultNegotiationRuntime() throws IOException {
-        Path envFile = writeMinimalLocalClientEnv();
-        A2ATClient client = new A2ATClient(envFile);
-
-        Map<String, Object> startResult =
-                client.startNegotiation(NegotiationType.TARGET, "Please clarify the target.", Map.of("site", "A"));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> startData = (Map<String, Object>)
-                startResult.get(net.openan.a2at.sdk.negotiation.runtime.NegotiationHandler.NEGOTIATION_T_URI_NL);
-
-        Map<String, Object> continueResult = client.continueNegotiation(
-                new NegotiationContext(
-                        NegotiationType.TARGET,
-                        String.valueOf(startData.get("negotiationId")),
-                        1,
-                        NegotiationStatus.IN_PROGRESS),
-                NegotiationStatus.IN_PROGRESS,
-                "Site A");
-        @SuppressWarnings("unchecked")
-        Map<String, Object> continueData = (Map<String, Object>)
-                continueResult.get(net.openan.a2at.sdk.negotiation.runtime.NegotiationHandler.NEGOTIATION_T_URI_NL);
-
-        assertEquals("Please clarify the target.", startData.get("message"));
-        assertEquals("Site A", continueData.get("message"));
-    }
-
-    @Test
     void pathBasedConstructorSupportsNonEnergySavingLocalScenarioCatalog() throws IOException {
         Path tempDir = Files.createTempDirectory("a2at-client-private-line");
         Path promptRoot = tempDir.resolve("prompt_resources");
@@ -301,7 +248,6 @@ A2AT_LLM_PROVIDER=%s
 A2AT_LLM_MODEL=example-model
 A2AT_LLM_BASE_URL=https://llm.example.test/v1
 A2AT_LLM_API_KEY=test-key
-A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """
                         .formatted(TEST_MOCK_PROVIDER));
 
@@ -599,7 +545,6 @@ A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 A2AT_LLM_MODEL=example-model
                 A2AT_LLM_BASE_URL=https://llm.example.test/v1
                 A2AT_LLM_API_KEY=test-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """
                         .formatted(provider));
         return envFile;
@@ -622,7 +567,6 @@ A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
 A2AT_LLM_MODEL=example-model
 A2AT_LLM_BASE_URL=https://llm.example.test/v1
 A2AT_LLM_API_KEY=test-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """);
         return envFile;
     }
@@ -704,7 +648,6 @@ A2AT_LLM_API_KEY=test-key
                 A2AT_LLM_MODEL=example-model
                 A2AT_LLM_BASE_URL=https://llm.example.test/v1
                 A2AT_LLM_API_KEY=test-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """
                         .formatted(provider));
         return envFile;
@@ -790,7 +733,6 @@ A2AT_LLM_API_KEY=test-key
                 A2AT_LLM_MODEL=example-model
                 A2AT_LLM_BASE_URL=https://llm.example.test/v1
                 A2AT_LLM_API_KEY=test-key
-                A2AT_NEGOTIATION_STATE_STORE_TYPE=in_memory
                 """
                         .formatted(TEST_MOCK_PROVIDER));
         return envFile;

@@ -9,10 +9,6 @@ import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMClientFactory;
 import net.openan.a2at.sdk.negotiation.generation.NegotiationContentService;
 import net.openan.a2at.sdk.negotiation.generation.NegotiationGenerationOrchestrator;
-import net.openan.a2at.sdk.negotiation.runtime.NegotiationHandler;
-import net.openan.a2at.sdk.negotiation.runtime.RoleBoundNegotiationOrchestrator;
-import net.openan.a2at.sdk.negotiation.store.impl.InMemoryNegotiationStore;
-import net.openan.a2at.sdk.negotiation.types.model.NegotiationRole;
 import net.openan.a2at.sdk.prompt.analysis.impl.DefaultStructuredPromptSlotValueExtractor;
 import net.openan.a2at.sdk.prompt.analysis.impl.LlmScenarioRecognizer;
 import net.openan.a2at.sdk.prompt.analysis.impl.PromptSlotValueExtractor;
@@ -138,21 +134,6 @@ public final class DefaultA2ATClientBuilder {
     }
 
     /**
-     * Builds the default negotiation orchestrator from the configured unified SDK config.
-     *
-     * @return assembled negotiation orchestrator
-     */
-    public RoleBoundNegotiationOrchestrator buildNegotiationOrchestrator() {
-        require(config, "Unified SDK config must be configured.");
-        requireSupportedConfig();
-        return new RoleBoundNegotiationOrchestrator(
-                NegotiationHandler.builder()
-                        .store(new InMemoryNegotiationStore())
-                        .build(),
-                NegotiationRole.CLIENT);
-    }
-
-    /**
      * Builds the default negotiation content-layer orchestrator from the configured unified SDK config.
      *
      * <p>The wiring is shared with the server side through
@@ -195,10 +176,6 @@ public final class DefaultA2ATClientBuilder {
         if (!LLMClientFactory.availableProviders().contains(config.llm().provider())) {
             throw new UnsupportedOperationException(
                     "Unsupported LLM provider: " + config.llm().provider());
-        }
-        if (!"in_memory".equals(config.negotiation().stateStoreType())) {
-            throw new UnsupportedOperationException("Unsupported negotiation state store type: "
-                    + config.negotiation().stateStoreType());
         }
     }
 
