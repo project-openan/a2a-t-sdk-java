@@ -37,7 +37,7 @@ Four pieces wire the observability module into a client-side workflow (see
 
    ```java
    try (A2ATSpan root = new A2ATSpan("sample.workflow").open()) {
-       // ... LLM call + client.getPrompts() from pieces 2 and 3 ...
+       // ... LLM call + client.generateNegotiationProposePromptFromData(...) from pieces 2 and 3 ...
        try (A2ATSpan rounds = new A2ATSpan("sample.negotiation-rounds").open()) {
            NegotiationMetrics.reportRounds("sample-negotiation", "accept", 3);
        }
@@ -46,7 +46,7 @@ Four pieces wire the observability module into a client-side workflow (see
 
 The demo generates a temporary `.env` at runtime (`A2AT_LANGUAGE=zh-CN`, plus `A2AT_LLM_*` keys pointing at a scripted
 offline `SampleLLM` registered under the provider name `a2at-observability-sample` — the facade constructor validates
-the provider even though `getPrompts()` never calls the LLM).
+the provider even though the from-data negotiation generation path never calls the LLM).
 
 ## Running
 
@@ -71,7 +71,8 @@ object per line; values shown here are illustrative, not fixed):
 
 - At startup, a dev-mode warning: `a2at: no OTLP endpoint configured; using Console exporters (dev mode)`.
 - After ~5 s, one `"signal":"span"` JSON line per span — `{"name":"...","signal":"span","data":{"status":"OK",...}}` —
-  for `sample.workflow`, `a2at.sdk.client.getPrompts`, `a2at.sdk.client.getPrompt` and `sample.negotiation-rounds`,
+  for `sample.workflow`, `a2at.sdk.client.generateNegotiationProposePromptFromData`,
+  `a2at.sdk.client.generateNegotiationAbortPromptFromData` and `sample.negotiation-rounds`,
   all sharing one `traceId` (the workflow root is the parent of the others).
 - After ~30 s, one `"signal":"metric"` JSON line per instrument — `gen_ai.client.token.usage` (unit `{token}`) and
   `a2at.negotiation.total_rounds` (unit `{round}`).
@@ -118,8 +119,8 @@ With an endpoint set, the Console exporters are replaced by OTLP exporters and t
 
 ## Notes
 
-- Facade span names follow `a2at.sdk.{role}.{method}` (`a2at.sdk.client.getPrompts`, `a2at.sdk.server.validate...`);
-  manual spans use the name passed to `A2ATSpan`.
+- Facade span names follow `a2at.sdk.{role}.{method}` (`a2at.sdk.client.generateNegotiationProposePromptFromData`,
+  `a2at.sdk.server.validate...`); manual spans use the name passed to `A2ATSpan`.
 - Metric instruments: `gen_ai.client.token.usage` and `a2at.negotiation.total_rounds`.
 - Protocol-level decorators (A2A `SendMessage`/`message:send` transport spans and similar wiring inside the client and
   server transports) are planned as a follow-up PR (Plan B); this sample covers the SDK facade, LLM and manual-span

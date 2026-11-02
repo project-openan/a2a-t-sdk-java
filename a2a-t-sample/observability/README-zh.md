@@ -35,7 +35,7 @@
 
    ```java
    try (A2ATSpan root = new A2ATSpan("sample.workflow").open()) {
-       // ... 第 2、3 步的 LLM 调用与 client.getPrompts() ...
+       // ... 第 2、3 步的 LLM 调用与 client.generateNegotiationProposePromptFromData(...) ...
        try (A2ATSpan rounds = new A2ATSpan("sample.negotiation-rounds").open()) {
            NegotiationMetrics.reportRounds("sample-negotiation", "accept", 3);
        }
@@ -43,7 +43,7 @@
    ```
 
 样例在运行期生成临时 `.env`（`A2AT_LANGUAGE=zh-CN`，以及指向离线脚本 LLM `SampleLLM` 的 `A2AT_LLM_*` 键，
-provider 名为 `a2at-observability-sample`——门面构造器会校验 provider，虽然 `getPrompts()` 并不真正调用
+provider 名为 `a2at-observability-sample`——门面构造器会校验 provider，虽然 from-data 协商生成路径并不真正调用
 LLM）。
 
 ## 运行
@@ -68,7 +68,8 @@ batch 处理器调度（约 5 秒后输出首批 span 行），Console metric ex
 
 - 启动时出现开发模式警告：`a2at: no OTLP endpoint configured; using Console exporters (dev mode)`。
 - 约 5 秒后，每个 span 一行 `"signal":"span"` JSON——`{"name":"...","signal":"span","data":{"status":"OK",...}}`——
-  分别为 `sample.workflow`、`a2at.sdk.client.getPrompts`、`a2at.sdk.client.getPrompt`、`sample.negotiation-rounds`，
+  分别为 `sample.workflow`、`a2at.sdk.client.generateNegotiationProposePromptFromData`、
+  `a2at.sdk.client.generateNegotiationAbortPromptFromData`、`sample.negotiation-rounds`，
   共享同一个 `traceId`（工作流根 span 是其余 span 的父节点）。
 - 约 30 秒后，每个指标一行 `"signal":"metric"` JSON——`gen_ai.client.token.usage`（单位 `{token}`）与
   `a2at.negotiation.total_rounds`（单位 `{round}`）。
@@ -114,8 +115,8 @@ A2AT_EXPORTER_PROTOCOL=http/protobuf
 
 ## 说明
 
-- 门面 span 命名遵循 `a2at.sdk.{role}.{method}`（`a2at.sdk.client.getPrompts`、`a2at.sdk.server.validate...`）；
-  手动 span 使用传入 `A2ATSpan` 的名字。
+- 门面 span 命名遵循 `a2at.sdk.{role}.{method}`（`a2at.sdk.client.generateNegotiationProposePromptFromData`、
+  `a2at.sdk.server.validate...`）；手动 span 使用传入 `A2ATSpan` 的名字。
 - 指标：`gen_ai.client.token.usage` 与 `a2at.negotiation.total_rounds`。
 - 协议层装饰器（A2A `SendMessage`/`message:send` 传输 span 等客户端与服务端传输内部的埋点）计划在后续 PR（Plan B）
   落地；本样例只覆盖 SDK 门面、LLM 与手动 span 面。

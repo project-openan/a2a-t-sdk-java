@@ -12,7 +12,6 @@ import java.util.Map;
 import net.openan.a2at.sdk.core.model.MetadataContent;
 import net.openan.a2at.sdk.core.model.NegotiationContext;
 import net.openan.a2at.sdk.core.model.NegotiationPerformative;
-import net.openan.a2at.sdk.core.model.PromptTemplate;
 import net.openan.a2at.sdk.core.model.StandardTemplates;
 import net.openan.a2at.sdk.core.model.TemplateUri;
 import net.openan.a2at.sdk.negotiation.content.InformationProposeContent;
@@ -68,12 +67,6 @@ class A2ATServerNegotiationApiTest {
     }
 
     @Test
-    void listsAllSevenNegotiationTemplatesPerLanguage() throws IOException {
-        assertEquals(7, negotiationPrompts(new A2ATServer(writeEnv("zh-CN"))).size());
-        assertEquals(7, negotiationPrompts(new A2ATServer(writeEnv("en-US"))).size());
-    }
-
-    @Test
     void generatesAbortPromptFromDataWithBuiltinChineseTemplates() throws IOException {
         A2ATServer server = new A2ATServer(writeEnv("zh-CN"));
 
@@ -87,38 +80,6 @@ class A2ATServerNegotiationApiTest {
         assertTrue(result.promptText().contains("## 协商结果\nAbort"));
         assertTrue(result.promptText().contains("## 协商终止原因"));
         assertTrue(result.promptText().contains("达到协商轮次上限，本次协商确认结束。"));
-    }
-
-    @Test
-    void queriesTheCommonAbortTemplateWithoutThrowing() throws IOException {
-        A2ATServer server = new A2ATServer(writeEnv("zh-CN"));
-
-        PromptTemplate template =
-                server.getPrompt(StandardTemplates.NEGOTIATION_ABORT_URI).orElseThrow();
-        assertEquals(StandardTemplates.NEGOTIATION_ABORT, template.templateUri());
-        assertFalse(template.content().isBlank());
-    }
-
-    @Test
-    void queriesSingleNegotiationTemplateWithoutThrowing() throws IOException {
-        A2ATServer server = new A2ATServer(writeEnv("zh-CN"));
-
-        assertTrue(server.getPrompt(INFORMATION_PROPOSE_URI).isPresent());
-        assertTrue(server.getPrompt(StandardTemplates.FEASIBILITY_NEGOTIATION_ACCEPT_REJECT_URI)
-                .isPresent());
-        assertFalse(server.getPrompt(
-                        StandardTemplates.NEGOTIATION_EXTENSION_NAME + "/unknown-negotiation/propose/v1")
-                .isPresent());
-        PromptTemplate template = server.getPrompt(INFORMATION_PROPOSE_URI).orElseThrow();
-        assertEquals(INFORMATION_PROPOSE, template.templateUri());
-        assertFalse(template.content().isBlank());
-    }
-
-    private static List<PromptTemplate> negotiationPrompts(A2ATServer server) {
-        return server.getPrompts().stream()
-                .filter(template -> StandardTemplates.NEGOTIATION_EXTENSION_NAME.equals(
-                        template.templateUri().extensionName()))
-                .toList();
     }
 
     private static Path writeEnv(String language) throws IOException {

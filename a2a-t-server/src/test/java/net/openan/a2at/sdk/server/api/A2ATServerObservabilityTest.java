@@ -11,12 +11,17 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import net.openan.a2at.sdk.core.model.NegotiationContext;
+import net.openan.a2at.sdk.core.model.NegotiationPerformative;
+import net.openan.a2at.sdk.core.model.StandardTemplates;
 import net.openan.a2at.sdk.core.telemetry.TelemetryHook;
 import net.openan.a2at.sdk.core.telemetry.TelemetryOperation;
 import net.openan.a2at.sdk.llm.LLMClient;
 import net.openan.a2at.sdk.llm.LLMClientConfig;
 import net.openan.a2at.sdk.llm.LLMClientFactory;
 import net.openan.a2at.sdk.llm.LLMResponse;
+import net.openan.a2at.sdk.negotiation.content.NegotiationAbortContent;
+import net.openan.a2at.sdk.negotiation.content.NegotiationAbortData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -123,35 +128,47 @@ class A2ATServerObservabilityTest {
     void llmFreePathIsWrappedAsSdkOperation() throws IOException {
         RecordingHook hook = new RecordingHook();
         A2ATServer server = newServer(hook);
-        server.getPrompts();
-        assertTrue(hook.started.contains("server.getPrompts"));
-        assertTrue(hook.succeeded.contains("server.getPrompts"));
+        generateAbortFromData(server);
+        assertTrue(hook.started.contains("server.generateNegotiationAbortPromptFromData"));
+        assertTrue(hook.succeeded.contains("server.generateNegotiationAbortPromptFromData"));
     }
 
     @Test
     void runtimeFailureMarksErrorAndPropagates() throws IOException {
         RecordingHook hook = new RecordingHook();
         A2ATServer server = newServer(hook);
-        assertThrows(NullPointerException.class, () -> server.getPrompt(null));
-        assertTrue(hook.started.contains("server.getPrompt"));
-        assertTrue(hook.started.contains("FAILED:server.getPrompt"));
+        assertThrows(
+                NullPointerException.class,
+                () -> server.generateNegotiationAbortPromptFromText(null, null, null));
+        assertTrue(hook.started.contains("server.generateNegotiationAbortPromptFromText"));
+        assertTrue(hook.started.contains("FAILED:server.generateNegotiationAbortPromptFromText"));
     }
 
     @Test
     void throwingHookDoesNotBreakBusinessFlow() throws IOException {
         A2ATServer startFailure = newServer(new ThrowingHook(true));
-        assertDoesNotThrow(startFailure::getPrompts);
+        assertDoesNotThrow(() -> generateAbortFromData(startFailure));
 
         A2ATServer markErrorFailure = newServer(new ThrowingHook(false));
-        NullPointerException error =
-                assertThrows(NullPointerException.class, () -> markErrorFailure.getPrompt(null));
+        NullPointerException error = assertThrows(
+                NullPointerException.class,
+                () -> markErrorFailure.generateNegotiationAbortPromptFromText(null, null, null));
         assertEquals("templateUri", error.getMessage());
     }
 
     @Test
     void legacyConstructorAndFacadeCallsComplete() throws IOException {
         A2ATServer server = new A2ATServer(writeEnv(true));
-        assertDoesNotThrow(server::getPrompts);
-        assertDoesNotThrow(server::getPrompts);
+        assertDoesNotThrow(() -> generateAbortFromData(server));
+        assertDoesNotThrow(() -> generateAbortFromData(server));
+    }
+
+    private static void generateAbortFromData(A2ATServer server) {
+        server.generateNegotiationAbortPromptFromData(
+                new NegotiationAbortData(
+                        new NegotiationContext(
+                                "3dbc13b5-bd57-4c2b-b503-24e381b6c8d3", 1, 5, NegotiationPerformative.ABORT),
+                        new NegotiationAbortContent("Done.")),
+                StandardTemplates.NEGOTIATION_ABORT_URI);
     }
 }
