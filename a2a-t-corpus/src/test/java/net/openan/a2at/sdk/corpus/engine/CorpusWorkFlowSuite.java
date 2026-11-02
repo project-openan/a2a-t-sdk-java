@@ -11,6 +11,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.TestInstance;
+import org.opentest4j.TestAbortedException;
+import net.openan.a2at.sdk.corpus.engine.config.CorpusEnvConfig;
+import net.openan.a2at.sdk.corpus.engine.config.CorpusLanguage;
 import net.openan.a2at.sdk.corpus.engine.discover.ScenarioScanner;
 import net.openan.a2at.sdk.corpus.engine.engine.WorkflowEngine;
 import net.openan.a2at.sdk.corpus.engine.llm.RecordingMeteredLlmClient;
@@ -27,6 +30,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Base class of every {@code -T} workflow suite. A concrete suite declares only its extension folder, its workflow
  * type (from_text / from_data), the consumed case file and the runtime kind; scenario discovery, case loading,
  * execution, expectation comparison and transcript/summary writing are all inherited.
+ *
+ * <p>{@code A2AT_LANGUAGE} (default {@code zh-CN}) selects the prompt language and the case-file variant, for example
+ * {@code input_case_from_text_en-US.json}; a language without any committed case file aborts with an actionable
+ * message instead of failing. Non-default languages suffix the transcript and summary file names with the language,
+ * so the Chinese run results are not overwritten.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class CorpusWorkFlowSuite {
@@ -92,6 +100,20 @@ public abstract class CorpusWorkFlowSuite {
 
     @TestFactory
     Stream<DynamicTest> corpusCases() {
+        String language = CorpusEnvConfig.resolveLanguage();
+        String caseFileName = CorpusLanguage.localizedCaseFile(inputFileName(), language);
+        List<ScenarioScanner.Scenario> discovered = ScenarioScanner.discoverOptional(extensionFolder(), caseFileName);
+        if (discovered.isEmpty()) {
+            String reason = "no " + language + " corpus case file found: expected suites/" + extensionFolder()
+                    + "/resources/<scenario>/" + caseFileName
+                    + "; add the language-specific case file or set A2AT_LANGUAGE=" + CorpusLanguage.DEFAULT_LANGUAGE;
+            return Stream.of(DynamicTest.dynamicTest("none", () -> {
+                throw new TestAbortedException(reason);
+            }));
+        }
+        List<ScenarioScanner.Scenario> scenarios =
+                ScenarioScanner.filterScenarios(discovered, System.getProperty("corpus.scenario"));
+
         ApiRegistry registry;
         if ("negotiation".equals(runtimeKind())) {
             SdkRuntimeAssembler.NegotiationRuntime rt = negotiationRuntime();
@@ -105,15 +127,12 @@ public abstract class CorpusWorkFlowSuite {
         }
         WorkflowEngine engine = new WorkflowEngine(registry, registryRecorder());
 
-        List<ScenarioScanner.Scenario> scenarios = ScenarioScanner.filterScenarios(
-                ScenarioScanner.discover(extensionFolder(), inputFileName()),
-                System.getProperty("corpus.scenario"));
         String caseFilter = System.getProperty("case.filter");
 
         List<DynamicTest> tests = new ArrayList<>();
         for (ScenarioScanner.Scenario scenario : scenarios) {
             List<InputCase> cases =
-                    new CaseFileLoader().load(scenario.inputFile(inputFileName()), registry.apiNames());
+                    new CaseFileLoader().load(scenario.inputFile(caseFileName), registry.apiNames());
             scenarioDirs.put(scenario.name(), scenario.sourceDir());
             for (InputCase inputCase : cases) {
                 if (!ScenarioScanner.matchesCaseFilter(caseFilter, inputCase.id())) {
@@ -137,12 +156,20 @@ public abstract class CorpusWorkFlowSuite {
 
     @AfterAll
     void writeTranscripts() {
+        if (scenarioDirs.isEmpty()) {
+            // No case file exists for the configured language; the collection-time abort already reported the reason.
+            return;
+        }
+        String language = CorpusEnvConfig.resolveLanguage();
+        String runFlowType = CorpusLanguage.DEFAULT_LANGUAGE.equals(language)
+                ? flowType()
+                : flowType() + "_" + language;
         for (Map.Entry<String, List<WorkflowEngine.CaseResult>> entry : groupByScenario(results).entrySet()) {
             Path resultFile = TranscriptWriter.writeScenarioOutput(
-                    flowType(), entry.getKey(), scenarioDirs.get(entry.getKey()), entry.getValue());
+                    runFlowType, entry.getKey(), scenarioDirs.get(entry.getKey()), entry.getValue());
             System.out.println("Output: " + resultFile);
         }
-        Path summaryFile = ResultAggregator.writeSummary(flowType(), results);
+        Path summaryFile = ResultAggregator.writeSummary(runFlowType, results);
         System.out.println("Summary: " + summaryFile);
     }
 

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 import net.openan.a2at.sdk.corpus.engine.CorpusWorkFlowSuite;
+import net.openan.a2at.sdk.corpus.engine.config.CorpusLanguage;
 import net.openan.a2at.sdk.corpus.engine.discover.ScenarioScanner;
 import net.openan.a2at.sdk.corpus.engine.loader.CaseFileLoader;
 import net.openan.a2at.sdk.corpus.engine.loader.ExpectedStep;
@@ -13,7 +14,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Notification-T self-guard (meta test): validates every Notification-T scenario case file structurally without any
- * LLM call - unknown keys, misaligned expectations, unknown api names, out-of-catalog error codes and
+ * LLM call, including the committed non-default-language variants ({@code input_case_from_*_en-US.json}) when
+ * present - unknown keys, misaligned expectations, unknown api names, out-of-catalog error codes and
  * category/expectation contradictions all fail here.
  *
  * <p>Id uniqueness is enforced per-file by the {@link CaseFileLoader}; ids may repeat across different flow files
@@ -21,7 +23,7 @@ import org.junit.jupiter.api.Test;
  */
 public final class NotificationSelfGuardTest {
 
-    /** Categories carrying a cross-step expectation contract (case data is Chinese). */
+    /** Categories carrying a cross-step expectation contract (the report/self-guard vocabulary is Chinese). */
     static final String CATEGORY_NORMAL = "正常";
 
     static final String CATEGORY_EXCEPTION = "异常";
@@ -29,9 +31,11 @@ public final class NotificationSelfGuardTest {
     @Test
     void notificationScenarioCaseFilesAreStructurallyValid() {
         List<String> problems = new ArrayList<>();
-        for (String flowFile : List.of(
-                CorpusWorkFlowSuite.INPUT_CASE_FROM_TEXT, CorpusWorkFlowSuite.INPUT_CASE_FROM_DATA)) {
-            for (ScenarioScanner.Scenario scenario : ScenarioScanner.discover("notification", flowFile)) {
+        List<String> flowFiles = new ArrayList<>(
+                CorpusLanguage.caseFileVariants(CorpusWorkFlowSuite.INPUT_CASE_FROM_TEXT));
+        flowFiles.addAll(CorpusLanguage.caseFileVariants(CorpusWorkFlowSuite.INPUT_CASE_FROM_DATA));
+        for (String flowFile : flowFiles) {
+            for (ScenarioScanner.Scenario scenario : ScenarioScanner.discoverOptional("notification", flowFile)) {
                 List<InputCase> cases = new CaseFileLoader()
                         .load(scenario.inputFile(flowFile), CorpusWorkFlowSuite.notificationApiNames());
                 for (InputCase inputCase : cases) {

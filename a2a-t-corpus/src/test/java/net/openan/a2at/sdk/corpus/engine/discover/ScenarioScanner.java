@@ -35,7 +35,13 @@ public final class ScenarioScanner {
 
     private ScenarioScanner() {}
 
-    public static List<Scenario> discover(String extensionFolder, String flowFileName) {
+    /**
+     * Lists matching scenarios, returning an empty list when the case file exists nowhere.
+     *
+     * <p>The optional variant serves the language-specific case selection: a language without any committed case file
+     * is a visible skip, not a collection failure.
+     */
+    public static List<Scenario> discoverOptional(String extensionFolder, String flowFileName) {
         List<Scenario> scenarios = new ArrayList<>();
         Path sourceTree = Path.of(
                         System.getProperty("user.dir", "."),
@@ -59,7 +65,28 @@ public final class ScenarioScanner {
             collectFromClasspath(extensionFolder, scenarios, flowFileName);
         }
         scenarios.sort(Comparator.comparing(Scenario::name));
+        return scenarios;
+    }
+
+    /** Lists every scenario under the extension's {@code resources/} folder carrying the requested case file. */
+    public static List<Scenario> discover(String extensionFolder, String flowFileName) {
+        List<Scenario> scenarios = discoverOptional(extensionFolder, flowFileName);
         if (scenarios.isEmpty()) {
+            Path sourceTree = Path.of(
+                            System.getProperty("user.dir", "."),
+                            "src",
+                            "test",
+                            "java",
+                            "net",
+                            "openan",
+                            "a2at",
+                            "sdk",
+                            "corpus",
+                            "suites",
+                            extensionFolder,
+                            "resources")
+                    .toAbsolutePath()
+                    .normalize();
             throw new IllegalStateException(
                     "No corpus scenario directories found: expected " + extensionFolder + "/resources/<scenario>/" + flowFileName
                             + " (neither the source tree " + sourceTree + " nor the test classpath matches)");

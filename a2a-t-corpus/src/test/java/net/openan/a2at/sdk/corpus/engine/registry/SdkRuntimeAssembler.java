@@ -23,8 +23,8 @@ import net.openan.a2at.sdk.server.assembly.DefaultA2ATServerBuilder;
  * <p>Every component is produced by the production builders ({@code DefaultA2ATClientBuilder} /
  * {@code DefaultA2ATServerBuilder} / {@code NegotiationGenerationOrchestratorBuilder}); the sole test seam is the
  * {@link RecordingMeteredLlmClient} injected through the builder {@code llmClient(...)} injection point. The unified
- * {@link A2ATConfig} is constructed directly from the corpus test configuration (classpath prompt resources, fixed
- * language), so the module never touches production {@code A2AT_LLM_*} environment values.
+ * {@link A2ATConfig} is constructed directly from the corpus test configuration (classpath prompt resources of the
+ * configured language), so the module never touches production {@code A2AT_LLM_*} environment values.
  */
 public final class SdkRuntimeAssembler {
 
@@ -84,7 +84,7 @@ public final class SdkRuntimeAssembler {
                 env.maxAttempts(),
                 List.of());
         A2ATConfig config = new A2ATConfig(
-                new PromptRuntimeConfig("zh-CN", PromptRuntimeConfig.SOURCE_TYPE_CLASSPATH, null),
+                new PromptRuntimeConfig(env.language(), PromptRuntimeConfig.SOURCE_TYPE_CLASSPATH, null),
                 llmConfig,
                 new InputLimitConfig(InputLimitConfig.DEFAULT_MAX_TEXT_CHARS),
                 new NegotiationConfig("in_memory"));
@@ -108,7 +108,7 @@ public final class SdkRuntimeAssembler {
         RecordingMeteredLlmClient recorder = newRecorder(env);
 
         NegotiationGenerationOrchestrator orchestrator = NegotiationGenerationOrchestratorBuilder.builder()
-                .language("zh-CN")
+                .language(env.language())
                 .llmClient(recorder)
                 .maxAttempts(env.maxAttempts())
                 .build();
@@ -149,7 +149,7 @@ public final class SdkRuntimeAssembler {
                 env.maxAttempts(),
                 List.of());
         A2ATConfig config = new A2ATConfig(
-                new PromptRuntimeConfig("zh-CN", PromptRuntimeConfig.SOURCE_TYPE_CLASSPATH, null),
+                new PromptRuntimeConfig(env.language(), PromptRuntimeConfig.SOURCE_TYPE_CLASSPATH, null),
                 llmConfig,
                 new InputLimitConfig(InputLimitConfig.DEFAULT_MAX_TEXT_CHARS),
                 new NegotiationConfig("in_memory"));

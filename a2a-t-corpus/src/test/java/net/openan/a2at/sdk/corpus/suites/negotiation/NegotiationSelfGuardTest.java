@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 import net.openan.a2at.sdk.corpus.engine.CorpusWorkFlowSuite;
+import net.openan.a2at.sdk.corpus.engine.config.CorpusLanguage;
 import net.openan.a2at.sdk.corpus.engine.discover.ScenarioScanner;
 import net.openan.a2at.sdk.corpus.engine.loader.CaseFileLoader;
 import net.openan.a2at.sdk.corpus.engine.loader.ExpectedStep;
@@ -12,21 +13,26 @@ import net.openan.a2at.sdk.corpus.engine.loader.InputCase;
 import org.junit.jupiter.api.Test;
 
 /**
- * Negotiation-T corpus self-guard: validates every Negotiation-T scenario case file structurally without any LLM call.
+ * Negotiation-T corpus self-guard: validates every Negotiation-T scenario case file structurally without any LLM
+ * call, including the committed non-default-language variants ({@code input_case_from_*_en-US.json}) when present.
  * Unknown keys, misaligned expectations, unknown api names, out-of-catalog error codes and category/expectation
  * contradictions all fail here.
  */
 public final class NegotiationSelfGuardTest {
 
+    /** Categories carrying a cross-step expectation contract (the report/self-guard vocabulary is Chinese). */
     private static final String CATEGORY_NORMAL = "正常";
+
     private static final String CATEGORY_EXCEPTION = "异常";
 
     @Test
     void negotiationScenarioCaseFilesAreStructurallyValid() {
         List<String> problems = new ArrayList<>();
-        for (String flowFile : List.of(
-                CorpusWorkFlowSuite.INPUT_CASE_FROM_TEXT, CorpusWorkFlowSuite.INPUT_CASE_FROM_DATA)) {
-            for (ScenarioScanner.Scenario scenario : ScenarioScanner.discover("negotiation", flowFile)) {
+        List<String> flowFiles = new ArrayList<>(
+                CorpusLanguage.caseFileVariants(CorpusWorkFlowSuite.INPUT_CASE_FROM_TEXT));
+        flowFiles.addAll(CorpusLanguage.caseFileVariants(CorpusWorkFlowSuite.INPUT_CASE_FROM_DATA));
+        for (String flowFile : flowFiles) {
+            for (ScenarioScanner.Scenario scenario : ScenarioScanner.discoverOptional("negotiation", flowFile)) {
                 List<InputCase> cases = new CaseFileLoader()
                         .load(scenario.inputFile(flowFile), CorpusWorkFlowSuite.negotiationApiNames());
                 for (InputCase inputCase : cases) {

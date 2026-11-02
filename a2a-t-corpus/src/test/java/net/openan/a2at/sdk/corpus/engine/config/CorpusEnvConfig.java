@@ -6,15 +6,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TreeSet;
 
 /**
- * Unified LLM configuration for the accuracy verification corpus.
+ * Unified runtime configuration for the accuracy verification corpus.
  *
- * <p>Configuration keys follow the project-root {@code env.example} naming (the {@code A2AT_LLM_*} family), so the
- * corpus {@code env.example} is a tuned subset of the root template and one set of names serves both. One shared
- * configuration serves every -T extension suite: values are resolved in the order system properties
- * ({@code a2at.llm.*}) &gt; the module-root {@code .env} file ({@code A2AT_LLM_*}) &gt; process environment
- * variables ({@code A2AT_LLM_*}).
+ * <p>Configuration keys follow the project-root {@code env.example} naming ({@code A2AT_LANGUAGE} and the
+ * {@code A2AT_LLM_*} family), so the corpus {@code env.example} is a tuned subset of the root template and one set of
+ * names serves both. One shared configuration serves every -T extension suite: values are resolved in the order
+ * system properties ({@code a2at.language}, {@code a2at.llm.*}) &gt; the module-root {@code .env} file
+ * ({@code A2AT_LANGUAGE}, {@code A2AT_LLM_*}) &gt; process environment variables. {@code A2AT_LANGUAGE} selects both
+ * the prompt-resource language and the language-specific case-file variant
+ * ({@code input_case_from_*_en-US.json}); it defaults to {@code zh-CN} so the committed Chinese corpus keeps working
+ * unchanged.
  *
  * <p>This module must run against a real LLM; a missing or invalid configuration therefore fails fast with an
  * actionable error instead of producing silently wrong results. CI excludes this module entirely, so the fail-fast
@@ -23,6 +27,8 @@ import java.util.Map;
 public final class CorpusEnvConfig {
 
     /** Environment-file keys (also accepted as process environment variables); names mirror the root {@code env.example}. */
+    static final String ENV_LANGUAGE = "A2AT_LANGUAGE";
+
     static final String ENV_PROVIDER = "A2AT_LLM_PROVIDER";
 
     static final String ENV_BASE_URL = "A2AT_LLM_BASE_URL";
@@ -40,6 +46,8 @@ public final class CorpusEnvConfig {
     static final String ENV_MAX_TOKENS = "A2AT_LLM_MAX_TOKENS";
 
     /** System-property keys, taking precedence over the {@code .env} file and environment variables. */
+    private static final String PROP_LANGUAGE = "a2at.language";
+
     private static final String PROP_PROVIDER = "a2at.llm.provider";
 
     private static final String PROP_BASE_URL = "a2at.llm.base.url";
@@ -62,6 +70,8 @@ public final class CorpusEnvConfig {
 
     private static CorpusEnvConfig instance;
 
+    private final String language;
+
     private final String provider;
 
     private final String baseUrl;
@@ -79,6 +89,7 @@ public final class CorpusEnvConfig {
     private final Integer maxTokens;
 
     private CorpusEnvConfig(
+            String language,
             String provider,
             String baseUrl,
             String apiKey,
@@ -87,6 +98,7 @@ public final class CorpusEnvConfig {
             Double timeoutSeconds,
             int maxAttempts,
             Integer maxTokens) {
+        this.language = language;
         this.provider = provider;
         this.baseUrl = baseUrl;
         this.apiKey = apiKey;
@@ -105,7 +117,16 @@ public final class CorpusEnvConfig {
     }
 
     private static CorpusEnvConfig create() {
-        Map<String, String> envFileValues = readEnvFile();
+        return create(readEnvFile(envFile()));
+    }
+
+    static CorpusEnvConfig create(Map<String, String> envFileValues) {
+        String language = resolve(ENV_LANGUAGE, PROP_LANGUAGE, envFileValues);
+        if (isBlank(language)) {
+            language = CorpusLanguage.DEFAULT_LANGUAGE;
+        } else {
+            language = language.trim();
+        }
         String provider = resolve(ENV_PROVIDER, PROP_PROVIDER, envFileValues);
         if (isBlank(provider)) {
             provider = DEFAULT_PROVIDER;
@@ -115,6 +136,10 @@ public final class CorpusEnvConfig {
         String model = resolve(ENV_MODEL, PROP_MODEL, envFileValues);
 
         StringBuilder problems = new StringBuilder();
+        String languageProblem = languageProblem(language);
+        if (languageProblem != null) {
+            problems.append("\n").append(languageProblem);
+        }
         if (!DEFAULT_PROVIDER.equals(provider.trim())) {
             problems.append("\n- ")
                     .append(ENV_PROVIDER)
@@ -146,6 +171,7 @@ public final class CorpusEnvConfig {
         }
 
         return new CorpusEnvConfig(
+                language,
                 provider.trim(),
                 baseUrl.trim(),
                 apiKey.trim(),
@@ -156,14 +182,57 @@ public final class CorpusEnvConfig {
                 parseOptionalInteger(ENV_MAX_TOKENS, PROP_MAX_TOKENS, envFileValues));
     }
 
-    private static Map<String, String> readEnvFile() {
-        Path envFile = envFile().toAbsolutePath().normalize();
+    /**
+     * Resolves only the corpus prompt language, without validating the LLM configuration.
+     *
+     * <p>The corpus selects its language-specific case files at test-collection time, before the lazy
+     * {@link #load()} runtime loading. This helper therefore touches only {@code A2AT_LANGUAGE}; it keeps the
+     * collection path free of the fail-fast LLM checks.
+     *
+     * @return the configured language, or {@code zh-CN} when unset.
+     * @throws IllegalStateException when the configured language is not supported by the bundled resources.
+     */
+    public static String resolveLanguage() {
+        return resolveLanguage(readEnvFile(envFile()), System.getenv());
+    }
+
+    static String resolveLanguage(Map<String, String> envFileValues, Map<String, String> processEnvironment) {
+        String language = resolve(ENV_LANGUAGE, PROP_LANGUAGE, envFileValues, processEnvironment);
+        if (isBlank(language)) {
+            return CorpusLanguage.DEFAULT_LANGUAGE;
+        }
+        language = language.trim();
+        String problem = languageProblem(language);
+        if (problem != null) {
+            throw new IllegalStateException(
+                    "a2a-t-corpus has an invalid prompt-language configuration:"
+                            + "\n"
+                            + problem
+                            + "\nSet "
+                            + ENV_LANGUAGE
+                            + " in the module-root .env file or the process environment (or override it with -D"
+                            + PROP_LANGUAGE
+                            + ").");
+        }
+        return language;
+    }
+
+    private static String languageProblem(String language) {
+        if (CorpusLanguage.SUPPORTED_LANGUAGES.contains(language)) {
+            return null;
+        }
+        String supported = String.join(", ", new TreeSet<>(CorpusLanguage.SUPPORTED_LANGUAGES));
+        return "- " + ENV_LANGUAGE + " must be one of: " + supported + " (currently \"" + language + "\")";
+    }
+
+    private static Map<String, String> readEnvFile(Path envFile) {
+        Path normalizedEnvFile = envFile.toAbsolutePath().normalize();
         Map<String, String> values = new LinkedHashMap<>();
-        if (!Files.isRegularFile(envFile)) {
+        if (!Files.isRegularFile(normalizedEnvFile)) {
             return values;
         }
         try {
-            for (String rawLine : Files.readAllLines(envFile, StandardCharsets.UTF_8)) {
+            for (String rawLine : Files.readAllLines(normalizedEnvFile, StandardCharsets.UTF_8)) {
                 String line = rawLine.strip();
                 if (line.isEmpty() || line.startsWith("#")) {
                     continue;
@@ -177,7 +246,7 @@ public final class CorpusEnvConfig {
                 values.put(key, value);
             }
         } catch (IOException error) {
-            throw new IllegalStateException("Failed to read " + envFile + ": " + error.getMessage(), error);
+            throw new IllegalStateException("Failed to read " + normalizedEnvFile + ": " + error.getMessage(), error);
         }
         return values;
     }
@@ -194,6 +263,11 @@ public final class CorpusEnvConfig {
     }
 
     private static String resolve(String envKey, String propKey, Map<String, String> envFileValues) {
+        return resolve(envKey, propKey, envFileValues, System.getenv());
+    }
+
+    private static String resolve(
+            String envKey, String propKey, Map<String, String> envFileValues, Map<String, String> processEnvironment) {
         String fromProperty = System.getProperty(propKey);
         if (fromProperty != null && !fromProperty.isBlank()) {
             return fromProperty.strip();
@@ -202,7 +276,7 @@ public final class CorpusEnvConfig {
         if (fromFile != null && !fromFile.isBlank()) {
             return fromFile;
         }
-        String fromEnvironment = System.getenv(envKey);
+        String fromEnvironment = processEnvironment.get(envKey);
         return fromEnvironment == null ? "" : fromEnvironment;
     }
 
@@ -256,6 +330,10 @@ public final class CorpusEnvConfig {
 
     private static Path envFile() {
         return Path.of(System.getProperty("user.dir", "."), ".env");
+    }
+
+    public String language() {
+        return language;
     }
 
     public String provider() {
