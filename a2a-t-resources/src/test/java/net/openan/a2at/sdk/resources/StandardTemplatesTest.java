@@ -47,8 +47,8 @@ class StandardTemplatesTest {
         grouped.addAll(StandardTemplates.NOTIFICATION);
         grouped.addAll(StandardTemplates.AUTHORIZATION);
         grouped.addAll(StandardTemplates.NEGOTIATION);
-        assertEquals(13, grouped.size(), "expected the 13 built-in templates");
-        assertEquals(3, StandardTemplates.TASK.size());
+        assertEquals(14, grouped.size(), "expected the 14 built-in templates");
+        assertEquals(4, StandardTemplates.TASK.size());
         assertEquals(2, StandardTemplates.NOTIFICATION.size());
         assertEquals(1, StandardTemplates.AUTHORIZATION.size());
         assertEquals(7, StandardTemplates.NEGOTIATION.size());

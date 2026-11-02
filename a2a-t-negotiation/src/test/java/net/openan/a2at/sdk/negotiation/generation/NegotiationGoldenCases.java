@@ -78,7 +78,7 @@ public final class NegotiationGoldenCases {
     /** Golden fixture text of zh-CN/information_accept. */
     private static final String GOLDEN_zh_CN_INFORMATION_ACCEPT = "## 信息协商结果\nAccept\n\n## 信息协商结果内容\n1. 接入端口名称：P533-珠江旧城-PTN3900-23-TPA1EG24-1\n2. 投诉分类：专线质差";
     /** Golden fixture text of zh-CN/information_propose. */
-    private static final String GOLDEN_zh_CN_INFORMATION_PROPOSE = "## 信息协商\n请根据<所需信息项>补充相关内容。\n\n## 所需信息项\n1. 接入端口名称：举例：P533-珠江旧城-PTN3900-23-TPA1EG24-1\n2. 投诉分类：举例：专线质差\n3. 专线业务标识\n缺失项之间的关系：OR";
+    private static final String GOLDEN_zh_CN_INFORMATION_PROPOSE = "## 信息协商\n请根据[所需信息项](#所需信息项)补充相关内容。\n\n## 所需信息项\n1. 接入端口名称：举例：P533-珠江旧城-PTN3900-23-TPA1EG24-1\n2. 投诉分类：举例：专线质差\n3. 专线业务标识\n缺失项之间的关系：OR";
     /** Golden fixture text of zh-CN/information_reject. */
     private static final String GOLDEN_zh_CN_INFORMATION_REJECT = "## 信息协商结果\nReject\n\n## 信息协商结果内容\n1. 接入端口名称：无法提供，工作台侧端口资源台账暂不可查";
     /** Golden fixture text of zh-CN/target_accept. */
@@ -106,7 +106,7 @@ public final class NegotiationGoldenCases {
     /** Golden fixture text of en-US/information_accept. */
     private static final String GOLDEN_en_US_INFORMATION_ACCEPT = "## Information Negotiation Result\nAccept\n\n## Information Negotiation Result Content\n1. Access Port Name: P533-Zhujiang Old Town-PTN3900-23-TPA1EG24-1\n2. Complaint Category: dedicated-line quality degradation";
     /** Golden fixture text of en-US/information_propose. */
-    private static final String GOLDEN_en_US_INFORMATION_PROPOSE = "## Information Negotiation\nPlease supplement the relevant content based on <Required Information Items>.\n\n## Required Information Items\n1. Access Port Name: e.g. P533-Zhujiang Old Town-PTN3900-23-TPA1EG24-1\n2. Complaint Category: e.g. dedicated-line quality degradation\n3. Private Line Service Identifier\nRelationship between missing items: OR";
+    private static final String GOLDEN_en_US_INFORMATION_PROPOSE = "## Information Negotiation\nPlease supplement the relevant content based on [Required Information Items](#required-information-items).\n\n## Required Information Items\n1. Access Port Name: e.g. P533-Zhujiang Old Town-PTN3900-23-TPA1EG24-1\n2. Complaint Category: e.g. dedicated-line quality degradation\n3. Private Line Service Identifier\nRelationship between missing items: OR";
     /** Golden fixture text of en-US/information_reject. */
     private static final String GOLDEN_en_US_INFORMATION_REJECT = "## Information Negotiation Result\nReject\n\n## Information Negotiation Result Content\n1. Access Port Name: cannot be provided because the port inventory is temporarily unavailable on the workbench side";
     /** Golden fixture text of en-US/target_accept. */
