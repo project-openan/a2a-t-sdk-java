@@ -66,6 +66,7 @@ flowchart LR
 | 多轮协商&协商状态管理 | 支持 `information` / `feasibility` / `target` 三类协商，提供模板驱动的协商报文生成；协商类型、运行时状态机与状态存储（当前提供内存实现） |
 | 资源组织 | 内置提示词资源（`prompts` / `scenarios` / `slots` / `templates`）位于 `a2a-t-resources`，支持 `classpath` 与本地文件两种加载方式 |
 | LLM 适配 | 默认提供 OpenAIClient，支持接入兼容 OpenAI 规范的 LLM，并支持自定义 LLM 接入 |
+| 可观测性 | 基于 OpenTelemetry 自动记录 SDK 客户端/服务端调用的调用链、指标与结构化日志；构造客户端与服务端时各传入一个参数即可接入，无需修改业务代码，支持按需整体关闭 |
 | 内置示例 | 随包提供 `subscribe_incident`（事件订阅）等可运行示例场景，无需外部依赖即可端到端跑通 |
 
 ## 项目结构
@@ -82,6 +83,8 @@ flowchart LR
 | `a2a-t-negotiation` | 协商类型、运行时状态机与状态存储 |
 | `a2a-t-client` | 客户端封装，提供任务提示词生成与协商入口（`A2ATClient`） |
 | `a2a-t-server` | 服务端封装，提供 A2A-T 协议报文的校验与协商入口（`A2ATServer`） |
+| `a2a-t-observability` | 可观测性模块：OpenTelemetry 初始化、SDK 调用记录、LLM token 与协商轮数指标、手动 span API 与结构化日志 |
+| `a2a-t-observability-a2a` | A2A 传输层的协议级可观测装饰器（预留模块，实现随后续版本落地） |
 | `a2a-t-corpus` | 准确性验证语料（纯测试模块）：数据驱动工作流用例，需配置真实 LLM 执行；不参与打包与 CI |
 | `a2a-t-sample` | 可运行的客户端/服务端示例 |
 
@@ -146,7 +149,7 @@ mvn test
 
 | 文档 | 位置 | 内容 |
 | --- | --- | --- |
-| 开发指南 | [docs/zh/开发指南.md](docs/zh/开发指南.md) | 特性介绍、安装接入、参数配置与最小实践 |
+| 开发指南 | [docs/zh/开发指南.md](docs/zh/开发指南.md) | 特性介绍、安装接入、参数配置、可观测性集成与最小实践 |
 | API 参考 | [docs/zh/API参考.md](docs/zh/API参考.md) | `A2ATClient` / `A2ATServer` 全量 API 定义与使用说明 |
 
 ## 当前支持范围

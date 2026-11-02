@@ -66,6 +66,7 @@ flowchart LR
 | Multi-round negotiation & negotiation state management | Supports the three negotiation types `information` / `feasibility` / `target` with template-driven negotiation message generation; covers negotiation types, the runtime state machine, and state storage (currently an in-memory implementation) |
 | Resource organization | Built-in prompt resources (`prompts` / `scenarios` / `slots` / `templates`) live in `a2a-t-resources` and support both classpath and local-file loading |
 | LLM adaptation | Provides OpenAIClient by default, supports LLMs compatible with the OpenAI specification, and allows custom LLM integration |
+| Observability | Automatically records traces, metrics, and structured logs of SDK client/server calls based on OpenTelemetry; integrate by passing one constructor argument on each of the client and the server, with no business code changes, and it can be switched off entirely as needed |
 | Built-in samples | Ships runnable sample scenarios such as `subscribe_incident` (incident subscription), which run end to end with zero external dependencies |
 
 ## Project Structure
@@ -82,6 +83,8 @@ The repository is organized as Maven multi-modules, with core code under each mo
 | `a2a-t-negotiation` | Negotiation types, runtime state machine, and state storage |
 | `a2a-t-client` | Client facade providing task prompt generation and negotiation entry points (`A2ATClient`) |
 | `a2a-t-server` | Server facade providing A2A-T protocol message validation and negotiation entry points (`A2ATServer`) |
+| `a2a-t-observability` | The observability module: OpenTelemetry setup, SDK call records, LLM token and negotiation round metrics, the manual span API, and structured logs |
+| `a2a-t-observability-a2a` | Protocol-layer observability decorators for the A2A transport (reserved module; implementation ships as a follow-up) |
 | `a2a-t-corpus` | Accuracy verification corpus (pure test module): data-driven workflow cases executed against a real LLM; excluded from packaging and CI |
 | `a2a-t-sample` | Runnable client/server samples |
 
@@ -146,7 +149,7 @@ For more runnable samples (end-to-end negotiation, service recovery, authorizati
 
 | Document | Location | Content |
 | --- | --- | --- |
-| Developer Guide | [docs/en/developer_guide.md](docs/en/developer_guide.md) | Feature introduction, installation and integration, parameter configuration, and minimal practices |
+| Developer Guide | [docs/en/developer_guide.md](docs/en/developer_guide.md) | Feature introduction, installation and integration, parameter configuration, observability integration, and minimal practices |
 | API Reference | [docs/en/API_Reference.md](docs/en/API_Reference.md) | Full API definitions and usage instructions for `A2ATClient` / `A2ATServer` |
 
 ## Current Scope of Support

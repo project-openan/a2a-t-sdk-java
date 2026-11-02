@@ -22,6 +22,7 @@ Main capabilities include:
 - **Multi-round negotiation management**: supports the `information`, `feasibility`, and `target` negotiation flows.
 - **Template resource management**: bundles scenario, slot, template, and system prompt resources, and supports two resource loading modes: `classpath` built-in resources and `local_file` local file resources.
 - **LLM adaptation**: connects to external large models through OpenAI-compatible call chains.
+- **Observability**: automatically records traces, metrics, and structured logs of SDK client/server calls based on OpenTelemetry; integrate by passing one constructor argument on each of the client and the server, with no business code changes, and it can be switched off entirely as needed (see 1.7).
 
 For the API list and usage details provided by the SDK, see [API_Reference.md](API_Reference.md).
 
@@ -1776,7 +1777,218 @@ quarkus.log.category."net.openan.a2at.sdk.llm.call".handlers=llm-call
 
 > Note: the SDK only produces log events and never configures output destinations; both the output path and the rotation policy are entirely decided by the embedding application's appender (the examples above are recommendations). When `A2AT_LLM_DETAIL_LOG_ENABLED` is enabled, every LLM call prints full payloads — set a per-file size cap and a retention window as shown to avoid filling up the disk. If the application provides no SLF4J binding (e.g. logback/log4j2), the log events are discarded with only a single "No SLF4J providers were found" warning.
 
-## 1.7 Configuration Item List
+## 1.7 Observability Integration Guide
+
+### 1.7.1 Capability Overview
+
+Purpose: answer the question "what happened inside the SDK" during joint debugging and O&M — which client/server call ran, how long it took, how many tokens the LLM call consumed, and how many rounds a negotiation went through before converging. The SDK's observability module (`a2a-t-observability`) is based on OpenTelemetry (the industry-standard observability data framework) and records the SDK call process. The recorded data falls into three categories:
+
+| Data type | Description | Typical use |
+| --- | --- | --- |
+| Traces | Each `A2ATClient` / `A2ATServer` method call is one record (span); manual records opened in business code are joined with them into one trace | Troubleshoot "which call is slow or failing" and confirm the call sequence |
+| Metrics | Time-aggregated values, such as the LLM input/output token usage and the number of negotiation rounds to convergence | Observe overall trends and configure alerts |
+| Logs | Structured records (JSON) of key events, automatically carrying the trace identity | Look up the detailed messages of one call by the trace identity |
+
+Integration: **call `ObservabilitySetup.ensureConfigured` once at process start, and pass one `SdkOperationSpans` instance when constructing `A2ATClient` / `A2ATServer`**; afterwards the SDK records the data above automatically — no business code changes and no hand-written OpenTelemetry code are needed. Without a data collection endpoint, the records go to the console as JSON lines (directly visible during joint debugging); with an endpoint configured, they are exported over OTLP to an OpenTelemetry collector and viewed in a backend (such as Jaeger).
+
+Notes:
+
+1. Observability is an optional capability delivered as the standalone Maven module `a2a-t-observability`; without the dependency the SDK behavior is unaffected.
+2. The observability logic has zero impact on the business flow: a recording failure only produces a warning log and never interrupts request processing; it can be switched off entirely or per data type.
+3. Difference from section 1.6: section 1.6 covers the SDK-internal LLM call logs (for prompt tuning), while this section covers the SDK call chain, whose data can be exported to a unified observability backend.
+4. Current scope: this module records SDK client/server calls, LLM token usage, and negotiation rounds. Automatic recording on the A2A transport (request entry records, per-event streaming records, trace-context propagation over request headers) ships in the follow-up module `a2a-t-observability-a2a`.
+
+### 1.7.2 Integration Steps
+
+#### Step1 Add the Dependency
+
+The observability code ships as the standalone module `a2a-t-observability`; the OpenTelemetry SDK and the OTLP exporter it assembles at runtime are separate dependencies — without them the initialization detects their absence, logs one warning, and stays inactive (no records are produced and the business flow is unaffected). With the BOM imported (see 1.4.3 Step1), add:
+
+```xml
+<!-- A2A-T observability module (compiles against the OpenTelemetry API only) -->
+<dependency>
+    <groupId>net.openan.a2a-t.sdk</groupId>
+    <artifactId>a2a-t-observability</artifactId>
+</dependency>
+
+<!-- OpenTelemetry SDK and OTLP exporter: runtime components assembled by the module -->
+<dependency>
+    <groupId>io.opentelemetry</groupId>
+    <artifactId>opentelemetry-sdk</artifactId>
+    <version>1.64.0</version>
+</dependency>
+<dependency>
+    <groupId>io.opentelemetry</groupId>
+    <artifactId>opentelemetry-exporter-otlp</artifactId>
+    <version>1.64.0</version>
+    <scope>runtime</scope>
+</dependency>
+```
+
+> If the environment already has the OpenTelemetry components (for example, other observability capabilities are integrated), keep the existing versions and skip the last two dependencies. With only the OpenTelemetry API on the classpath, every entry point stays a no-op.
+
+#### Step2 One-time Initialization
+
+Call the initialization once at process start (for example, at the top of `main`); it assembles the trace/metric/log pipelines from the configuration and registers the global OpenTelemetry instance:
+
+```java
+import net.openan.a2at.sdk.observability.A2ATObservabilityConfig;
+import net.openan.a2at.sdk.observability.ObservabilitySetup;
+
+ObservabilitySetup.ensureConfigured(A2ATObservabilityConfig.fromEnv());
+```
+
+Notes:
+
+1. The call is idempotent: later invocations are no-ops, and if the application has already registered a global OpenTelemetry instance itself, the SDK keeps it and never overrides the existing configuration.
+2. Configuration can also be supplied explicitly: `A2ATObservabilityConfig.builder().endpoint(...).serviceName(...).build()` (explicit builder values take precedence over environment variables), or `A2ATObservabilityConfig.fromMap(map)` with the entries of the process `.env` file. For the complete configuration list, see 1.7.4.
+
+#### Step3 Client and Server Integration
+
+Pass one `SdkOperationSpans` instance (the SDK's `TelemetryHook` implementation) when constructing the client and the server; every public method of the constructed instance is then observed automatically:
+
+```java
+import net.openan.a2at.sdk.client.A2ATClient;
+import net.openan.a2at.sdk.observability.SdkOperationSpans;
+
+A2ATClient client = new A2ATClient(envPath, new SdkOperationSpans());  // pass once at construction; no other business code changes
+```
+
+```java
+import net.openan.a2at.sdk.server.A2ATServer;
+import net.openan.a2at.sdk.observability.SdkOperationSpans;
+
+A2ATServer server = new A2ATServer(envPath, new SdkOperationSpans());
+```
+
+After that, each method call (`generateTaskPrompt`, `validateTaskPromptAndDataFilling`, the negotiation entry points, and so on) is recorded as a span named `a2at.sdk.client.{method}` / `a2at.sdk.server.{method}`, and a negotiation that reaches a terminal status (agreed/rejected) reports the converged-rounds metric `a2at.negotiation.total_rounds` automatically. The existing single-argument constructors keep working and behave exactly as before (no records).
+
+#### Step4 LLM Call Integration (Optional)
+
+The client and server methods above call the LLM internally; to record the token usage of those calls (or of any own `LLMClient` usage), wrap the client with `ObservabilityLLMClient`:
+
+```java
+import net.openan.a2at.sdk.llm.LLMClient;
+import net.openan.a2at.sdk.observability.ObservabilityLLMClient;
+
+LLMClient observed = new ObservabilityLLMClient(delegate);
+```
+
+Each `structured(...)` response then records the input/output token usage into the `gen_ai.client.token.usage` histogram (distinguished by the `gen_ai.token.type` attribute); the usage is also stashed for the upcoming protocol-layer records to pick up.
+
+#### Step5 Configure the Data Destination
+
+The observability configuration is read from **OS environment variables** (or from the `.env` entries passed through `A2ATObservabilityConfig.fromMap`). Common settings:
+
+| Environment variable | Default | Description |
+| --- | --- | --- |
+| `A2AT_OBSERVABILITY_ENABLED` | `true` | Master switch; set to `false` and the module becomes fully transparent, producing no records |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | unset | Data collection endpoint address. When unset, records are printed to the console as JSON lines for direct inspection during joint debugging |
+| `OTEL_SERVICE_NAME` (or `A2AT_SERVICE_NAME`) | `a2a-t-agent` | The service name of this process shown in the backend; use different values for the client and the server (`A2AT_SERVICE_NAME` wins when both are set) |
+| `A2AT_EXPORTER_PROTOCOL` | `grpc` | Export protocol; `http/protobuf` is also supported |
+
+Without `OTEL_EXPORTER_OTLP_ENDPOINT` configured, the process logs the warning `a2at: no OTLP endpoint configured; using Console exporters (dev mode)` at startup, and every span/metric/log record is printed as one JSON line through the SLF4J logger `net.openan.a2at.sdk.observability.console` for direct inspection. With an endpoint configured, the three signal pipelines export to `<endpoint>` (gRPC) or to `<endpoint>/v1/traces`, `<endpoint>/v1/metrics`, and `<endpoint>/v1/logs` (`http/protobuf`).
+
+#### Step6 Verify the Integration
+
+The repository ships a runnable offline sample (Console mode: client call records, LLM token metrics, manual spans, and the negotiation rounds metric, all printed to the console in one process — no OTLP backend, no real LLM, and no server required); run the sample before integrating into your own project:
+
+```bash
+mvn -pl a2a-t-sample compile exec:java -Dexec.mainClass=net.openan.a2at.sample.observability.ObservabilitySampleMain
+```
+
+For details, see [a2a-t-sample/observability/README.md](../../a2a-t-sample/observability/README.md).
+
+### 1.7.3 What Gets Recorded Automatically
+
+After integration, no observability code is needed; the SDK records automatically per action:
+
+| Action | What is recorded automatically |
+| --- | --- |
+| A public method of `A2ATClient` / `A2ATServer` is called (constructed with `SdkOperationSpans`) | One trace record named `a2at.sdk.{role}.{method}` (`role` is `client` or `server`); it ends OK on success and carries the exception with an ERROR status when the call fails |
+| A negotiation reaches a terminal status (agreed/rejected) | The converged-rounds metric `a2at.negotiation.total_rounds` (unit `{round}`), carrying the `gen_ai.agent.a2at.extension.name=Negotiation-T`, `negotiation.id`, and `outcome` attributes |
+| The LLM is called through an `ObservabilityLLMClient` | The input/output token usage metric `gen_ai.client.token.usage` (unit `{token}`, split by `gen_ai.token.type=input`/`output`) |
+| A manual `A2ATSpan` is opened in business code | One span with the given name, parented under the currently active span (see 1.7.5) |
+
+Notes:
+
+1. Trace records are produced only when the trace signal is on; metrics and logs keep working with traces switched off (per-data-type switches in 1.7.4).
+2. The attribute keys prefixed with `gen_ai.agent.a2at.` (such as `extension.name`, `task.type`, `negotiation.id`, `notification.topic`) are reserved for A2A-T business attributes; automatic extraction from A2A messages arrives with the protocol-layer module, and business code can already attach the same keys manually (see 1.7.5).
+
+### 1.7.4 Configuration Reference
+
+The observability configuration items are read from OS environment variables (or from the `.env` entries passed through `A2ATObservabilityConfig.fromMap`; explicit `A2ATObservabilityConfig.builder()` values take precedence over both):
+
+| Environment variable | Default | Description |
+| --- | --- | --- |
+| `A2AT_OBSERVABILITY_ENABLED` | `true` | Master switch; `false` makes the module fully transparent |
+| `A2AT_TRACE_ENABLED` / `A2AT_METRIC_ENABLED` / `A2AT_LOG_ENABLED` | `true` | Per-data-type switches; for example, metrics and logs keep working with traces switched off |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | unset | Data collection endpoint; when unset, records go to the console (joint-debugging mode) |
+| `A2AT_CONSOLE_EXPORTER` | `true` | Set to `false` to turn off the console output of the joint-debugging mode (no output at all when no collection endpoint is configured) |
+| `OTEL_SERVICE_NAME` (or `A2AT_SERVICE_NAME`) | `a2a-t-agent` | Service name (`A2AT_SERVICE_NAME` wins when both are set) |
+| `A2AT_AGENT_ROLE` | unset | Process role marker (such as `client` / `server`), written into the resource attribute `agent.role` |
+| `A2AT_EXPORTER_PROTOCOL` | `grpc` | Export protocol; `http/protobuf` (alias `http`) is also supported |
+| `A2AT_EXTRACT_REQUEST` / `A2AT_EXTRACT_RESPONSE` | `false` | Whether to write the request/response message payload into the observability records (truncated per the same rule as the payload logs); reserved, takes effect with the protocol-layer module |
+| `A2AT_LOGS_PAYLOAD_ENABLED` | `false` | Whether to include the message payload in the structured logs |
+| `A2AT_LOGS_PAYLOAD_MAX_LENGTH` | `4096` | Maximum length (characters) of one payload entry; the excess is truncated and marked with `[truncated]` |
+| `OTEL_INSTRUMENTATION_A2AT_SDK_ENABLED` | `true` | Hard switch; `false` disables all observability logic |
+
+> Risk warning: with `A2AT_EXTRACT_REQUEST` / `A2AT_EXTRACT_RESPONSE` or `A2AT_LOGS_PAYLOAD_ENABLED` enabled, the request and response payloads (including the prompt content) enter the observability records and may contain sensitive information — use them only during joint debugging and keep them off in production; long payloads also increase the data volume significantly, so control them with `A2AT_LOGS_PAYLOAD_MAX_LENGTH`. For redaction, set a custom `payloadRedactor` function on the `A2ATObservabilityConfig` builder (redaction runs before truncation) and pass the config to `ObservabilitySetup.ensureConfigured(config)`.
+
+### 1.7.5 Adding Observability Data in Business Code (Optional)
+
+Beyond the automatic records, the SDK provides three additional entry points for use as needed:
+
+**1. Add business attributes to the current span**
+
+In business code, call `CurrentSpans.current()` to get a view of the currently active span and append custom attributes (for example, a business order number):
+
+```java
+import net.openan.a2at.sdk.observability.A2ATCurrentSpan;
+import net.openan.a2at.sdk.observability.CurrentSpans;
+
+A2ATCurrentSpan span = CurrentSpans.current();
+if (span != null) {
+    span.setAttribute("biz.order_id", orderId);
+}
+```
+
+It returns `null` when observability is not integrated or no span is in progress; the caller just checks for `null`. The view also exposes the `traceId()` / `spanId()` of the current span for correlating business logs.
+
+**2. Record a piece of business processing manually**
+
+Use `A2ATSpan` to record the duration and attributes of a piece of business processing (try-with-resources; call `recordError` in the catch path so the span ends with an ERROR status):
+
+```java
+import net.openan.a2at.sdk.observability.A2ATSpan;
+
+A2ATSpan span = new A2ATSpan("query-ne-config").open();
+try (span) {
+    span.setAttribute("ne.name", neName);
+    queryNeConfig(neName);
+} catch (RuntimeException e) {
+    span.recordError(e);   // records the exception and ends the span with an ERROR status
+    throw e;
+}
+```
+
+A span opened inside a client/server call (or inside another `A2ATSpan`) is parented automatically into the same trace.
+
+**3. Report business metrics and structured logs directly**
+
+The negotiation rounds metric can also be reported from business code (terminal outcomes only: `accept` / `reject` / `abort`):
+
+```java
+import net.openan.a2at.sdk.observability.NegotiationMetrics;
+
+NegotiationMetrics.reportRounds(negotiationId, "accept", totalRounds);
+```
+
+Structured JSON log events (carrying `trace_id` / `span_id` automatically when a span is active) are emitted through `ObservabilityLogs.logEvent(...)` on the logger `net.openan.a2at.sdk.observability`.
+
+> The entry points above automatically become no-ops (producing no records) when the OpenTelemetry SDK is not on the classpath or the switches are off, so the business code needs no extra checks. In addition, `TracePropagation.inject(headers)` / `TracePropagation.extract(headers)` propagate the W3C `traceparent` identity over plain header maps for self-managed transports.
+
+## 1.8 Configuration Item List
 
 The sample configuration file provided by the SDK is `env.example`. When constructing the A2A-T Client and the A2A-T Server, copy the file to the corresponding `client.env` / `server.env`. The configuration items are described below:
 
