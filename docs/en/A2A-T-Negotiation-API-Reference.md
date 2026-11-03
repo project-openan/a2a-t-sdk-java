@@ -16,6 +16,8 @@ The negotiation extension (Negotiation-T) lets client and server align before ta
 
 All three layers are exposed through the `A2ATClient` / `A2ATServer` facades with **fully symmetric method signatures** (see [NegotiationV3ApiSurfaceTest](../../a2a-t-sample/src/test/java/net/openan/a2at/sdk/sample/api/NegotiationV3ApiSurfaceTest.java)). The differences are role binding only, plus the server-side prompt compliance check.
 
+For new integrations, use the content-generation and validation APIs with a caller-managed `core.model.NegotiationContext` and send the returned metadata through the A2A transport. The runtime state machine is a separate API: `startNegotiation()` creates its own session ID and payload, with no automatic mapping to a content-layer context. [Content API examples](#101-generate-a-proposal-with-the-content-api) and [the separate runtime example](#106-use-the-runtime-state-machine-separately) show these two paths.
+
 ### 1.1 Maven coordinates
 
 ```xml
@@ -49,10 +51,10 @@ Defined in [ExtensionUriConstants](../../a2a-t-core/src/main/java/net/openan/a2a
 
 | Purpose | URI |
 |---|---|
-| Negotiation-T (canonical, for sending) | `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/v1` |
-| Negotiation-T (NL legacy, accepted on receive) | `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/NL/v1` |
+| Negotiation-T (content metadata) | `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/v1` |
+| Negotiation-T NL (runtime payload) | `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/NL/v1` |
 
-The SDK sends new messages with the canonical URI as `MetadataContent.extensionUri()`; the receive-side payload mapper also recognizes the NL alias for backward compatibility.
+Content generation returns the canonical URI in `MetadataContent.extensionUri()`. The runtime `startNegotiation()` / `continueNegotiation()` APIs instead return a payload whose top-level extension key is the NL URI. `NegotiationPayloadMapper.extractContextMap()` accepts either URI for runtime payloads. This URI compatibility does not convert between runtime payloads and content metadata or synchronize their contexts.
 
 ---
 
@@ -73,7 +75,7 @@ Map<String, Object> startNegotiation(
 - `contentText`: negotiation message text
 - `facts`: structured facts to attach; when non-empty they land in the top-level `facts` of the payload
 
-Generates a UUID as `negotiationId`, creates a round=1, status=`in-progress` context, stores it, and returns the initial round payload:
+Generates a UUID as `negotiationId`, creates a round=1, status=`in-progress` context, stores it, and returns the initial round payload (shown with empty `facts`, so that key is omitted):
 
 ```json
 {
@@ -84,8 +86,7 @@ Generates a UUID as `negotiationId`, creates a round=1, status=`in-progress` con
     "round": 1,
     "status": "in-progress",
     "extra": {}
-  },
-  "facts": {}
+  }
 }
 ```
 
@@ -140,7 +141,7 @@ Map<String, Object> continueNegotiation(
 - `status`: next-round status (`IN_PROGRESS` / `AGREED` / `REJECTED`)
 - `contentText`: next-round message content
 
-Validation: stored record exists, context round equals stored round, stored status is still in-progress. On success round is incremented, the new record is stored, and the payload is returned. **facts is always an empty map.** Only in-progress → agreed / rejected transitions are allowed; terminal states are final.
+Validation: the stored record must exist, the supplied context must equal the stored context, and the stored status must still be in-progress. On success the round is incremented and the new record is stored. The next status may be `IN_PROGRESS` (continue another round), `AGREED`, or `REJECTED`; a terminal stored negotiation cannot be continued. The handler passes empty facts to the payload mapper, so the returned payload **omits the `facts` key**.
 
 ### 3.4 State machine enums
 
@@ -183,7 +184,7 @@ MetadataContent generateNegotiationRejectPromptFromText (String text, Negotiatio
 MetadataContent generateNegotiationAbortPromptFromText  (String text, NegotiationContext context, String templateUri);
 ```
 
-The `NegotiationContext` here is the content-generation one (`net.openan.a2at.sdk.core.model.NegotiationContext`, see §7.1); it is injected into the rendered message and never passes through the LLM.
+The `NegotiationContext` here is the content-generation one (`net.openan.a2at.sdk.core.model.NegotiationContext`, see §7.1); it is returned alongside the message in `MetadataContent.negotiationContext()` and the nested `negotiationContext` metadata, and is never inferred by the LLM.
 
 Flow: parse `templateUri` → load template (before the LLM call) → `DefaultNegotiationContentExtractor` one-step LLM structured extraction → `mapContent` to the typed record → render → return `MetadataContent`.
 
@@ -444,15 +445,15 @@ Only `InMemoryNegotiationStore` exists today; it provides no persistence. Inject
 
 ## 10. Usage Examples
 
-### 10.1 Start a negotiation and generate a propose message
+Examples 10.1–10.5 use the content API. `NegotiationContext` denotes `net.openan.a2at.sdk.core.model.NegotiationContext`. The caller owns session persistence, transport and message routing; generation returns the outgoing context in metadata. The runtime API has its own example in 10.6.
+
+### 10.1 Generate a proposal with the content API
 
 ```java
 A2ATClient client = new A2ATClient(Path.of(".env"));
 
-// 1. render the structured negotiation message with the content engine
-NegotiationContext contentCtx = new NegotiationContext(
-    UUID.randomUUID().toString(), 1,
-    NegotiationContext.DEFAULT_MAX_ROUNDS, NegotiationPerformative.PROPOSE);
+NegotiationContext contentCtx = NegotiationContext.of(
+    UUID.randomUUID().toString(), 1, NegotiationPerformative.PROPOSE);
 TargetProposeContent content = new TargetProposeContent(
     "Cross-city private-line outage diagnosis",
     List.of(new NegotiationItem("intent", "Restore the city1-city2 SPN private line")),
@@ -462,46 +463,47 @@ TargetProposeContent content = new TargetProposeContent(
 MetadataContent mc = client.generateNegotiationProposePromptFromData(
     new NegotiationProposeData(contentCtx, content),
     StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI);
-
-// 2. initialize the state machine with the rendered message text
-Map<String, Object> payload = client.startNegotiation(
-    NegotiationType.TARGET, mc.promptText(), Map.of("agent", "city1-agent"));
-
-// 3. merge the metadata
 Map<String, Object> metadata = mc.buildMetadataContent();
 ```
 
-### 10.2 Receive and validate a negotiation message
+Send `metadata` with the A2A message. It contains the rendered text under the canonical extension URI, `templateUri`, and `negotiationContext`. The caller tracks `mc.negotiationContext()` for this session. This path does not require a runtime `startNegotiation()` call or a second session ID.
+
+### 10.2 Validate a received proposal
+
+Here `message`, `receivedContext`, and `receivedTemplateUri` are decoded from the **same incoming message's metadata** by the transport integration. `receivedContext` preserves its `id`, `round`, `maxRounds`, and `performative`; do not replace it with a new local session context. The example receives the target proposal from 10.1.
 
 ```java
-Map<String, Object> receiveResult = client.receiveNegotiation(message, contextMap);
-
-if (Boolean.TRUE.equals(receiveResult.get("needResponse"))) {
-    Map<String, Object> schema = Map.of(
-        "type", "object",
-        "properties", Map.of(
-            "city1_omc_alarm", Map.of("type", "string"),
-            "optical_power", Map.of("type", "number")));
-    FilledParamData params = client.validateProposePromptAndDataFilling(
-        message, contentCtx, schema, StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI);
-    // params.data() carries id, round, maxRounds + the LLM-extracted parameters
-}
+Map<String, Object> schema = Map.of(
+    "type", "object",
+    "properties", Map.of(
+        "city1_omc_alarm", Map.of("type", "string"),
+        "optical_power", Map.of("type", "number")));
+FilledParamData params = client.validateProposePromptAndDataFilling(
+    message, receivedContext, schema, receivedTemplateUri);
+// params.data() carries id, round, maxRounds + the extracted parameters
 ```
 
-### 10.3 Advance the negotiation to agreement
+Whether to accept, reject, or request another proposal is an application decision after validation.
+
+### 10.3 Accept a proposal at the received round
+
+After the application accepts the target proposal, generate a response from its received context:
 
 ```java
-net.openan.a2at.sdk.negotiation.types.model.NegotiationContext ctx =
-    NegotiationPayloadMapper.contextFromMap(
-        (Map<String, Object>) receiveResult.get("context"));
-Map<String, Object> payload = client.continueNegotiation(
-    ctx, NegotiationStatus.AGREED, "Params confirmed, starting execution");
+MetadataContent accepted = client.generateNegotiationAcceptPromptFromData(
+    new NegotiationEndingData(receivedContext,
+        new TargetEndingContent(NegotiationConclusion.ACCEPT, "Confirmed intent: restore the line", null)),
+    StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI);
+Map<String, Object> metadata = accepted.buildMetadataContent();
 ```
+
+The response keeps the received session ID and round; the generator stamps `ACCEPT` on the outgoing context. Only a new proposal advances the round through `nextRound()`, subject to the session's round budget.
 
 ### 10.4 Generate a negotiation message from free text
 
 ```java
-NegotiationContext contentCtx = NegotiationContext.of("session-123", 1, NegotiationPerformative.PROPOSE);
+NegotiationContext contentCtx = NegotiationContext.of(
+    UUID.randomUUID().toString(), 1, NegotiationPerformative.PROPOSE);
 MetadataContent mc = client.generateNegotiationProposePromptFromText(
     "City1-city2 SPN private line outage; city1 OMC reports port down, optical power -28dBm",
     contentCtx,
@@ -509,29 +511,51 @@ MetadataContent mc = client.generateNegotiationProposePromptFromText(
 // the LLM extracts InformationProposeContent (items + relationship) and renders it
 ```
 
-### 10.5 Generate ending messages
+### 10.5 Generate alternative ending messages
+
+The following are alternative responses, not a sequence to send together. Each uses the context of the proposal being answered.
 
 ```java
 // accept
 MetadataContent acceptMc = client.generateNegotiationAcceptPromptFromData(
-    new NegotiationEndingData(contentCtx,
+    new NegotiationEndingData(receivedContext,
         new TargetEndingContent(NegotiationConclusion.ACCEPT, "Confirmed intent: restore the line", null)),
     StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI);
 
 // reject
 MetadataContent rejectMc = client.generateNegotiationRejectPromptFromData(
-    new NegotiationEndingData(contentCtx,
+    new NegotiationEndingData(receivedContext,
         new TargetEndingContent(NegotiationConclusion.REJECT, null, "Insufficient resources")),
     StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI);
 
 // terminate the negotiation
 MetadataContent abortMc = client.generateNegotiationAbortPromptFromData(
-    new NegotiationAbortData(contentCtx,
+    new NegotiationAbortData(receivedContext,
         new NegotiationAbortContent("Parties could not agree on the diagnosis scope; terminating")),
     StandardTemplates.NEGOTIATION_ABORT_URI);
 ```
 
-Runnable end-to-end samples: [a2a-t-sample negotiation samples](../../a2a-t-sample/README.zh-CN.md#协商negotiation样例).
+### 10.6 Use the runtime state machine separately
+
+This example uses the runtime payload contract independently of the content API examples. The receiving facade stores the incoming runtime context, then uses that snapshot to continue. `IN_PROGRESS` keeps the negotiation open at the next round.
+
+```java
+A2ATClient client = new A2ATClient(Path.of(".env"));
+A2ATServer server = new A2ATServer(Path.of(".env"));
+String message = "Please confirm the diagnosis scope";
+Map<String, Object> initialPayload = client.startNegotiation(
+    NegotiationType.TARGET, message, Map.of());
+Map<String, Object> contextMap = NegotiationPayloadMapper.extractContextMap(initialPayload);
+server.receiveNegotiation(message, contextMap);
+net.openan.a2at.sdk.negotiation.types.model.NegotiationContext runtimeContext =
+    NegotiationPayloadMapper.contextFromMap(contextMap);
+Map<String, Object> nextPayload = server.continueNegotiation(
+    runtimeContext, NegotiationStatus.IN_PROGRESS, "Please provide the alarm details");
+```
+
+The payloads use the NL extension URI and omit `facts` when empty. Runtime IDs and round advancement belong to this state machine. These payloads are not `MetadataContent` maps and must not be merged with independently generated content contexts as though they were one session. The Target handler only echoes messages and signals whether a response is needed; it does not generate or semantically validate negotiation content.
+
+Runnable samples: [a2a-t-sample negotiation samples](../../a2a-t-sample/README.zh-CN.md#协商negotiation端到端样例).
 
 ---
 
@@ -540,7 +564,7 @@ Runnable end-to-end samples: [a2a-t-sample negotiation samples](../../a2a-t-samp
 | Capability | Status |
 |---|---|
 | Runtime state machine (start/receive/continue) | complete; all three types registered |
-| Content generation (fromData/fromText) | complete; 8 generators covering propose/accept/reject/abort for all three types |
+| Content generation (fromData/fromText) | complete; 8 public generation methods covering propose/accept/reject/abort and all three negotiation types |
 | Validation & parameter extraction | complete; propose/accept/reject/abort all supported |
 | Information runtime handler | substantive logic (incl. compliance checker) |
 | Target / Feasibility runtime handlers | echo stubs (content layer complete, runtime not wired) |

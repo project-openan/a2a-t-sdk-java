@@ -16,6 +16,8 @@
 
 三层通过 `A2ATClient` / `A2ATServer` 两个 facade 暴露，**方法签名完全对称**（见 [NegotiationV3ApiSurfaceTest](../../a2a-t-sample/src/test/java/net/openan/a2at/sdk/sample/api/NegotiationV3ApiSurfaceTest.java)）。差异仅在角色绑定与 server 额外的 prompt 合规校验。
 
+新集成建议使用内容生成与校验 API，由调用方管理 `core.model.NegotiationContext`，通过 A2A 传输层发送返回的 metadata。运行时状态机是另一套 API：`startNegotiation()` 会创建自己的会话 ID 和 payload，不会自动关联内容层 context。参见[内容 API 示例](#101-使用内容-api-生成提议)与[独立状态机示例](#106-独立使用运行时状态机)。
+
 ### 1.1 Maven 坐标
 
 ```xml
@@ -49,10 +51,10 @@ Server 侧用 `a2a-t-server` 替代。协商模块由二者传递依赖引入，
 
 | 用途 | URI |
 |---|---|
-| Negotiation-T（规范，发送用） | `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/v1` |
-| Negotiation-T（NL legacy，接收兼容） | `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/NL/v1` |
+| Negotiation-T（内容 metadata） | `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/v1` |
+| Negotiation-T NL（运行时 payload） | `https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/NL/v1` |
 
-SDK 用规范 URI 作为 `MetadataContent.extensionUri()` 发送新消息；接收侧的 payload mapper 同时识别 NL 别名以兼容旧消息。
+内容生成返回的 `MetadataContent.extensionUri()` 使用规范 URI；运行时 `startNegotiation()` / `continueNegotiation()` 返回的 payload 则以 NL URI 为顶层扩展 key。`NegotiationPayloadMapper.extractContextMap()` 接收这两种 URI 的运行时 payload。URI 兼容不代表会自动转换内容 metadata 与运行时 payload，也不会同步两种 context。
 
 ---
 
@@ -73,7 +75,7 @@ Map<String, Object> startNegotiation(
 - `contentText`：协商消息文本
 - `facts`：附带的结构化事实，非空时进入 payload 顶层 `facts`
 
-内部生成 UUID 作为 `negotiationId`，创建 round=1、status=`in-progress` 的 context，存入 store，返回初始轮 payload：
+生成 UUID 作为 `negotiationId`，创建 round=1、status=`in-progress` 的 context，存储后返回首轮 payload（示例的 `facts` 为空，因此省略该 key）：
 
 ```json
 {
@@ -84,8 +86,7 @@ Map<String, Object> startNegotiation(
     "round": 1,
     "status": "in-progress",
     "extra": {}
-  },
-  "facts": {}
+  }
 }
 ```
 
@@ -140,7 +141,7 @@ Map<String, Object> continueNegotiation(
 - `status`：下一轮状态（`IN_PROGRESS` / `AGREED` / `REJECTED`）
 - `contentText`：下一轮消息内容
 
-校验：stored record 存在、context round 与 stored round 一致、stored status 仍为 in-progress。通过后 round+1，存新 record，返回 payload。**facts 固定为空 map**。状态转换仅允许 in-progress → agreed / rejected；终态不可再变。
+校验：stored record 必须存在，传入 context 必须与存储的 context 相等，stored status 仍为 in-progress。通过后 round+1 并存储新 record。下一状态可以为 `IN_PROGRESS`（继续协商）、`AGREED` 或 `REJECTED`；已处于终态的协商不能再继续。handler 向 mapper 传入空 facts，因此返回的 payload **省略 `facts` key**。
 
 ### 3.4 状态机枚举
 
@@ -183,7 +184,7 @@ MetadataContent generateNegotiationRejectPromptFromText (String text, Negotiatio
 MetadataContent generateNegotiationAbortPromptFromText  (String text, NegotiationContext context, String templateUri);
 ```
 
-注意此处的 `NegotiationContext` 是内容生成用的（`net.openan.a2at.sdk.core.model.NegotiationContext`，见 §7.1），只注入到渲染消息里，不经过 LLM。
+注意此处的 `NegotiationContext` 是内容生成用的（`net.openan.a2at.sdk.core.model.NegotiationContext`，见 §7.1），通过 `MetadataContent.negotiationContext()` 和嵌套 `negotiationContext` metadata 与消息一起返回，不由 LLM 推断。
 
 流程：解析 `templateUri` → 加载模板（LLM 调用前先加载）→ `DefaultNegotiationContentExtractor` 一步 LLM 结构化抽取 → `mapContent` 映射到类型化 record → 渲染 → 返回 `MetadataContent`。
 
@@ -444,15 +445,15 @@ public interface NegotiationStore {
 
 ## 十、使用示例
 
-### 10.1 发起协商并生成提议消息
+10.1–10.5 使用内容 API，`NegotiationContext` 均指 `net.openan.a2at.sdk.core.model.NegotiationContext`。调用方负责会话存储、消息传输和路由；生成方法通过 metadata 返回出站 context。运行时 API 的独立示例见 10.6。
+
+### 10.1 使用内容 API 生成提议
 
 ```java
 A2ATClient client = new A2ATClient(Path.of(".env"));
 
-// 1. 用内容生成引擎渲染结构化协商消息
-NegotiationContext contentCtx = new NegotiationContext(
-    UUID.randomUUID().toString(), 1,
-    NegotiationContext.DEFAULT_MAX_ROUNDS, NegotiationPerformative.PROPOSE);
+NegotiationContext contentCtx = NegotiationContext.of(
+    UUID.randomUUID().toString(), 1, NegotiationPerformative.PROPOSE);
 TargetProposeContent content = new TargetProposeContent(
     "跨城市专线中断诊断",
     List.of(new NegotiationItem("intent", "恢复城市1到城市2的SPN专线")),
@@ -462,46 +463,47 @@ TargetProposeContent content = new TargetProposeContent(
 MetadataContent mc = client.generateNegotiationProposePromptFromData(
     new NegotiationProposeData(contentCtx, content),
     StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI);
-
-// 2. 用渲染好的消息文本初始化状态机
-Map<String, Object> payload = client.startNegotiation(
-    NegotiationType.TARGET, mc.promptText(), Map.of("agent", "city1-agent"));
-
-// 3. 合并 metadata
 Map<String, Object> metadata = mc.buildMetadataContent();
 ```
 
-### 10.2 接收并校验协商消息
+将 `metadata` 随 A2A 消息发送，其中包含规范扩展 URI 对应的渲染文本、`templateUri` 和 `negotiationContext`。调用方跟踪此会话的 `mc.negotiationContext()`。这条路径无需调用运行时 `startNegotiation()`，也无需创建第二个会话 ID。
+
+### 10.2 校验收到的提议
+
+此处的 `message`、`receivedContext` 和 `receivedTemplateUri` 由传输集成从**同一条入站消息的 metadata** 解码取得。`receivedContext` 保留收到的 `id`、`round`、`maxRounds`、`performative`，不要用新建的本地会话 context 替代。示例接收 10.1 中的目标协商提议。
 
 ```java
-Map<String, Object> receiveResult = client.receiveNegotiation(message, contextMap);
-
-if (Boolean.TRUE.equals(receiveResult.get("needResponse"))) {
-    Map<String, Object> schema = Map.of(
-        "type", "object",
-        "properties", Map.of(
-            "city1_omc_alarm", Map.of("type", "string"),
-            "optical_power", Map.of("type", "number")));
-    FilledParamData params = client.validateProposePromptAndDataFilling(
-        message, contentCtx, schema, StandardTemplates.TARGET_NEGOTIATION_PROPOSE_URI);
-    // params.data() 含 id, round, maxRounds + LLM 提取参数
-}
+Map<String, Object> schema = Map.of(
+    "type", "object",
+    "properties", Map.of(
+        "city1_omc_alarm", Map.of("type", "string"),
+        "optical_power", Map.of("type", "number")));
+FilledParamData params = client.validateProposePromptAndDataFilling(
+    message, receivedContext, schema, receivedTemplateUri);
+// params.data() 含 id, round, maxRounds + 提取参数
 ```
 
-### 10.3 推进协商到同意
+校验通过后，由业务决定接受、拒绝或发起下一轮提议。
+
+### 10.3 保持收到的轮次生成同意响应
+
+业务接受目标协商提议后，使用其入站 context 生成响应：
 
 ```java
-net.openan.a2at.sdk.negotiation.types.model.NegotiationContext ctx =
-    NegotiationPayloadMapper.contextFromMap(
-        (Map<String, Object>) receiveResult.get("context"));
-Map<String, Object> payload = client.continueNegotiation(
-    ctx, NegotiationStatus.AGREED, "参数已确认，开始执行");
+MetadataContent accepted = client.generateNegotiationAcceptPromptFromData(
+    new NegotiationEndingData(receivedContext,
+        new TargetEndingContent(NegotiationConclusion.ACCEPT, "确认意图：恢复专线", null)),
+    StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI);
+Map<String, Object> metadata = accepted.buildMetadataContent();
 ```
+
+响应保留收到的会话 ID 和 round，生成方法将出站 context 的 performative 标为 `ACCEPT`。只有发起新提议才通过 `nextRound()` 推进轮次，并受当前会话的轮次预算约束。
 
 ### 10.4 从自由文本生成协商消息
 
 ```java
-NegotiationContext contentCtx = NegotiationContext.of("session-123", 1, NegotiationPerformative.PROPOSE);
+NegotiationContext contentCtx = NegotiationContext.of(
+    UUID.randomUUID().toString(), 1, NegotiationPerformative.PROPOSE);
 MetadataContent mc = client.generateNegotiationProposePromptFromText(
     "城市1到城市2的SPN专线中断，城市1 OMC告警端口Down，光功率-28dBm",
     contentCtx,
@@ -509,29 +511,51 @@ MetadataContent mc = client.generateNegotiationProposePromptFromText(
 // LLM 自动抽取 InformationProposeContent（items + relationship）并渲染
 ```
 
-### 10.5 生成终态消息
+### 10.5 生成可选的结束响应
+
+以下是不同的响应选择，不应按顺序全部发送。每种响应均使用被回复提议的 context。
 
 ```java
 // 接受
 MetadataContent acceptMc = client.generateNegotiationAcceptPromptFromData(
-    new NegotiationEndingData(contentCtx,
+    new NegotiationEndingData(receivedContext,
         new TargetEndingContent(NegotiationConclusion.ACCEPT, "确认意图：恢复专线", null)),
     StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI);
 
 // 拒绝
 MetadataContent rejectMc = client.generateNegotiationRejectPromptFromData(
-    new NegotiationEndingData(contentCtx,
+    new NegotiationEndingData(receivedContext,
         new TargetEndingContent(NegotiationConclusion.REJECT, null, "资源不足无法执行")),
     StandardTemplates.TARGET_NEGOTIATION_ACCEPT_REJECT_URI);
 
 // 终止协商
 MetadataContent abortMc = client.generateNegotiationAbortPromptFromData(
-    new NegotiationAbortData(contentCtx,
+    new NegotiationAbortData(receivedContext,
         new NegotiationAbortContent("双方无法就诊断范围达成一致，终止协商")),
     StandardTemplates.NEGOTIATION_ABORT_URI);
 ```
 
-完整可运行样例见 [a2a-t-sample 协商样例](../../a2a-t-sample/README.zh-CN.md#协商negotiation样例)。
+### 10.6 独立使用运行时状态机
+
+本例独立使用运行时 payload 契约，与上面的内容 API 示例分开。接收方 facade 先保存收到的运行时 context，再基于该快照继续协商。`IN_PROGRESS` 表示在下一轮继续保持协商进行中。
+
+```java
+A2ATClient client = new A2ATClient(Path.of(".env"));
+A2ATServer server = new A2ATServer(Path.of(".env"));
+String message = "请确认诊断范围";
+Map<String, Object> initialPayload = client.startNegotiation(
+    NegotiationType.TARGET, message, Map.of());
+Map<String, Object> contextMap = NegotiationPayloadMapper.extractContextMap(initialPayload);
+server.receiveNegotiation(message, contextMap);
+net.openan.a2at.sdk.negotiation.types.model.NegotiationContext runtimeContext =
+    NegotiationPayloadMapper.contextFromMap(contextMap);
+Map<String, Object> nextPayload = server.continueNegotiation(
+    runtimeContext, NegotiationStatus.IN_PROGRESS, "请补充告警详情");
+```
+
+返回 payload 使用 NL 扩展 URI，facts 为空时省略该 key。会话 ID 与轮次推进由这套状态机管理；payload 不是 `MetadataContent` map，不能与独立生成的内容 context 当作同一个会话直接拼接。Target handler 仅回显消息并标记是否需要响应，不负责生成协商内容或语义校验。
+
+可运行样例见 [a2a-t-sample 协商样例](../../a2a-t-sample/README.zh-CN.md#协商negotiation端到端样例)。
 
 ---
 
@@ -540,7 +564,7 @@ MetadataContent abortMc = client.generateNegotiationAbortPromptFromData(
 | 能力 | 状态 |
 |---|---|
 | 协商运行时状态机（start/receive/continue） | 完整，三种类型均注册 |
-| 协商内容生成（fromData/fromText） | 完整，三种类型 × propose/accept/reject/abort 八个生成器均实现 |
+| 协商内容生成（fromData/fromText） | 完整，8 个公开生成方法覆盖三类协商与 propose/accept/reject/abort |
 | 协商校验参数提取（validateAndFilling） | 完整，propose/accept/reject/abort 四个阶段均支持 |
 | Information 运行时 handler | 有实质逻辑（含 compliance checker） |
 | Target / Feasibility 运行时 handler | 空壳 echo（内容层已完整，运行时未对接） |
