@@ -2,7 +2,7 @@
 
 > 覆盖协商（Negotiation-T）、任务提示（Task-T）、授权（Authorization-T）、通知（Notification-T）四类扩展的对外 API。协商能力的完整说明见分册 [A2A-T-Negotiation-API-Reference.md](A2A-T-Negotiation-API-Reference.md)。
 
-新集成建议采用协商内容生成与校验 API，由调用方管理内容 context，并通过 `MetadataContent.buildMetadataContent()` 交付消息。运行时状态机 API 独立管理自己的会话 ID、context 和 payload，不会自动关联内容层会话。
+本文说明无状态内容 API：调用方管理协商 context，通过 `MetadataContent.buildMetadataContent()` 交付消息。旧协商状态机接口自 v1.1.0 起废弃，在 v1.2.0 移除（见[移除变更](https://github.com/project-openan/a2a-t-sdk-java/pull/209)）。模板查询属于 SDK 内部接口，不属于对外 facade 契约（见[接口收敛](https://github.com/project-openan/a2a-t-sdk-java/pull/210)）。
 
 ---
 
@@ -49,7 +49,7 @@ Server 侧用 a2a-t-server 替代：
 | a2a-t-resources | 打包资源和 classpath 加载 |
 | a2a-t-llm | LLM 适配层（默认 OpenAI 兼容） |
 | a2a-t-prompt | 场景识别、slot 抽取、模板渲染 |
-| a2a-t-negotiation | 协商类型、运行时状态机、内容生成引擎、校验流水线 |
+| a2a-t-negotiation | 协商类型、内容生成引擎、校验流水线 |
 | a2a-t-client | 客户端 facade（A2ATClient） |
 | a2a-t-server | 服务端 facade（A2ATServer） |
 | a2a-t-sample | 可运行的 client/server 示例 |
@@ -75,7 +75,7 @@ import net.openan.a2at.sdk.server.A2ATServer;
 A2ATServer server = new A2ATServer(Path.of("/path/to/.env"));
 ```
 
-构造时自动完成：加载 .env 配置 -> 创建 LLM client -> 组装 prompt 生成/合规编排器 -> 组装协商编排器 -> 组装内容生成编排器。
+构造时自动完成：加载 .env 配置 -> 创建 LLM client -> 组装 prompt 生成/合规编排器与协商内容生成/校验流水线。
 
 ### 2.2 .env 配置项
 
@@ -84,7 +84,6 @@ A2ATServer server = new A2ATServer(Path.of("/path/to/.env"));
 | A2AT_LANGUAGE | en-US | 消息语言，zh-CN 或 en-US |
 | A2AT_PROMPT_SOURCE_TYPE | classpath | classpath 用打包资源，local_file 用本地目录 |
 | A2AT_PROMPT_RESOURCE_LOCAL_ROOT_DIR | （未设置） | local_file 的资源根目录，相对路径基于 .env 所在目录 |
-| A2AT_PROMPT_COMPLIANCE_ENABLED | false | 是否启用 prompt 合规校验 |
 | A2AT_LLM_PROVIDER | openai | 内置 OpenAI 兼容 provider，也可注册其他 provider |
 | A2AT_LLM_MODEL | （必填） | 模型名 |
 | A2AT_LLM_API_KEY | （必填） | API key |
@@ -101,7 +100,6 @@ A2ATServer server = new A2ATServer(Path.of("/path/to/.env"));
 | A2AT_LLM_HISTORY_WINDOW | 10 | 对话历史窗口 |
 | A2AT_LLM_SESSION_MAX_TOTAL | 300 | 会话总数上限 |
 | A2AT_LLM_SESSION_MAX_PER_PROVIDER | 100 | 每 provider 会话数上限 |
-| A2AT_NEGOTIATION_STATE_STORE_TYPE | in_memory | 协商状态存储类型 |
 
 ---
 
@@ -115,47 +113,16 @@ A2ATServer server = new A2ATServer(Path.of("/path/to/.env"));
 | Authorization-T | https://projects.tmforum.org/a2aproject/telecommunication/extensions/Authorization-T/v1 |
 | Notification-T | https://projects.tmforum.org/a2aproject/telecommunication/extensions/Notification-T/v1 |
 | Negotiation-T（规范） | https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/v1 |
-| Negotiation-T（NL legacy） | https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/NL/v1 |
 
-协商内容生成返回的 `MetadataContent.extensionUri()` 使用规范 URI；运行时 `startNegotiation()` / `continueNegotiation()` 返回的 payload 使用 NL URI。`NegotiationPayloadMapper.extractContextMap()` 接收这两种 URI 的运行时 payload；它不负责转换内容 metadata 或同步两种 context。
+协商内容生成返回的 `MetadataContent.extensionUri()` 使用规范 URI；`buildMetadataContent()` 将消息文本、模板 URI 和协商 context 一起放入 metadata。
 
 ---
 
-## 四、协商运行时状态机 API
+## 四、协商会话上下文
 
-Client 和 Server 均提供以下三个方法，驱动协商状态机的 start/receive/continue 流程。`startNegotiation()` 自行生成会话 ID，与内容 API 的 context 无自动映射。完整说明（含状态校验顺序、payload 结构）见[分册的运行时状态机 API](A2A-T-Negotiation-API-Reference.md#三运行时状态机-api)。
+协商内容生成与校验统一使用 `net.openan.a2at.sdk.core.model.NegotiationContext`，字段为 `id`、`round`、`maxRounds`、`performative`。context 不可变，提供 `of(id, round, performative)`、`nextRound()`、`isExhausted()`，`DEFAULT_MAX_ROUNDS = 5`。
 
-```java
-Map<String, Object> startNegotiation(NegotiationType type, String contentText, Map<String, Object> facts)
-Map<String, Object> receiveNegotiation(String message, Map<String, Object> context)
-Map<String, Object> continueNegotiation(NegotiationContext context, NegotiationStatus status, String contentText)
-```
-
-### 4.4 枚举类型
-
-```java
-enum NegotiationType   { INFORMATION, TARGET, FEASIBILITY }
-enum NegotiationStatus { IN_PROGRESS, AGREED, REJECTED }
-enum NegotiationRole   { CLIENT, SERVER }
-```
-
-### 4.5 运行时 Context（两套，不可混用）
-
-| 类 | 用途 | 字段 |
-|---|---|---|
-| `net.openan.a2at.sdk.core.model.NegotiationContext` | 内容生成/校验 | `id, round, maxRounds, performative` |
-| `net.openan.a2at.sdk.negotiation.types.model.NegotiationContext` | 状态机 | `negotiationType, negotiationId, round, status` |
-
-内容生成 context 带 `of(id, round, performative)`、`nextRound()`、`isExhausted()`，`DEFAULT_MAX_ROUNDS = 5`；`performative` 必填（`PROPOSE` / `ACCEPT` / `REJECT` / `ABORT`）。
-
-### 4.6 Payload 工具
-
-```java
-NegotiationContext ctx = NegotiationPayloadMapper.contextFromMap(contextMap);   // 反序列化
-Map<String, Object> payload = NegotiationPayloadMapper.contextPayload(ctx);      // 序列化
-Map<String, Object> contextMap = NegotiationPayloadMapper.extractContextMap(payload);  // 提取
-Map<String, Object> payload = NegotiationPayloadMapper.payload(context, contentText, facts);  // 构建
-```
+消息通过独立的 `negotiationContext` metadata 携带会话状态，SDK 不保存会话。调用方负责持久化、路由和生命周期。响应保持收到的 ID 和 round，由生成方法标记 `ACCEPT`、`REJECT` 或 `ABORT`；只有新提议才推进轮次。
 
 ---
 
@@ -219,7 +186,7 @@ record FeasibilityEndingContent(NegotiationConclusion conclusion, String feasibi
 record NegotiationAbortContent(String terminationReason)
 ```
 
-字段约束与各字段的语义见分册 §4.4-4.6。
+字段约束与各字段的语义见分册的[输入数据模型](A2A-T-Negotiation-API-Reference.md#34-输入数据模型)、[类型化内容模型](A2A-T-Negotiation-API-Reference.md#35-类型化内容模型)与[辅助类型](A2A-T-Negotiation-API-Reference.md#36-辅助类型)。
 
 ### 5.6 辅助类型
 
@@ -245,24 +212,13 @@ FilledParamData validateRejectPromptAndDataFilling (String prompt, NegotiationCo
 FilledParamData validateAbortPromptAndDataFilling  (String prompt, NegotiationContext context, Map<String, Object> schema, String templateUri);
 ```
 
-校验管线（规则门 → LLM 语义校验 → 参数合并）与返回值 `FilledParamData(Map<String, Object> data)` 的完整说明见分册 §6。
+校验管线（规则门 → LLM 语义校验 → 参数合并）与返回值 `FilledParamData(Map<String, Object> data)` 的完整说明见分册的[校验与参数提取 API](A2A-T-Negotiation-API-Reference.md#五校验与参数提取-api)。
 
 ---
 
-## 七、模板查询 API
+## 七、任务提示 API
 
-```java
-List<PromptTemplate>       getPrompts();                         // 跨所有扩展
-Optional<PromptTemplate>   getPrompt(String uri);                // 跨扩展按 URI 查
-```
-
-对于格式正确的模板 URI，缺失返回空列表或 `Optional.empty()`。URI 为 null 时抛 `NullPointerException`，空白或格式错误时抛 `IllegalArgumentException`。
-
----
-
-## 八、任务提示 API
-
-### 8.1 Client 侧
+### 7.1 Client 侧
 
 ```java
 // 从用户输入生成任务提示
@@ -302,7 +258,7 @@ record PromptGenerationResult(
 record PromptGenerationFailure(String code, String message, String stage)
 ```
 
-### 8.2 Server 侧
+### 7.2 Server 侧
 
 ```java
 // 校验已处理的任务提示
@@ -320,9 +276,9 @@ record PromptComplianceResult(
 
 ---
 
-## 九、异常体系
+## 八、异常体系
 
-### 9.1 异常分类
+### 8.1 异常分类
 
 | 异常类型 | 性质 | 携带信息 |
 |---|---|---|
@@ -330,7 +286,7 @@ record PromptComplianceResult(
 | NegotiationGenerationException | 生成失败 | code + message + facts + cause |
 | NegotiationParamExtractionException | 校验失败 | code + message + facts + errors（逐 slot 错误） |
 
-### 9.2 错误码
+### 8.2 错误码
 
 定义在 A2ATErrorCodes：
 
@@ -342,12 +298,13 @@ record PromptComplianceResult(
 | llm.response_invalid | LLM 响应结构无效 | 是 |
 | negotiation.field_missing | 必填字段缺失 | 否 |
 | negotiation.invalid_input | 输入与 phase/action 矛盾 | 否 |
+| negotiation.conclusion_mismatch | accept/reject 操作与内容结论不匹配 | 否 |
 | negotiation.rule_violation | 规则门校验失败 | 否 |
 | negotiation.semantic_rejected | 语义校验拒绝 | 否 |
 | input.text_too_long | fromText 输入超出配置的最大长度 | 否 |
 | slot.not_provided | 参数提取默认失败码 | 否 |
 
-### 9.3 重试策略
+### 8.3 重试策略
 
 NegotiationGenerationOrchestrator.withRetry 对 LLM 步骤统一重试：
 - negotiation.content_extract_failed、llm.invocation_failed 和 llm.response_invalid 可重试
@@ -357,9 +314,9 @@ NegotiationGenerationOrchestrator.withRetry 对 LLM 步骤统一重试：
 
 ---
 
-## 十、LLM 适配层
+## 九、LLM 适配层
 
-### 10.1 LLMClient 接口
+### 9.1 LLMClient 接口
 
 ```java
 public interface LLMClient {
@@ -379,7 +336,7 @@ record LLMResponse(
 )
 ```
 
-### 10.2 默认实现
+### 9.2 默认实现
 
 LLMClientFactory 注册了 openai provider：
 
@@ -395,7 +352,7 @@ LLMClient client = LLMClientFactory.create(provider, config);
 
 ---
 
-## 十一、多语言词汇表（Vocabulary）
+## 十、多语言词汇表（Vocabulary）
 
 ```java
 Vocabulary vocab = Vocabulary.forLanguage("zh-CN");
@@ -408,72 +365,35 @@ String punct = vocab.get("punct.list_colon");             // "："
 
 ---
 
-## 十二、状态存储
-
-```java
-public interface NegotiationStore {
-    NegotiationRecord get(String negotiationId);
-    void save(NegotiationRecord record);
-    void delete(String negotiationId);
-    boolean cleanupExpired();
-}
-```
-
-当前只有 InMemoryNegotiationStore 实现，不保证持久化。可通过 NegotiationHandler.Builder.store() 注入自定义实现。
-
----
-
-## 十三、当前支持范围与局限
+## 十一、当前支持范围与局限
 
 | 能力 | 状态 |
 |---|---|
-| 协商运行时状态机（start/receive/continue） | 完整，三种类型均注册 |
 | 协商内容生成（fromData/fromText） | 完整，8 个公开生成方法覆盖三类协商与 propose/accept/reject/abort |
 | 协商校验参数提取（validateAndFilling） | 完整，propose/accept/reject/abort 四个阶段均支持 |
-| Information 运行时 handler | 有实质逻辑（含 compliance checker） |
-| Target / Feasibility 运行时 handler | 空壳 echo（内容层已完整，运行时未对接） |
 | LLM 适配 | 仅 OpenAI 兼容 |
 | 资源加载 | 仅 local file 和 classpath |
-| 状态持久化 | 仅 in-memory |
+| 会话状态 | 随消息 metadata 携带；持久化和生命周期由调用方管理 |
 | 远程资源加载 | 不支持（无 registry-center） |
 | Authorization-T slot schema | 已打包 authorization-policy-management/v1 的 zh-CN、en-US 资源；其他授权场景不在此范围内 |
 | 语言覆盖 | zh-CN 和 en-US |
 
 ---
 
-## 十四、使用示例
+## 十二、使用示例
 
 协商完整示例集中在分册维护，按所用 API 选择对应流程：
 
 | 场景 | 示例 |
 |---|---|
-| 内容 API 生成提议并交付 metadata | [使用内容 API 生成提议](A2A-T-Negotiation-API-Reference.md#101-使用内容-api-生成提议) |
-| 从同一入站消息取得上下文并校验 | [校验收到的提议](A2A-T-Negotiation-API-Reference.md#102-校验收到的提议) |
-| 保持会话 ID 和轮次生成同意响应 | [生成同意响应](A2A-T-Negotiation-API-Reference.md#103-保持收到的轮次生成同意响应) |
-| 自由文本与其他结束响应 | [自由文本生成](A2A-T-Negotiation-API-Reference.md#104-从自由文本生成协商消息)、[结束响应](A2A-T-Negotiation-API-Reference.md#105-生成可选的结束响应) |
-| 独立的运行时 start/receive/continue 流程 | [运行时状态机示例](A2A-T-Negotiation-API-Reference.md#106-独立使用运行时状态机) |
+| 内容 API 生成提议并交付 metadata | [使用内容 API 生成提议](A2A-T-Negotiation-API-Reference.md#81-使用内容-api-生成提议) |
+| 从同一入站消息取得上下文并校验 | [校验收到的提议](A2A-T-Negotiation-API-Reference.md#82-校验收到的提议) |
+| 保持会话 ID 和轮次生成同意响应 | [生成同意响应](A2A-T-Negotiation-API-Reference.md#83-保持收到的轮次生成同意响应) |
+| 自由文本与其他结束响应 | [自由文本生成](A2A-T-Negotiation-API-Reference.md#84-从自由文本生成协商消息)、[结束响应](A2A-T-Negotiation-API-Reference.md#85-生成可选的结束响应) |
 
-内容 API 与运行时状态机使用不同的 context 和 payload 契约；不要将两条路径中各自生成的会话 ID 当作同一个会话直接拼接。
+所有协商示例均使用无状态内容 API 和随消息携带的会话 context。
 
-### 14.1 查询可用模板
-
-```java
-// 列出所有协商模板
-List<PromptTemplate> templates = client.getPrompts().stream()
-    .filter(t -> t.templateUri().uri().startsWith("Negotiation-T/"))
-    .toList();
-for (PromptTemplate t : templates) {
-    System.out.println(t.templateUri().uri() + " -> " + t.description());
-}
-
-// 查询特定模板
-Optional<PromptTemplate> template = client.getPrompt(
-    "Negotiation-T/target-negotiation/propose/v1");
-```
-
----
-
-## 十五、文件索引
+## 十三、文件索引
 
 ### Facade 层
 
@@ -560,24 +480,6 @@ Optional<PromptTemplate> template = client.getPrompt(
 | a2a-t-negotiation/.../validation/NegotiationRuleCheckerAdapter.java | 规则门适配器 |
 | a2a-t-negotiation/.../validation/SemanticValidationResult.java | 语义校验结果 |
 | a2a-t-negotiation/.../validation/NegotiationValidationException.java | 校验异常 |
-
-### 协商运行时层
-
-| 文件 | 作用 |
-|---|---|
-| a2a-t-negotiation/.../runtime/NegotiationHandler.java | 状态机 facade |
-| a2a-t-negotiation/.../runtime/NegotiationRuntime.java | 状态机核心 |
-| a2a-t-negotiation/.../runtime/RoleBoundNegotiationOrchestrator.java | 角色绑定 orchestrator |
-| a2a-t-negotiation/.../runtime/helper/NegotiationPayloadMapper.java | payload 序列化/反序列化 |
-
-### 协商 handler 层
-
-| 文件 | 作用 |
-|---|---|
-| a2a-t-negotiation/.../handler/Negotiation.java | handler 接口 |
-| a2a-t-negotiation/.../handler/InformationNegotiation.java | information handler（有合规校验逻辑） |
-| a2a-t-negotiation/.../handler/TargetNegotiation.java | target handler（空壳 echo） |
-| a2a-t-negotiation/.../handler/FeasibilityNegotiation.java | feasibility handler（空壳 echo） |
 
 ### 协商资源层
 
